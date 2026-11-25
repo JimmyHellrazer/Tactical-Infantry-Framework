@@ -436,6 +436,16 @@ function M.Step(npc)
 	local now = CurTime()
 	-- A room clear's glide onto a spot / through a doorway (TIF.CQB.GlideStep): every tick, no path meanwhile.
 	if npc.tifGlide and TIF.CQB and TIF.CQB.GlideStep and TIF.CQB.GlideStep(npc, now) then return end
+	-- (2026-11-25, user: "sometimes theres a prone failure, where they can stay in prone at walk and run") Speed here
+	-- comes from the move kind and never looked at prone, so anything that set a goal while he lay there (a squad move,
+	-- a medic run, a morale break) slid him along in the prone pose. Lying down with a goal: he gets up first and
+	-- moves once he's up (the last-stand crawl, speed "crawl", is the one move made lying down).
+	local pr = npc.tifProne
+	if pr and m.goal and m.speed ~= "crawl" then
+		local PB = TIF.ProneB
+		if PB and PB.IN and pr.phase == PB.IN then PB.GetUp(npc) end
+		return
+	end
 	if m.goal and m.needCompute then
 		if Budget.Take("path", 1) then
 			Prof.Begin("path")

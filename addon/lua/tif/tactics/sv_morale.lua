@@ -26,7 +26,11 @@ local cvOn = CreateConVar("tif_morale", "1", FCVAR_ARCHIVE, "Soldiers get shaken
 
 MO.SHAKEN, MO.BROKEN, MO.RECOVER = 0.45, 0.2, 0.35
 
-function MO.Enabled() return cvOn:GetBool() end
+-- (2026-11-25, user: "remove like morale for now. it can come back later but i dont want it for release as its a
+-- little buggy") Off for the release whatever tif_morale says: no shaken / broken / surrender, no morale withdrawals
+-- or radio lines; the code stays. MO.OFF = false brings it back (and the settings checkbox, ui/cl_settings.lua).
+MO.OFF = true
+function MO.Enabled() return not MO.OFF and cvOn:GetBool() end
 
 local function base_of(npc)
 	return math.Clamp(0.65 + 0.4 * (npc.tifArch.suppressResist or 0.3), 0.5, 0.95)

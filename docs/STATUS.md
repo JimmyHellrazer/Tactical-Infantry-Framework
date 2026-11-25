@@ -955,6 +955,27 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.49: morale off for the release; prone soldiers no longer slide at walk / run speed (2026-11-25)
+
+User: "remove like morale for now. it can come back later but i dont want it for release as its a little buggy,
+sometimes theres a prone failure. where they can stay in prone at walk and run".
+- Morale: tactics/sv_morale.lua MO.OFF = true -> MO.Enabled() false whatever the archived tif_morale says (no shaken /
+  broken / surrender, no morale withdrawals or radio lines). Code kept; the settings checkbox is commented out
+  (ui/cl_settings.lua). MO.OFF = false brings both back. Workshop text and README no longer mention morale.
+- Prone slide: sv_move M.Step chose speed from the move kind and never looked at prone, and the brain's "lying down"
+  branch is skipped while fighting, so a later branch (morale break, medic run) could set a goal and he slid along in
+  the prone pose (the brain re-forces stance 2 after every branch). Now Move.Step: lying prone with a goal (anything
+  but the last-stand "crawl") -> TIF.ProneB.GetUp and no movement until he's up. GoDown clears goals (dives too), and
+  nothing moves soldiers prone on purpose (P.CRAWL_SPEED was unused).
+- Harness move 24 (+4); all suites pass.
+
+### 0.38.48: insurgents carry the rebel guns (2026-11-25)
+
+User: "make the insurgents use the more rebel weapon set, currently they use the russian one". The guns' "rebel" tier
+(TIFBaked.tiers) instead of the old militia's Russian SOF table: default AKM / AK-74u / worn AK (ak_ff) / FAL with
+M1911 or Sykov; assault AK-74u / Uzi / sawn-off; guard AKM / Uzi / wooden pump; support PKM / MG34; marksman SVD /
+SKS; RPG-7; breacher wooden pump / double barrel. The militia alias follows (copied from it).
+
 ### 0.38.47: INS2 vertex spike, bare arms' normal map, LODs; tif_cqb ships; repo folder (2026-11-25, NOT yet run in game)
 
 User screenshots (insurgent corpses): a sheet of vertices stretched up from the hips; bare arms "lack a normal"; "is

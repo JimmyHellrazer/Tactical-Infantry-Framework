@@ -61,20 +61,22 @@ end
 -- picked at random per soldier. Voices: several packs each, one per soldier for life.
 local INS2 = "models/tif_factions/ins2/"
 
--- Enemy: insurgents. Russian / Eastern-bloc guns (the old militia tier).
+-- Enemy: insurgents. The guns' "rebel" tier (2026-11-25, user: "the more rebel weapon set", not the Russian SOF one):
+-- worn AKs, the odd FAL, Uzis, old machine guns, shotguns, M1911s; repeats weight the picks.
 TIF.RegisterFaction("insurgents", {
 	name = "Insurgents",
 	side = "enemy",
 	models = { INS2 .. "insurgent_light.mdl", INS2 .. "insurgent_standard.mdl", INS2 .. "insurgent_heavy.mdl" },
 	voices = { "mercenary", "tif_arab_rebel", "tif_arab_operative" },
-	weapons = mw({ "ak_warsaw_sup", "ak_warsaw_grip", "an94", "oden" }),
+	weapons = mw({ "akm", "ak74u", "ak_ff" }),
 	loadouts = {
-		default = { primary = mw({ "ak_warsaw_sup", "ak_warsaw_grip", "an94", "oden" }), secondary = mw({ "sykov" }) },
-		assault = { primary = mw({ "asval", "bizon" }), secondary = mw({ "sykov" }) },
-		support = { primary = mw({ "pkm_sof" }), secondary = mw({ "sykov" }) },
-		marksman = { primary = mw({ "svd_plague" }), secondary = mw({ "sykov" }) },
-		rpg = { primary = mw({ "rpg7" }), secondary = mw({ "bizon" }) },
-		breacher = { primary = mw({ "m680_breach" }), secondary = mw({ "sykov" }) },
+		default = { primary = mw({ "akm", "akm", "ak74u", "ak_ff", "ak_ff", "fal" }), secondary = mw({ "m1911", "sykov" }) },
+		assault = { primary = mw({ "ak74u", "uzi", "uzi", "db_short" }), secondary = mw({ "m1911" }) },
+		guard = { primary = mw({ "akm", "uzi", "m680_wood" }), secondary = mw({ "m1911" }) },
+		support = { primary = mw({ "pkm", "mg34" }), secondary = mw({ "uzi" }) },
+		marksman = { primary = mw({ "svd", "sks" }), secondary = mw({ "m1911" }) },
+		rpg = { primary = mw({ "rpg7" }), secondary = mw({ "uzi" }) },
+		breacher = { primary = mw({ "m680_wood", "db_full" }), secondary = mw({ "m1911" }) },
 	},
 })
 

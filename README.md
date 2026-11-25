@@ -23,7 +23,8 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 - Cover: corners (standing and crouched), low and chest-high walls. Directional arrivals, peeking, leaning out with a
   proper aim blend, blindfire under suppression, reloads, shuffling along walls, switching corners, and sometimes
   fighting from beside cover before palming back in.
-- Suppression and morale, grenades over cover and in the open, flashbang reactions, dodging live grenades.
+- Suppression (pinned down, pushed into cover or flat on the ground), grenades over cover and in the open, flashbang
+  reactions, dodging live grenades.
 - Close quarters: rifle-butt strikes and paired melee fights between soldiers who end up face to face.
 - Awareness: unaware / suspicious / searching / engaged, with MW's own reactions (startles, pointing out contacts,
   looking around after losing you).
@@ -111,7 +112,7 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 | `tools/air/` | Reinforcement helicopters and MW cars (companion addons). |
 | `tools/factions/make_ins2.py` | The starter factions: Insurgency 2 characters rebuilt on TIF's own ValveBiped skeleton (needs codport). `vvd_headfix.py`: moves vertices left on a model's root bone onto the head. |
 | `tools/harness/` | Offline Lua tests (LuaJIT via `lupa`): `python run.py <suite>.lua`. `run.py` points at the addon's `lua/` folder. |
-| `tools/sync_addon.ps1` | Refreshes `addon/` and `docs/` from the working copy in Garry's Mod. |
+| `tools/sync_addon.ps1` | Refreshes `docs/` from the design notes folder. (On the dev machine `garrysmod/addons/tactical_infantry_framework` is a junction to `addon/`, so the addon itself needs no syncing.) |
 
 ## Credits
 
