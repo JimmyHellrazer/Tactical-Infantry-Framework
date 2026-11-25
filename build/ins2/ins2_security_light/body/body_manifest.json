@@ -1,0 +1,131 @@
+{
+ "character": "ins2_security_light",
+ "source": "K:\\jimmyproject\\ins2_src\\security_light\\security_light_combined.smd",
+ "groups": [
+  {
+   "name": "eyes",
+   "smd": "ins2_security_light_eyes.smd",
+   "materials": [
+    "eyeball_l",
+    "eyeball_r"
+   ],
+   "triangles": 352,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "light",
+   "smd": "ins2_security_light_light.smd",
+   "materials": [
+    "t_usmc_gear_01",
+    "t_usmc_helmet_01",
+    "t_usmc_flag_01",
+    "t_usa_usmc_01",
+    "t_usmc_pants_01"
+   ],
+   "triangles": 11211,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "backpack",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_security_light_backpack_o1.smd",
+     "materials": [
+      "t_usa_usmc_01"
+     ],
+     "triangles": 444
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_security_light_backpack_o2.smd",
+     "materials": [
+      "t_usa_usmc_01"
+     ],
+     "triangles": 444
+    }
+   ],
+   "materials": [
+    "t_usa_usmc_01"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "kit",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_security_light_kit_o1.smd",
+     "materials": [
+      "t_usmc_gear_01",
+      "t_usa_usmc_01",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02",
+      "t_usa_cable_01",
+      "t_usmc_face_04",
+      "t_usmc_glass_02"
+     ],
+     "triangles": 6362
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_security_light_kit_o2.smd",
+     "materials": [
+      "t_usmc_gear_01",
+      "t_usa_usmc_01",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02",
+      "t_usa_cable_01",
+      "t_usmc_glass_01",
+      "t_usmc_face_03",
+      "t_usmc_glass_03"
+     ],
+     "triangles": 7844
+    },
+    {
+     "name": "o3",
+     "smd": "ins2_security_light_kit_o3.smd",
+     "materials": [
+      "t_usmc_gear_01",
+      "t_usa_usmc_01",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02",
+      "t_usa_cable_01",
+      "t_usmc_glass_01",
+      "t_usmc_face_02"
+     ],
+     "triangles": 8484
+    }
+   ],
+   "materials": [
+    "t_usmc_gear_01",
+    "t_usa_usmc_01",
+    "t_usmc_pants_01",
+    "t_usmc_gear_02",
+    "t_usa_cable_01",
+    "t_usmc_face_04",
+    "t_usmc_glass_02",
+    "t_usmc_glass_01",
+    "t_usmc_face_03",
+    "t_usmc_glass_03",
+    "t_usmc_face_02"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "patch",
+   "smd": "ins2_security_light_patch.smd",
+   "materials": [
+    "t_usmc_gear_01"
+   ],
+   "triangles": 148,
+   "blank": true,
+   "default_off": false
+  }
+ ],
+ "extra_bones": []
+}

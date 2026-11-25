@@ -1,0 +1,80 @@
+# split of materials shared by several bodygroups
+# material | tris | centroid (raw axes) | top bones | anchor scores | -> group (reason)
+
+# weight merges (from -> to : vertex links moved)
+Bip01 -> ValveBiped.Bip01_Pelvis : 12
+L ForeTwist -> ValveBiped.Bip01_L_Forearm : 514
+R ForeTwist -> ValveBiped.Bip01_R_Forearm : 510
+
+# rename-map bones not present in this rig
+j_mainroot
+j_spinelower
+j_spineupper
+j_spine4
+j_neck
+j_head
+j_visor_inner
+j_visor
+tag_eye
+j_hip_le
+j_hiptwist_le
+j_hip_proc_le
+j_knee_le
+j_ankle_le
+j_ball_le
+j_hip_ri
+j_hiptwist_ri
+j_hip_proc_ri
+j_knee_ri
+j_ankle_ri
+j_ball_ri
+j_clavicle_le
+j_shoulder_le
+j_shouldertwist_le
+j_elbow_le
+j_wristfronttwist1_le
+j_wrist_le
+j_thumb_le_1
+j_thumb_le_2
+j_thumb_le_3
+j_metaindex_le_1
+j_index_le_1
+j_index_le_2
+j_index_le_3
+j_metamid_le_1
+j_mid_le_1
+j_mid_le_2
+j_mid_le_3
+j_metaring_le_1
+j_ring_le_1
+j_ring_le_2
+j_ring_le_3
+j_metapinky_le_1
+j_pinky_le_1
+j_pinky_le_2
+j_pinky_le_3
+j_clavicle_ri
+j_shoulder_ri
+j_shouldertwist_ri
+j_elbow_ri
+j_wristfronttwist1_ri
+j_wrist_ri
+j_thumb_ri_1
+j_thumb_ri_2
+j_thumb_ri_3
+j_metaindex_ri_1
+j_index_ri_1
+j_index_ri_2
+j_index_ri_3
+j_metamid_ri_1
+j_mid_ri_1
+j_mid_ri_2
+j_mid_ri_3
+j_metaring_ri_1
+j_ring_ri_1
+j_ring_ri_2
+j_ring_ri_3
+j_metapinky_ri_1
+j_pinky_ri_1
+j_pinky_ri_2
+j_pinky_ri_3

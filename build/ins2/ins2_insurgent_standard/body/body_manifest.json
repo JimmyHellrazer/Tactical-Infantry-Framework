@@ -1,0 +1,86 @@
+{
+ "character": "ins2_insurgent_standard",
+ "source": "K:\\jimmyproject\\ins2_src\\insurgent_standard\\insurgent_standard_combined.smd",
+ "groups": [
+  {
+   "name": "eyes",
+   "smd": "ins2_insurgent_standard_eyes.smd",
+   "materials": [
+    "eyeball_l",
+    "eyeball_r"
+   ],
+   "triangles": 352,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "noarmor",
+   "smd": "ins2_insurgent_standard_noarmor.smd",
+   "materials": [
+    "t_ins_head_02"
+   ],
+   "triangles": 4875,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "kit",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_insurgent_standard_kit_o1.smd",
+     "materials": [
+      "t_ins_clothes_02",
+      "t_ins_access_01",
+      "t_ins_clothes_01"
+     ],
+     "triangles": 7162
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_insurgent_standard_kit_o2.smd",
+     "materials": [
+      "t_ins_clothes_02",
+      "t_ins_clothes_01",
+      "t_ins_gear_01",
+      "t_ins_access_01b"
+     ],
+     "triangles": 12531
+    },
+    {
+     "name": "o3",
+     "smd": "ins2_insurgent_standard_kit_o3.smd",
+     "materials": [
+      "t_ins_clothes_01",
+      "t_ins_gear_01",
+      "t_ins_helmet_01",
+      "t_ins_clothes_02b"
+     ],
+     "triangles": 11875
+    }
+   ],
+   "materials": [
+    "t_ins_clothes_02",
+    "t_ins_access_01",
+    "t_ins_clothes_01",
+    "t_ins_gear_01",
+    "t_ins_access_01b",
+    "t_ins_helmet_01",
+    "t_ins_clothes_02b"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "hands",
+   "smd": "ins2_insurgent_standard_hands.smd",
+   "materials": [
+    "ins_light_color"
+   ],
+   "triangles": 1704,
+   "blank": true,
+   "default_off": false
+  }
+ ],
+ "extra_bones": []
+}

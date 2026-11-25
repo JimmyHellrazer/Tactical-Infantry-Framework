@@ -1,0 +1,8 @@
+# backups and build leftovers
+*.bak
+*.bak[0-9]
+*~
+compile.log
+studiomdl.log
+__pycache__/
+*.pyc

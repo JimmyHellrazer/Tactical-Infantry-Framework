@@ -1,0 +1,6 @@
+{
+	"title": "TIF Dev Tools (local only - do not upload)",
+	"type": "tool",
+	"tags": ["build"],
+	"ignore": ["*.md"]
+}

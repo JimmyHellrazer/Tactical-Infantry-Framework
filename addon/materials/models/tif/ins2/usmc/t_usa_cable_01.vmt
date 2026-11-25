@@ -1,0 +1,16 @@
+"VertexLitGeneric"
+{
+	$basetexture 	"models/tif/ins2/usmc\T_USA_CABLE_01_C"
+	$bumpmap 		"models/tif/ins2/usmc\T_USA_CABLE_01_N"
+	"$phong"                        "1"
+	"$phongalbedotint"              "1"
+	"$phongtint"                    "[.6 .8 1]"
+	"$phongboost"                   "1.25"
+//	"$phongexponent"                "70"
+	"$phongfresnelranges"           "[1 2.5 7]"
+	"$phongexponenttexture"         "models/tif/ins2/usmc\T_USA_CABLE_01_g"
+
+	"$envmap"                       "env_cubemap"
+	"$normalmapalphaenvmapmask"		"1"
+	"$envmaptint"                   "[0.025 0.025 0.025]"
+}

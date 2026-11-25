@@ -1,0 +1,117 @@
+{
+ "character": "ins2_civilian_vip_security",
+ "source": "K:\\jimmyproject\\ins2_src\\civilian_vip_security\\civilian_vip_security_combined.smd",
+ "groups": [
+  {
+   "name": "eyes",
+   "smd": "ins2_civilian_vip_security_eyes.smd",
+   "materials": [
+    "eyeball_l",
+    "eyeball_r"
+   ],
+   "triangles": 352,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "light",
+   "smd": "ins2_civilian_vip_security_light.smd",
+   "materials": [
+    "t_usa_usmc_01",
+    "t_usmc_gear_01b",
+    "t_usmc_pants_01",
+    "t_usa_cable_01",
+    "t_usmc_helmet_01",
+    "t_usmc_flag_01"
+   ],
+   "triangles": 12308,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "backpack",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_civilian_vip_security_backpack_o1.smd",
+     "materials": [
+      "t_usa_usmc_01",
+      "t_usmc_gear_02b"
+     ],
+     "triangles": 490
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_civilian_vip_security_backpack_o2.smd",
+     "materials": [
+      "t_usa_usmc_01"
+     ],
+     "triangles": 454
+    }
+   ],
+   "materials": [
+    "t_usa_usmc_01",
+    "t_usmc_gear_02b"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "kit",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_civilian_vip_security_kit_o1.smd",
+     "materials": [
+      "t_usa_usmc_01",
+      "t_usmc_gear_01b",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02b",
+      "t_usmc_face_01",
+      "t_usmc_glass_02"
+     ],
+     "triangles": 8375
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_civilian_vip_security_kit_o2.smd",
+     "materials": [
+      "t_usa_usmc_01",
+      "t_usmc_gear_01b",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02b",
+      "t_usmc_face_01",
+      "t_usmc_glass_02"
+     ],
+     "triangles": 8375
+    },
+    {
+     "name": "o3",
+     "smd": "ins2_civilian_vip_security_kit_o3.smd",
+     "materials": [
+      "t_usa_usmc_01",
+      "t_usmc_gear_01b",
+      "t_usmc_pants_01",
+      "t_usmc_gear_02b",
+      "t_usmc_face_03",
+      "t_usmc_glass_03"
+     ],
+     "triangles": 8873
+    }
+   ],
+   "materials": [
+    "t_usa_usmc_01",
+    "t_usmc_gear_01b",
+    "t_usmc_pants_01",
+    "t_usmc_gear_02b",
+    "t_usmc_face_01",
+    "t_usmc_glass_02",
+    "t_usmc_face_03",
+    "t_usmc_glass_03"
+   ],
+   "blank": false,
+   "default_off": false
+  }
+ ],
+ "extra_bones": []
+}

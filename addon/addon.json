@@ -1,0 +1,6 @@
+{
+	"title": "Tactical Infantry Framework",
+	"type": "npc",
+	"tags": [ "realism", "fun" ],
+	"ignore": [ "*.md", "tools/*", "mapsrc/*" ]
+}

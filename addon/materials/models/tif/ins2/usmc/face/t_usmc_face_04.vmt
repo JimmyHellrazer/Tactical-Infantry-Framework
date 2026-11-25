@@ -1,0 +1,23 @@
+"VertexLitGeneric"
+{
+	$basetexture 	"models/tif/ins2/usmc\FACE\T_USMC_FACE_04_C"
+	$bumpmap 	"models/tif/ins2/usmc\FACE\T_USMC_FACE_03_N"
+	$phong 		"1"
+	$phongboost 	".06"
+	$phongexponent 	"5"
+	$phongtint	"[0.5 0.425 0.36]"
+	$halflambert 	"0"
+	$rimlight 	"0"
+	
+	"$detail"				"vgui/white"
+	"$detailblendfactor"	"0"
+	"$detailscale"			"2"
+	
+	"Proxies"
+	{
+		"CauseOfDeath"
+		{
+			"resultVar"		"$detail"
+		}
+	}
+}

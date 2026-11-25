@@ -1,0 +1,120 @@
+StudioMDL.exe (Nov 12 2026) - Garry's Mod Edition
+WARNING: Failed to load keyvalues file cfg/mount.cfg!
+qdir:    "k:\jimmyproject\work\ins2_civilian_vip_insurgent\qc\"
+gamedir: "K:\jimmyproject\work\_studiomdl_game\"
+g_path:  "K:\jimmyproject\work\ins2_civilian_vip_insurgent\qc\civilian_vip_insurgent_lods.qc"
+Building binary model files...
+Working on "civilian_vip_insurgent_lods.qc"
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_eyes.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_noarmor.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_glasses_o1.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_kit_o1.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_kit_o2.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_kit_o3.smd
+SMD MODEL ..\body\ins2_civilian_vip_insurgent_hands.smd
+SMD MODEL ..\..\..\codport\shared\anims\reference_tifhost.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_eyes_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_noarmor_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_glasses_o1_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o1_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o2_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o3_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_hands_lod1.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_eyes_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_noarmor_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_glasses_o1_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o1_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o2_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o3_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_hands_lod2.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_eyes_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_noarmor_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_glasses_o1_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o1_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o2_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_kit_o3_lod3.smd
+SMD MODEL ..\lod\ins2_civilian_vip_insurgent_hands_lod3.smd
+Processing $shadowlod
+Collapsed 3 bones
+Processing LOD for material: eyeball_r
+Processing LOD for material: eyeball_l
+Processing LOD for material: t_ins_vip_01
+Processing LOD for material: t_ins_head_01
+Processing LOD for material: t_ins_sunglasses_01
+Processing LOD for material: t_ins_clothes_02
+Processing LOD for material: t_ins_clothes_02
+Processing LOD for material: t_ins_gear_01
+Processing LOD for material: t_ins_clothes_02
+Processing LOD for material: t_ins_gear_01
+Processing LOD for material: ins_light_color
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\civilian_vip_insurgent.mdl:
+bones        17164 bytes (65)
+animations     972 bytes (1 anims) (1 frames) [0:00]
+sequences      476 bytes (1 seq) 
+ik/pose       1668 bytes
+eyeballs       344 bytes (2 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+textures       540 bytes
+keyvalues        0 bytes
+bone transforms     8904 bytes
+bone flex driver       0 bytes
+collision        0 bytes
+total        33392
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\civilian_vip_insurgent.vvd:
+vertices      9312 bytes (194 vertices)
+vertices    267552 bytes (5574 vertices)
+vertices     13152 bytes (274 vertices)
+vertices     20976 bytes (437 vertices)
+vertices    182496 bytes (3802 vertices)
+vertices    182496 bytes (3802 vertices)
+vertices     49152 bytes (1024 vertices)
+tangents      3104 bytes (194 vertices)
+tangents     89184 bytes (5574 vertices)
+tangents      4384 bytes (274 vertices)
+tangents      6992 bytes (437 vertices)
+tangents     60832 bytes (3802 vertices)
+tangents     60832 bytes (3802 vertices)
+tangents     16384 bytes (1024 vertices)
+total       966912 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\civilian_vip_insurgent.dx80.vtx":
+body parts:        40 bytes
+models:           544 bytes
+model LODs:       480 bytes
+meshes:           495 bytes
+strip groups:    1375 bytes
+strips:          1998 bytes
+verts:         308412 bytes
+indices:       284244 bytes
+bone changes:    4704 bytes
+everything:    601848 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\civilian_vip_insurgent.dx90.vtx":
+body parts:        40 bytes
+models:           544 bytes
+model LODs:       480 bytes
+meshes:           495 bytes
+strip groups:    1375 bytes
+strips:          1485 bytes
+verts:         303561 bytes
+indices:       284244 bytes
+bone changes:    3632 bytes
+everything:    595412 bytes
+
+Completed "civilian_vip_insurgent_lods.qc"

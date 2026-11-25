@@ -1,0 +1,94 @@
+{
+ "character": "ins2_civilian_vip_insurgent",
+ "source": "K:\\jimmyproject\\ins2_src\\civilian_vip_insurgent\\civilian_vip_insurgent_combined.smd",
+ "groups": [
+  {
+   "name": "eyes",
+   "smd": "ins2_civilian_vip_insurgent_eyes.smd",
+   "materials": [
+    "eyeball_r",
+    "eyeball_l"
+   ],
+   "triangles": 352,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "noarmor",
+   "smd": "ins2_civilian_vip_insurgent_noarmor.smd",
+   "materials": [
+    "t_ins_vip_01",
+    "t_ins_head_01"
+   ],
+   "triangles": 9557,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "glasses",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_civilian_vip_insurgent_glasses_o1.smd",
+     "materials": [
+      "t_ins_sunglasses_01"
+     ],
+     "triangles": 320
+    }
+   ],
+   "materials": [
+    "t_ins_sunglasses_01"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "kit",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_civilian_vip_insurgent_kit_o1.smd",
+     "materials": [
+      "t_ins_clothes_02"
+     ],
+     "triangles": 688
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_civilian_vip_insurgent_kit_o2.smd",
+     "materials": [
+      "t_ins_clothes_02",
+      "t_ins_gear_01"
+     ],
+     "triangles": 5322
+    },
+    {
+     "name": "o3",
+     "smd": "ins2_civilian_vip_insurgent_kit_o3.smd",
+     "materials": [
+      "t_ins_clothes_02",
+      "t_ins_gear_01"
+     ],
+     "triangles": 5322
+    }
+   ],
+   "materials": [
+    "t_ins_clothes_02",
+    "t_ins_gear_01"
+   ],
+   "blank": false,
+   "default_off": false
+  },
+  {
+   "name": "hands",
+   "smd": "ins2_civilian_vip_insurgent_hands.smd",
+   "materials": [
+    "ins_light_color"
+   ],
+   "triangles": 1704,
+   "blank": true,
+   "default_off": false
+  }
+ ],
+ "extra_bones": []
+}

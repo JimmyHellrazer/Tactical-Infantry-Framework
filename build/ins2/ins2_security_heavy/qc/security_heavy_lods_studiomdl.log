@@ -1,0 +1,165 @@
+StudioMDL.exe (Nov 12 2026) - Garry's Mod Edition
+WARNING: Failed to load keyvalues file cfg/mount.cfg!
+qdir:    "k:\jimmyproject\work\ins2_security_heavy\qc\"
+gamedir: "K:\jimmyproject\work\_studiomdl_game\"
+g_path:  "K:\jimmyproject\work\ins2_security_heavy\qc\security_heavy_lods.qc"
+Building binary model files...
+Working on "security_heavy_lods.qc"
+SMD MODEL ..\body\ins2_security_heavy_eyes.smd
+SMD MODEL ..\body\ins2_security_heavy_light.smd
+SMD MODEL ..\body\ins2_security_heavy_glasses.smd
+SMD MODEL ..\body\ins2_security_heavy_backpack_o1.smd
+SMD MODEL ..\body\ins2_security_heavy_backpack_o2.smd
+SMD MODEL ..\body\ins2_security_heavy_kit_o1.smd
+SMD MODEL ..\body\ins2_security_heavy_kit_o2.smd
+SMD MODEL ..\body\ins2_security_heavy_kit_o3.smd
+SMD MODEL ..\body\ins2_security_heavy_patch.smd
+SMD MODEL ..\body\ins2_security_heavy_groin.smd
+SMD MODEL ..\..\..\codport\shared\anims\reference_tifhost.smd
+SMD MODEL ..\lod\ins2_security_heavy_eyes_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_light_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_glasses_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o3_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_patch_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_groin_lod1.smd
+SMD MODEL ..\lod\ins2_security_heavy_eyes_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_light_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_glasses_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o3_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_patch_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_groin_lod2.smd
+SMD MODEL ..\lod\ins2_security_heavy_eyes_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_light_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_glasses_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_backpack_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_kit_o3_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_patch_lod3.smd
+SMD MODEL ..\lod\ins2_security_heavy_groin_lod3.smd
+Processing $shadowlod
+Collapsed 3 bones
+Processing LOD for material: eyeball_l
+Processing LOD for material: eyeball_r
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_helmet_01
+Processing LOD for material: t_usmc_pants_02
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_flag_01
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_glass_02
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_glass_01
+Processing LOD for material: t_usmc_face_03
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_face_02
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_face_04
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_gear_01
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_heavy.mdl:
+bones        18252 bytes (65)
+animations     972 bytes (1 anims) (1 frames) [0:00]
+sequences      476 bytes (1 seq) 
+ik/pose       2144 bytes
+eyeballs       344 bytes (2 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+textures       936 bytes
+keyvalues        0 bytes
+bone transforms     8904 bytes
+bone flex driver       0 bytes
+collision        0 bytes
+total        37888
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_heavy.vvd:
+vertices      9312 bytes (194 vertices)
+vertices    368160 bytes (7670 vertices)
+vertices     21696 bytes (452 vertices)
+vertices     19248 bytes (401 vertices)
+vertices     16944 bytes (353 vertices)
+vertices    240432 bytes (5009 vertices)
+vertices    247104 bytes (5148 vertices)
+vertices    264240 bytes (5505 vertices)
+vertices      2592 bytes (54 vertices)
+vertices      5376 bytes (112 vertices)
+tangents      3104 bytes (194 vertices)
+tangents    122720 bytes (7670 vertices)
+tangents      7232 bytes (452 vertices)
+tangents      6416 bytes (401 vertices)
+tangents      5648 bytes (353 vertices)
+tangents     80144 bytes (5009 vertices)
+tangents     82368 bytes (5148 vertices)
+tangents     88080 bytes (5505 vertices)
+tangents       864 bytes (54 vertices)
+tangents      1792 bytes (112 vertices)
+total      1593536 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_heavy.dx80.vtx":
+body parts:        56 bytes
+models:           748 bytes
+model LODs:       660 bytes
+meshes:          1440 bytes
+strip groups:    4000 bytes
+strips:          4725 bytes
+verts:         501642 bytes
+indices:       454080 bytes
+bone changes:    6680 bytes
+everything:    973407 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_heavy.dx90.vtx":
+body parts:        56 bytes
+models:           748 bytes
+model LODs:       660 bytes
+meshes:          1440 bytes
+strip groups:    4000 bytes
+strips:          4320 bytes
+verts:         499743 bytes
+indices:       454080 bytes
+bone changes:    6216 bytes
+everything:    970639 bytes
+
+Completed "security_heavy_lods.qc"

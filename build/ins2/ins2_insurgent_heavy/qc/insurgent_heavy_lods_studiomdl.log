@@ -1,0 +1,111 @@
+StudioMDL.exe (Nov 12 2026) - Garry's Mod Edition
+WARNING: Failed to load keyvalues file cfg/mount.cfg!
+qdir:    "k:\jimmyproject\work\ins2_insurgent_heavy\qc\"
+gamedir: "K:\jimmyproject\work\_studiomdl_game\"
+g_path:  "K:\jimmyproject\work\ins2_insurgent_heavy\qc\insurgent_heavy_lods.qc"
+Building binary model files...
+Working on "insurgent_heavy_lods.qc"
+SMD MODEL ..\body\ins2_insurgent_heavy_eyes.smd
+SMD MODEL ..\body\ins2_insurgent_heavy_noarmor.smd
+SMD MODEL ..\body\ins2_insurgent_heavy_kit_o1.smd
+SMD MODEL ..\body\ins2_insurgent_heavy_kit_o2.smd
+SMD MODEL ..\body\ins2_insurgent_heavy_kit_o3.smd
+SMD MODEL ..\..\..\codport\shared\anims\reference_tifhost.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_eyes_lod1.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_noarmor_lod1.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o1_lod1.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o2_lod1.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o3_lod1.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_eyes_lod2.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_noarmor_lod2.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o1_lod2.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o2_lod2.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o3_lod2.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_eyes_lod3.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_noarmor_lod3.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o1_lod3.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o2_lod3.smd
+SMD MODEL ..\lod\ins2_insurgent_heavy_kit_o3_lod3.smd
+Processing $shadowlod
+Collapsed 3 bones
+Processing LOD for material: eyeball_l
+Processing LOD for material: eyeball_r
+Processing LOD for material: t_ins_head_03
+Processing LOD for material: t_ins_mil_01
+Processing LOD for material: t_ins_clothes_02
+Processing LOD for material: t_ins_access_01
+Processing LOD for material: t_ins_gear_01
+Processing LOD for material: t_ins_mil_pants_01
+Processing LOD for material: t_ins_mil_01
+Processing LOD for material: t_ins_gear_01
+Processing LOD for material: t_ins_mil_pants_01
+Processing LOD for material: t_ins_helmet_01
+Processing LOD for material: t_ins_clothes_02b
+Processing LOD for material: t_ins_mil_01
+Processing LOD for material: t_ins_access_01
+Processing LOD for material: t_ins_gear_01
+Processing LOD for material: t_ins_helmet_01
+Processing LOD for material: t_ins_clothes_02b
+Processing LOD for material: t_ins_mil_pants_02
+Processing LOD for material: t_ins_sunglasses_01
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\insurgent_heavy.mdl:
+bones        17844 bytes (65)
+animations     980 bytes (1 anims) (1 frames) [0:00]
+sequences      476 bytes (1 seq) 
+ik/pose       1192 bytes
+eyeballs       344 bytes (2 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+textures       804 bytes
+keyvalues        0 bytes
+bone transforms     8904 bytes
+bone flex driver       0 bytes
+collision        0 bytes
+total        34964
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\insurgent_heavy.vvd:
+vertices      9312 bytes (194 vertices)
+vertices    124032 bytes (2584 vertices)
+vertices    519552 bytes (10824 vertices)
+vertices    542928 bytes (11311 vertices)
+vertices    688752 bytes (14349 vertices)
+tangents      3104 bytes (194 vertices)
+tangents     41344 bytes (2584 vertices)
+tangents    173184 bytes (10824 vertices)
+tangents    180976 bytes (11311 vertices)
+tangents    229584 bytes (14349 vertices)
+total      2512832 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\insurgent_heavy.dx80.vtx":
+body parts:        24 bytes
+models:           340 bytes
+model LODs:       300 bytes
+meshes:           900 bytes
+strip groups:    2500 bytes
+strips:          4347 bytes
+verts:         810072 bytes
+indices:       702066 bytes
+bone changes:   12736 bytes
+everything:   1533021 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\insurgent_heavy.dx90.vtx":
+body parts:        24 bytes
+models:           340 bytes
+model LODs:       300 bytes
+meshes:           900 bytes
+strip groups:    2500 bytes
+strips:          2700 bytes
+verts:         795474 bytes
+indices:       702066 bytes
+bone changes:    9720 bytes
+everything:   1513760 bytes
+
+Completed "insurgent_heavy_lods.qc"

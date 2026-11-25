@@ -1,0 +1,149 @@
+StudioMDL.exe (Nov 12 2026) - Garry's Mod Edition
+WARNING: Failed to load keyvalues file cfg/mount.cfg!
+qdir:    "k:\jimmyproject\work\ins2_security_light\qc\"
+gamedir: "K:\jimmyproject\work\_studiomdl_game\"
+g_path:  "K:\jimmyproject\work\ins2_security_light\qc\security_light_lods.qc"
+Building binary model files...
+Working on "security_light_lods.qc"
+SMD MODEL ..\body\ins2_security_light_eyes.smd
+SMD MODEL ..\body\ins2_security_light_light.smd
+SMD MODEL ..\body\ins2_security_light_backpack_o1.smd
+SMD MODEL ..\body\ins2_security_light_backpack_o2.smd
+SMD MODEL ..\body\ins2_security_light_kit_o1.smd
+SMD MODEL ..\body\ins2_security_light_kit_o2.smd
+SMD MODEL ..\body\ins2_security_light_kit_o3.smd
+SMD MODEL ..\body\ins2_security_light_patch.smd
+SMD MODEL ..\..\..\codport\shared\anims\reference_tifhost.smd
+SMD MODEL ..\lod\ins2_security_light_eyes_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_light_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o3_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_patch_lod1.smd
+SMD MODEL ..\lod\ins2_security_light_eyes_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_light_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o3_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_patch_lod2.smd
+SMD MODEL ..\lod\ins2_security_light_eyes_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_light_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_backpack_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_kit_o3_lod3.smd
+SMD MODEL ..\lod\ins2_security_light_patch_lod3.smd
+Processing $shadowlod
+Collapsed 3 bones
+Processing LOD for material: eyeball_l
+Processing LOD for material: eyeball_r
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_helmet_01
+Processing LOD for material: t_usmc_flag_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_cable_01
+Processing LOD for material: t_usmc_face_04
+Processing LOD for material: t_usmc_glass_02
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_cable_01
+Processing LOD for material: t_usmc_glass_01
+Processing LOD for material: t_usmc_face_03
+Processing LOD for material: t_usmc_glass_03
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usa_cable_01
+Processing LOD for material: t_usmc_glass_01
+Processing LOD for material: t_usmc_face_02
+Processing LOD for material: t_usmc_gear_01
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_light.mdl:
+bones        18048 bytes (65)
+animations     984 bytes (1 anims) (1 frames) [0:00]
+sequences      476 bytes (1 seq) 
+ik/pose       1816 bytes
+eyeballs       344 bytes (2 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+textures      1004 bytes
+keyvalues        0 bytes
+bone transforms     8904 bytes
+bone flex driver       0 bytes
+collision        0 bytes
+total        37436
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_light.vvd:
+vertices      9312 bytes (194 vertices)
+vertices    358752 bytes (7474 vertices)
+vertices     16656 bytes (347 vertices)
+vertices     16656 bytes (347 vertices)
+vertices    183792 bytes (3829 vertices)
+vertices    240960 bytes (5020 vertices)
+vertices    262752 bytes (5474 vertices)
+vertices      5232 bytes (109 vertices)
+tangents      3104 bytes (194 vertices)
+tangents    119584 bytes (7474 vertices)
+tangents      5552 bytes (347 vertices)
+tangents      5552 bytes (347 vertices)
+tangents     61264 bytes (3829 vertices)
+tangents     80320 bytes (5020 vertices)
+tangents     87584 bytes (5474 vertices)
+tangents      1744 bytes (109 vertices)
+total      1458880 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_light.dx80.vtx":
+body parts:        40 bytes
+models:           612 bytes
+model LODs:       540 bytes
+meshes:          1440 bytes
+strip groups:    4000 bytes
+strips:          4698 bytes
+verts:         443727 bytes
+indices:       430056 bytes
+bone changes:    6256 bytes
+everything:    890865 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_light.dx90.vtx":
+body parts:        40 bytes
+models:           612 bytes
+model LODs:       540 bytes
+meshes:          1440 bytes
+strip groups:    4000 bytes
+strips:          4320 bytes
+verts:         441396 bytes
+indices:       430056 bytes
+bone changes:    5768 bytes
+everything:    887668 bytes
+
+Completed "security_light_lods.qc"

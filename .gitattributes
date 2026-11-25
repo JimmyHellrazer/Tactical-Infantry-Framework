@@ -1,2 +1,18 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# game binaries: never touch line endings, never try to diff
+*.mdl binary
+*.vvd binary
+*.vtx binary
+*.phy binary
+*.ani binary
+*.vtf binary
+*.bsp binary
+*.vcs binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.gif binary
+*.jpg binary
+*.png binary

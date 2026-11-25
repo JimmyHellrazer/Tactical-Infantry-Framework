@@ -1,0 +1,84 @@
+{
+ "character": "ins2_insurgent_heavy",
+ "source": "K:\\jimmyproject\\ins2_src\\insurgent_heavy\\insurgent_heavy_combined.smd",
+ "groups": [
+  {
+   "name": "eyes",
+   "smd": "ins2_insurgent_heavy_eyes.smd",
+   "materials": [
+    "eyeball_l",
+    "eyeball_r"
+   ],
+   "triangles": 352,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "noarmor",
+   "smd": "ins2_insurgent_heavy_noarmor.smd",
+   "materials": [
+    "t_ins_head_03"
+   ],
+   "triangles": 4875,
+   "blank": true,
+   "default_off": false
+  },
+  {
+   "name": "kit",
+   "options": [
+    {
+     "name": "o1",
+     "smd": "ins2_insurgent_heavy_kit_o1.smd",
+     "materials": [
+      "t_ins_mil_01",
+      "t_ins_clothes_02",
+      "t_ins_access_01",
+      "t_ins_gear_01",
+      "t_ins_mil_pants_01"
+     ],
+     "triangles": 15969
+    },
+    {
+     "name": "o2",
+     "smd": "ins2_insurgent_heavy_kit_o2.smd",
+     "materials": [
+      "t_ins_mil_01",
+      "t_ins_gear_01",
+      "t_ins_mil_pants_01",
+      "t_ins_helmet_01",
+      "t_ins_clothes_02b"
+     ],
+     "triangles": 16334
+    },
+    {
+     "name": "o3",
+     "smd": "ins2_insurgent_heavy_kit_o3.smd",
+     "materials": [
+      "t_ins_mil_01",
+      "t_ins_access_01",
+      "t_ins_gear_01",
+      "t_ins_helmet_01",
+      "t_ins_clothes_02b",
+      "t_ins_mil_pants_02",
+      "t_ins_sunglasses_01"
+     ],
+     "triangles": 20433
+    }
+   ],
+   "materials": [
+    "t_ins_mil_01",
+    "t_ins_clothes_02",
+    "t_ins_access_01",
+    "t_ins_gear_01",
+    "t_ins_mil_pants_01",
+    "t_ins_helmet_01",
+    "t_ins_clothes_02b",
+    "t_ins_mil_pants_02",
+    "t_ins_sunglasses_01"
+   ],
+   "blank": false,
+   "default_off": false
+  }
+ ],
+ "extra_bones": []
+}

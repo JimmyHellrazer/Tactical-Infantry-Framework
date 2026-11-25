@@ -1,0 +1,156 @@
+StudioMDL.exe (Nov 12 2026) - Garry's Mod Edition
+WARNING: Failed to load keyvalues file cfg/mount.cfg!
+qdir:    "k:\jimmyproject\work\ins2_security_standard\qc\"
+gamedir: "K:\jimmyproject\work\_studiomdl_game\"
+g_path:  "K:\jimmyproject\work\ins2_security_standard\qc\security_standard_lods.qc"
+Building binary model files...
+Working on "security_standard_lods.qc"
+SMD MODEL ..\body\ins2_security_standard_eyes.smd
+SMD MODEL ..\body\ins2_security_standard_light.smd
+SMD MODEL ..\body\ins2_security_standard_glasses.smd
+SMD MODEL ..\body\ins2_security_standard_backpack_o1.smd
+SMD MODEL ..\body\ins2_security_standard_backpack_o2.smd
+SMD MODEL ..\body\ins2_security_standard_kit_o1.smd
+SMD MODEL ..\body\ins2_security_standard_kit_o2.smd
+SMD MODEL ..\body\ins2_security_standard_kit_o3.smd
+SMD MODEL ..\body\ins2_security_standard_pouch.smd
+SMD MODEL ..\body\ins2_security_standard_patch.smd
+SMD MODEL ..\..\..\codport\shared\anims\reference_tifhost.smd
+SMD MODEL ..\lod\ins2_security_standard_eyes_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_light_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_glasses_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o1_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o2_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o3_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_pouch_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_patch_lod1.smd
+SMD MODEL ..\lod\ins2_security_standard_eyes_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_light_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_glasses_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o1_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o2_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o3_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_pouch_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_patch_lod2.smd
+SMD MODEL ..\lod\ins2_security_standard_eyes_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_light_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_glasses_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_backpack_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o1_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o2_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_kit_o3_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_pouch_lod3.smd
+SMD MODEL ..\lod\ins2_security_standard_patch_lod3.smd
+Processing $shadowlod
+Collapsed 3 bones
+Processing LOD for material: eyeball_l
+Processing LOD for material: eyeball_r
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usa_cable_01
+Processing LOD for material: t_usmc_helmet_01
+Processing LOD for material: t_usmc_flag_01
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_glass_03
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_face_04
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_face_02
+Processing LOD for material: t_usmc_gear_01
+Processing LOD for material: t_usmc_pants_01
+Processing LOD for material: t_usmc_gear_02
+Processing LOD for material: t_usmc_face_01
+Processing LOD for material: t_usa_usmc_01
+Processing LOD for material: t_usmc_gear_01
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_standard.mdl:
+bones        18048 bytes (65)
+animations     984 bytes (1 anims) (1 frames) [0:00]
+sequences      476 bytes (1 seq) 
+ik/pose       2144 bytes
+eyeballs       344 bytes (2 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+eyeballs         0 bytes (0 eyeballs)
+flexes           0 bytes (0 flexes)
+textures       872 bytes
+keyvalues        0 bytes
+bone transforms     8904 bytes
+bone flex driver       0 bytes
+collision        0 bytes
+total        36572
+---------------------
+writing K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_standard.vvd:
+vertices      9312 bytes (194 vertices)
+vertices    426912 bytes (8894 vertices)
+vertices     16944 bytes (353 vertices)
+vertices     16656 bytes (347 vertices)
+vertices     16656 bytes (347 vertices)
+vertices    121824 bytes (2538 vertices)
+vertices    136128 bytes (2836 vertices)
+vertices    197376 bytes (4112 vertices)
+vertices     45696 bytes (952 vertices)
+vertices      2592 bytes (54 vertices)
+tangents      3104 bytes (194 vertices)
+tangents    142304 bytes (8894 vertices)
+tangents      5648 bytes (353 vertices)
+tangents      5552 bytes (347 vertices)
+tangents      5552 bytes (347 vertices)
+tangents     40608 bytes (2538 vertices)
+tangents     45376 bytes (2836 vertices)
+tangents     65792 bytes (4112 vertices)
+tangents     15232 bytes (952 vertices)
+tangents       864 bytes (54 vertices)
+total      1320192 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_standard.dx80.vtx":
+body parts:        56 bytes
+models:           748 bytes
+model LODs:       660 bytes
+meshes:          1035 bytes
+strip groups:    2875 bytes
+strips:          3510 bytes
+verts:         405351 bytes
+indices:       394092 bytes
+bone changes:    5616 bytes
+everything:    813319 bytes
+---------------------
+Generating optimized mesh "K:\jimmyproject\work\_studiomdl_game\models/tif_factions/ins2\security_standard.dx90.vtx":
+body parts:        56 bytes
+models:           748 bytes
+model LODs:       660 bytes
+meshes:          1035 bytes
+strip groups:    2875 bytes
+strips:          3105 bytes
+verts:         402606 bytes
+indices:       394092 bytes
+bone changes:    5080 bytes
+everything:    809633 bytes
+
+Completed "security_standard_lods.qc"

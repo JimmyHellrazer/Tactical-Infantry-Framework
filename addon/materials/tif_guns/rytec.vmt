@@ -1,0 +1,10 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "tif_guns/rytec"
+	"$surfaceprop" "metal"
+	"$phong" "1"
+	"$phongboost" "0.4"
+	"$phongexponent" "18"
+	"$phongalbedotint" "1"
+	"$phongfresnelranges" "[0.4 0.7 1]"
+}
