@@ -117,7 +117,8 @@ local function back_up(npc)
 	CAS.Downed[npc] = nil
 	Act.Clear(npc)
 	npc:SetHealth(math.max(npc:Health(), 40))
-	npc:SetTIFWeapon(npc.tifDownedWeapon ~= "" and npc.tifDownedWeapon or (npc.tifWep and npc.tifWep.class or ""))
+	local wep = (npc.tifDownedWeapon and npc.tifDownedWeapon ~= "") and npc.tifDownedWeapon or (npc.tifWep and npc.tifWep.class or "")
+	npc:SetTIFWeapon(wep)
 	npc.tifHitboxPose = nil
 	npc:SetNW2Bool("tif_downed", false)
 	if TIF.Morale then TIF.Morale.Add(npc, 0.15) end
@@ -152,6 +153,7 @@ end
 
 function CAS.DownThink(npc, now)
 	local d = npc.tifDowned
+	if not d then return end
 	npc.tifFire.want = false
 	npc.tifFace = nil
 	npc.tifStance = A.STANCE_CROUCH
@@ -191,8 +193,13 @@ end
 
 function CAS.MedicThink(npc, c, now)
 	local m = npc.tifMedic
-	local p = m.patient
+	local p = m and m.patient
 	if not IsValid(p) or p.tifDead or not p.tifDowned or p.tifDowned.treated then
+		npc.tifMedic = nil
+		return false
+	end
+	m.assignedAt = m.assignedAt or now
+	if not m.start and now - m.assignedAt > 25 then
 		npc.tifMedic = nil
 		return false
 	end

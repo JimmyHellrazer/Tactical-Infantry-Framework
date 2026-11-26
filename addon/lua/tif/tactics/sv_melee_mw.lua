@@ -195,6 +195,7 @@ local function fight_think(npc, m, now)
 		m.killed = true
 		p.tifMelee.loserDown = true
 		npc.tifNoDeathClip = true
+		npc.tifNoDown = true
 		local d = DamageInfo()
 		d:SetDamage(npc:Health() + 50)
 		d:SetDamageType(DMG_CLUB)

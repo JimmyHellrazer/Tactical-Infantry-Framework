@@ -58,6 +58,11 @@ end
 
 P.DIVE_SPEED = 110
 
+local DIVE_UP8 = Vector(0, 0, 8)
+local DIVE_MIN, DIVE_MAX = Vector(-12, -12, 0), Vector(12, 12, 24)
+local diveOut = {}
+local diveHull = { mins = DIVE_MIN, maxs = DIVE_MAX, mask = MASK_NPCSOLID, output = diveOut }
+
 local function dive(npc)
 	local id = npc.tifHomeHost
 	if not (id and TIF.GTG.IsVB(id)) then return nil end
@@ -83,10 +88,11 @@ local function dive(npc)
 	if not best then return nil end
 
 	local dist = math.sqrt(bc.move[1] ^ 2 + bc.move[2] ^ 2)
-	local pos = npc:GetPos() + Vector(0, 0, 8)
-	local tr = util.TraceHull({ start = pos, endpos = pos + v:GetNormalized() * (dist + 16), mins = Vector(-12, -12, 0),
-		maxs = Vector(12, 12, 24), mask = MASK_NPCSOLID, filter = npc })
-	if tr.Hit then return nil end
+	local pos = npc:GetPos() + DIVE_UP8
+	diveHull.start = pos
+	diveHull.endpos = pos + v:GetNormalized() * (dist + 16)
+	diveHull.filter = npc
+	if util.TraceHull(diveHull).Hit then return nil end
 	npc:SetAngles(Angle(0, yaw, 0))
 	return TIF.Action.Play(npc, best, { root = true })
 end

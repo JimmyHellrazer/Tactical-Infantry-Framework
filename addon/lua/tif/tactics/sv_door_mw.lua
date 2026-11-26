@@ -19,13 +19,18 @@ local function closed_door(e)
 	return not (okL and locked == true)
 end
 
+local variantCache = {}
 local function variants(host, side, kind)
+	local key = tostring(host) .. ":" .. side .. ":" .. kind
+	local cached = variantCache[key]
+	if cached then return cached end
 	local out = {}
 	for _, v in ipairs({ "a", "b", "c" }) do
 		local n = "mwdr_" .. side .. "_" .. kind .. "_" .. v
 		local c = TIF.GTG.Clip(n, host)
 		if c then out[#out + 1] = { name = n, clip = c } end
 	end
+	variantCache[key] = out
 	return out
 end
 
@@ -99,8 +104,10 @@ function D.PlayClip(npc, best, bestD, speed, dir, pos, now)
 	npc.tifAct.trans = true
 	npc.tifAct.handU = D.HANDU
 	local door = best
+	local clipName = pick.name
 	timer.Simple(d * u, function()
-		if not (IsValid(door) and IsValid(npc)) then return end
+		if not (IsValid(door) and IsValid(npc)) or npc.tifDead then return end
+		if not (npc.tifAct and npc.tifAct.name == clipName) then return end
 		if kind ~= "tac" then
 			door:Fire("SetSpeed", "400")
 			door:EmitSound("physics/wood/wood_furniture_break" .. math.random(1, 2) .. ".wav", 80, math.random(95, 105))
