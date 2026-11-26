@@ -7,6 +7,14 @@ local G = TIF.GTG
 local A = TIF.Anim
 local Prof = TIF.Prof
 
+local CurTime, RealTime, FrameTime, FrameNumber, SysTime = CurTime, RealTime, FrameTime, FrameNumber, SysTime
+local IsValid, Vector, Angle, Matrix = IsValid, Vector, Angle, Matrix
+local WorldToLocal, LocalToWorld, LerpVector, LerpAngle = WorldToLocal, LocalToWorld, LerpVector, LerpAngle
+local math_abs, math_min, math_max, math_floor = math.abs, math.min, math.max, math.floor
+local math_deg, math_rad, math_atan2, math_clamp, math_approach = math.deg, math.rad, math.atan2, math.Clamp, math.Approach
+local string_sub, string_find, string_match = string.sub, string.find, string.match
+local pairs, ipairs = pairs, ipairs
+
 TIF.Body = TIF.Body or {}
 local Bd = TIF.Body
 
@@ -20,11 +28,11 @@ local cvRetarget = CreateClientConVar("tif_cl_retarget", "1", true, false, "Draw
 local MUZZLES = { "Gun_Muzzle", "muzzle", "muzzle_flash", "1" }
 local FLASH_MAT = Material("effects/muzzleflash2")
 local GLOW_MAT = Material("sprites/light_glow02_add")
+local FLASH_GLOW_COL = Color(255, 200, 120, 160)
 local FLASH_TIME = 0.05
 local FLINCH_TIME = 0.35
-local LEG_RATE, UB_RATE, FIRE_RATE = 7, 4, 14 -- weight change per second
--- Unused slots keep this weight instead of 0. A zero-weight layer can be deactivated by the
--- engine, and the client can't bring it back; this weight is invisible.
+local LEG_RATE, UB_RATE, FIRE_RATE = 7, 4, 14
+-- Zero-weight layers can be deactivated by the engine and cannot be revived client-side.
 local IDLE_WEIGHT = 0.002
 
 -- Runs while the GTA ped's bones are being built, so it sees exactly what gets rendered.
@@ -181,6 +189,8 @@ local function ensure_parts(ent, st)
 		st.vis, st.wclass, st.legs, st.wset, st.mwReload = nil, nil, nil, nil, nil
 		st.legW, st.ubW, st.legCycle, st.ubCycle = {}, {}, {}, {}
 		st.proneOn, st.vbSpine2, st.vbSpine4, st.spine, st.pitch = false, nil, nil, nil, 0
+		st.vbPelvis, st.vbSp0, st.vbSp1, st.eyeHead = nil, nil, nil, nil
+		st.lastB2P, st.lastB2Y, st.lastB4Y = nil, nil, nil
 		for i = 0, ent:GetBoneCount() - 1 do ent:ManipulateBoneAngles(i, angle_zero) end
 		if st.tiltOn then ent:SetRenderAngles(nil) end
 		st.tiltOn, st.tiltP, st.tiltR = false, 0, 0
@@ -278,17 +288,33 @@ local function settle(weights, targets, rate, dt)
 	end
 end
 
--- (0.35.4: one buffer per caller. Both used to share one table, so ubTop = top(st.ubW) emptied legTop, and the gun
--- code after it (jrotW / jgunW) read the upper-body list as the legs: jrotW stayed 0 -> every gun held in the right
--- hand's frame, ~24 deg high on MW19's AI aims (user screenshots / tif_aimwhy).)
 local function top(weights, n, sorted)
-	for i = #sorted, 1, -1 do sorted[i] = nil end
-	for clip, w in pairs(weights) do sorted[#sorted + 1] = { clip = clip, w = w } end
-	table.sort(sorted, function(a, b) return a.w > b.w end)
-	for i = #sorted, n + 1, -1 do sorted[i] = nil end
+	local pool = sorted._p
+	if not pool then pool = {} sorted._p = pool end
+	local count = 0
+	for clip, w in pairs(weights) do
+		count = count + 1
+		local e = pool[count]
+		if not e then e = {} pool[count] = e end
+		e.clip, e.w = clip, w
+		local j = count
+		while j > 1 and sorted[j - 1].w < w do
+			sorted[j] = sorted[j - 1]
+			j = j - 1
+		end
+		sorted[j] = e
+	end
+	local keep = count < n and count or n
+	for i = #sorted, keep + 1, -1 do sorted[i] = nil end
 	return sorted
 end
 local LEG_BUF, UB_BUF = {}, {}
+local LEG_TGT, UB_TGT = {}, {}
+
+local function clear_table(t)
+	for k in pairs(t) do t[k] = nil end
+	return t
+end
 
 local function add(t, clip, w)
 	if clip and w > 0.0005 then t[clip] = (t[clip] or 0) + w end
@@ -454,7 +480,7 @@ end
 
 local function ub_targets(ent, st, mode, speed, now)
 	local W = st.wset
-	local T = {}
+	local T = clear_table(UB_TGT)
 	-- MW19 body: its locomotion clips already hold the gun up (aim pitch and recoil are bone tweaks, vb_pose).
 	-- Only a reload is layered, stretched to the server's reload time.
 	if st.vb then
@@ -755,6 +781,9 @@ local function check_slots(ent, st, now)
 	return ok
 end
 
+local SCRATCH_ANG = Angle(0, 0, 0)
+local SCRATCH_ANG2 = Angle(0, 0, 0)
+
 local function flinch(ent, st, now)
 	local ht = ent:GetTIFHitTime()
 	if ht ~= st.hitTime then st.hitTime = ht end
@@ -767,10 +796,10 @@ local function flinch(ent, st, now)
 	local k = ht > 0 and 1 - (now - ht) / FLINCH_TIME or 0
 	if k > 0 then
 		local d = ent:GetTIFHitDir()
-		local fwd, right = ent:GetForward(), ent:GetRight()
-		local push = d:Dot(fwd)
-		local side = d:Dot(right)
-		ent:ManipulateBoneAngles(bone, Angle(side * 9 * k, 0, push * -12 * k))
+		local push = d:Dot(ent:GetForward())
+		local side = d:Dot(ent:GetRight())
+		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = side * 9 * k, 0, push * -12 * k
+		ent:ManipulateBoneAngles(bone, SCRATCH_ANG)
 		st.flinching = true
 	elseif st.flinching then
 		ent:ManipulateBoneAngles(bone, angle_zero)
@@ -778,10 +807,7 @@ local function flinch(ent, st, now)
 	end
 end
 
--- MW19 (ValveBiped) body: aim pitch, recoil and hit flinch as spine bends. The faction model is bone-merged,
--- so it follows the host's bones. ValveBiped spine bones: local X up, Y forward, Z left, so a forward/back bend
--- is the yaw part of the angle (+ = forward, which is aiming down: TIF's aim pitch is + down).
--- degrees of aim pitch added (down) so the aimed pose holds the gun level; tif_aim_trim to tune it in game
+-- ValveBiped spine bones: local X up, Y forward, Z left, so yaw = forward/back bend (+ = aiming down).
 local cvTrim = CreateClientConVar("tif_aim_trim", "1.2", true, false, "MW19 body: degrees the aimed upper body is tipped down (gun level at ~1.2)")
 Bd.AIM_TRIM = 1.2
 Bd.KICK, Bd.KICK_T = 2.5, 0.09
@@ -793,15 +819,11 @@ local function vb_pose(ent, st, now, dt)
 		st.vbSpine2, st.vbSpine4 = b2, b4
 	end
 	if not (b2 and b4) then return end
-	-- (0.35.5, user: guns still ~5 deg high after the 0.35.4 fix. MW19's AI aimed idle holds the gun 1.1 deg up
-	-- (Bd.AIM_TRIM levels it; the two spine bends carry 0.9 of the pitch), and the per-shot kick (3.5 deg over
-	-- 0.14 s) never settled at automatic rates: ~3.6 deg held back while firing. Now a short flick, Bd.KICK / KICK_T.)
 	local aiming = ent:GetTIFMode() == 1 and not st.fullBody and not ent:GetNW2Bool("tif_lowready", false)
 	Bd.AIM_TRIM = cvTrim:GetFloat()
-	local want = aiming and math.Clamp(ent:GetTIFAimPitch() + Bd.AIM_TRIM, -55, 55) or 0
+	local want = aiming and math_clamp(ent:GetTIFAimPitch() + Bd.AIM_TRIM, -55, 55) or 0
 	st.pitch = approach(st.pitch or 0, want, 140, dt)
 	local kick = 0
-	-- (the code kick only where the body has no recoil clips: since 0.36.0 MW19's own kicks play on a layer)
 	if st.flashAt and not (st.legs and st.legs.kicks) then
 		local t = now - st.flashAt
 		if t < Bd.KICK_T then kick = -Bd.KICK * (1 - t / Bd.KICK_T) ^ 2 end
@@ -811,13 +833,23 @@ local function vb_pose(ent, st, now, dt)
 	local k = ht > 0 and 1 - (now - ht) / FLINCH_TIME or 0
 	if k > 0 then
 		local d = ent:GetTIFHitDir()
-		push = d:Dot(ent:GetForward()) * 12 * k -- hit from the front: force points back, so the torso bends back
+		push = d:Dot(ent:GetForward()) * 12 * k
 		side = d:Dot(ent:GetRight()) * 9 * k
 	end
-	ent:ManipulateBoneAngles(b2, Angle(side, st.pitch * 0.45 + push + kick, 0))
-	ent:ManipulateBoneAngles(b4, Angle(0, st.pitch * 0.45 + kick * 0.6, 0))
-	-- Hip turn (hip_turn): the pelvis turns about its up axis (local Y: pitch, + = left) toward the travel direction,
-	-- Spine and Spine1 (up axis local X: roll) turn back half each, so the chest keeps his facing.
+	local b2p = side
+	local b2y = st.pitch * 0.45 + push + kick
+	local b4y = st.pitch * 0.45 + kick * 0.6
+	if b2p ~= st.lastB2P or b2y ~= st.lastB2Y then
+		st.lastB2P, st.lastB2Y = b2p, b2y
+		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = b2p, b2y, 0
+		ent:ManipulateBoneAngles(b2, SCRATCH_ANG)
+	end
+	if b4y ~= st.lastB4Y then
+		st.lastB4Y = b4y
+		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = 0, b4y, 0
+		ent:ManipulateBoneAngles(b4, SCRATCH_ANG)
+	end
+	-- Pelvis turns about local Y (pitch, + = left) toward travel; Spine and Spine1 counter-rotate on local X (roll).
 	local bp = st.vbPelvis
 	if bp == nil then
 		bp = ent:LookupBone("ValveBiped.Bip01_Pelvis") or false
@@ -826,32 +858,81 @@ local function vb_pose(ent, st, now, dt)
 		st.vbSp1 = ent:LookupBone("ValveBiped.Bip01_Spine1") or false
 	end
 	if bp and st.vbSp0 and st.vbSp1 then
-		local want = st.fullBody and 0 or (st.hipWant or 0)
-		st.hip = approach(st.hip or 0, want, Bd.HIP_RATE, dt)
-		if math.abs(st.hip) > 0.05 or st.hipOn then
-			st.hipOn = math.abs(st.hip) > 0.05
+		local hwant = st.fullBody and 0 or (st.hipWant or 0)
+		st.hip = approach(st.hip or 0, hwant, Bd.HIP_RATE, dt)
+		if math_abs(st.hip) > 0.05 or st.hipOn then
+			st.hipOn = math_abs(st.hip) > 0.05
 			local h = st.hipOn and st.hip or 0
-			ent:ManipulateBoneAngles(bp, Angle(h, 0, 0))
-			ent:ManipulateBoneAngles(st.vbSp0, Angle(0, 0, -h * 0.5))
-			ent:ManipulateBoneAngles(st.vbSp1, Angle(0, 0, -h * 0.5))
+			SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = h, 0, 0
+			SCRATCH_ANG2.p, SCRATCH_ANG2.y, SCRATCH_ANG2.r = 0, 0, -h * 0.5
+			ent:ManipulateBoneAngles(bp, SCRATCH_ANG)
+			ent:ManipulateBoneAngles(st.vbSp0, SCRATCH_ANG2)
+			ent:ManipulateBoneAngles(st.vbSp1, SCRATCH_ANG2)
 		end
 	end
+end
+
+local HOLD_POS = Vector(0, 0, 0)
+local function hold_of(clip, u)
+	local U, H = TIFG_JGUN_UNDRIVEN, TIFG_JGUN_HOLD
+	local src = clip.from or clip.seq or ""
+	if not U or U[src] then return 0 end
+	local e = H and H[src]
+	if not e then return 0 end
+	local n = #e.r
+	local x = math_clamp(u or 0, 0, 1) * ((clip.frames or (n * 3)) - 1) / 3 + 1
+	local i = math_clamp(math_floor(x), 1, n)
+	local k = math_clamp(x - i, 0, 1)
+	local i2 = math_min(n, i + 1)
+	return e.r[i] + (e.r[i2] - e.r[i]) * k, e, i, i2, k
+end
+
+local function hold_pos(e, i, i2, k)
+	local o = e.o
+	if not o or #o < i2 * 3 then return nil end
+	local a, b = (i - 1) * 3, (i2 - 1) * 3
+	local x = o[a + 1] + (o[b + 1] - o[a + 1]) * k
+	local y = o[a + 2] + (o[b + 2] - o[a + 2]) * k
+	local z = o[a + 3] + (o[b + 3] - o[a + 3]) * k
+	-- studiomdl's turn: SMD -> model space
+	HOLD_POS.x, HOLD_POS.y, HOLD_POS.z = -y, x, z
+	return HOLD_POS
+end
+
+local function clip_driven(clip)
+	local U = TIFG_JGUN_UNDRIVEN
+	local src = clip.from or clip.seq or ""
+	return (U and not U[src] and TIFG_JGUN_HOLD) and 1 or 0
 end
 
 local function compose(ent, st, dt, now)
 	local legs = st.legs
 	if not legs then return end
 	local pos = ent:GetPos()
-	local vel = st.lastPos and (pos - st.lastPos) / math.max(dt, 0.001) or Vector()
+	local vx, vy, vz = 0, 0, 0
+	if st.lastPos then
+		local invDt = 1 / math_max(dt, 0.001)
+		vx = (pos.x - st.lastPos.x) * invDt
+		vy = (pos.y - st.lastPos.y) * invDt
+		vz = (pos.z - st.lastPos.z) * invDt
+		if vx * vx + vy * vy + vz * vz > 640000 then vx, vy, vz = 0, 0, 0 end
+	end
 	st.lastPos = pos
-	if vel:LengthSqr() > 640000 then vel = Vector() end -- teleports
-	st.vel = st.vel and LerpVector(math.min(1, dt * 10), st.vel, vel) or vel
-	local speed = st.vel:Length2D()
-	-- Climbing / descending grade (stairs, slopes) for leg_targets, smoothed so single steps don't flick it.
-	local g = speed > 20 and math.Clamp(st.vel.z / speed, -1.5, 1.5) or 0
-	st.grade = st.grade and (st.grade + (g - st.grade) * math.min(1, dt * 4)) or g
-	local lv = WorldToLocal(st.vel, angle_zero, vector_origin, ent:GetAngles())
-	local relAng = math.deg(math.atan2(lv.y, lv.x))
+	local sv = st.vel
+	if sv then
+		local a = math_min(1, dt * 10)
+		sv.x = sv.x + (vx - sv.x) * a
+		sv.y = sv.y + (vy - sv.y) * a
+		sv.z = sv.z + (vz - sv.z) * a
+	else
+		sv = Vector(vx, vy, vz)
+		st.vel = sv
+	end
+	local speed = sv:Length2D()
+	local g = speed > 20 and math_clamp(sv.z / speed, -1.5, 1.5) or 0
+	st.grade = st.grade and (st.grade + (g - st.grade) * math_min(1, dt * 4)) or g
+	local lv = WorldToLocal(sv, angle_zero, vector_origin, ent:GetAngles())
+	local relAng = math_deg(math_atan2(lv.y, lv.x))
 	local mode, stance = ent:GetTIFMode(), ent:GetTIFStance()
 	st.idleT = st.idleT + dt
 	st.loopOffset = st.loopOffset or (ent:EntIndex() * 0.737) % 7
@@ -1088,42 +1169,44 @@ local function compose(ent, st, dt, now)
 	end
 	local legTop = top(st.legW, #A.LEG_SLOTS, LEG_BUF)
 	local dom
-	for _, e in ipairs(legTop) do
-		if (e.clip.speed or 0) > 1 then dom = e.clip break end
+	for i = 1, #legTop do
+		local c = legTop[i].clip
+		if (c.speed or 0) > 1 then dom = c break end
 	end
-	-- (Steps follow the ground speed all the way down. It used to stop below 5 u/s and run at least half rate above
-	-- it: a slow walk fading in or out stepped too fast, then froze mid-stride while still sliding (user clip,
-	-- 2026-11-17).)
 	if dom then
 		local h = st.footHand
 		if h then
 			st.footHand = nil
 			if now - h.at < 0.5 then
-				st.phase = math.floor(st.phase) + (h.foot == "l" and 0 or 0.5) + h.since * G.StrideRate(dom)
+				st.phase = math_floor(st.phase) + (h.foot == "l" and 0 or 0.5) + h.since * G.StrideRate(dom)
 			end
 		end
-		st.phase = st.phase + dt * G.StrideRate(dom) * math.Clamp(speed / math.max(1, dom.speed), 0, 2)
+		st.phase = st.phase + dt * G.StrideRate(dom) * math_clamp(speed / math_max(1, dom.speed), 0, 2)
 	end
 	local total = 0
-	for _, e in ipairs(legTop) do total = total + e.w end
+	for i = 1, #legTop do total = total + legTop[i].w end
 	local acc = 0
 	st.want0 = nil
-	-- (what the legs play this frame, for the foley's notetracks: cl_foley)
 	st.legPlay = st.legPlay or {}
 	st.legPlayN = 0
 	st.speed2d = speed
-	for i, slot in ipairs(A.LEG_SLOTS) do
+	local moving = speed > 5
+	for i = 1, #A.LEG_SLOTS do
+		local slot = A.LEG_SLOTS[i]
 		local e = legTop[i]
 		if e and total > 0 then
 			acc = acc + e.w
 			local seq = A.Seq(ent, e.clip, false)
-			if i == 1 then st.want0 = seq end
-			local cyc = clip_cycle(st, e.clip, speed > 5)
-			local lp = st.legPlay[i] or {}
-			st.legPlay[i], st.legPlayN = lp, i
+			local cyc = clip_cycle(st, e.clip, moving)
+			local lp = st.legPlay[i]
+			if not lp then lp = {} st.legPlay[i] = lp end
+			st.legPlayN = i
 			lp.clip, lp.cycle, lp.w = e.clip, cyc, e.w / total
 			write_slot(ent, slot, seq, cyc, e.w / acc)
-			if i == 1 then st.mainSeq, st.mainCycle = seq, clip_cycle(st, e.clip, speed > 5) end
+			if i == 1 then
+				st.want0 = seq
+				st.mainSeq, st.mainCycle = seq, cyc
+			end
 		else
 			write_slot(ent, slot, nil, 0, 0)
 		end
@@ -1133,20 +1216,19 @@ local function compose(ent, st, dt, now)
 	st.ubCycle = st.ubCycle or {}
 	local UT, rate = ub_targets(ent, st, mode, speed, now)
 	rate = rate or UB_RATE
-	if st.ubFastUntil and now < st.ubFastUntil then rate = math.max(rate, LEG_RATE * 2.5) end
+	if st.ubFastUntil and now < st.ubFastUntil then rate = math_max(rate, LEG_RATE * 2.5) end
 	settle(st.ubW, UT, rate, dt)
 	local ubTop = top(st.ubW, #A.UB_SLOTS, UB_BUF)
 	local utotal, uacc = 0, 0
-	for _, e in ipairs(ubTop) do utotal = utotal + e.w end
-	for i, slot in ipairs(A.UB_SLOTS) do
+	for i = 1, #ubTop do utotal = utotal + ubTop[i].w end
+	for i = 1, #A.UB_SLOTS do
+		local slot = A.UB_SLOTS[i]
 		local e = ubTop[i]
 		if e and utotal > 0 then
 			uacc = uacc + e.w
 			local cyc = st.ubCycle[e.clip]
-			if cyc == nil then cyc = clip_cycle(st, e.clip, speed > 5) end
-			-- The first layer carries the total overlay weight (so it can fade out to a full-body
-			-- action); the second splits the crossfade.
-			write_slot(ent, slot, A.Seq(ent, e.clip, true), cyc, i == 1 and math.min(1, utotal) or e.w / uacc)
+			if cyc == nil then cyc = clip_cycle(st, e.clip, moving) end
+			write_slot(ent, slot, A.Seq(ent, e.clip, true), cyc, i == 1 and math_min(1, utotal) or e.w / uacc)
 		else
 			write_slot(ent, slot, nil, 0, 0)
 		end
@@ -1154,65 +1236,31 @@ local function compose(ent, st, dt, now)
 	for i = 5, A.SLOTS - 1 do ent:SetLayerWeight(i, IDLE_WEIGHT) end
 	recoil_kicks(ent, st, legs, now)
 
-	-- Where the clips move the gun in / out of the right hand (tif_mw_anims zz_jgun.lua, from gun_holds.py),
-	-- blended over the layers like the pose (the upper-body overlay owns the arms and gun bone while it's on).
-	-- st.jgunW: 0 = the gun rides in the right hand's frame (correct in every MW19 clip), 1 = it follows the gun
-	-- bone's motion relative to the clip's own grip (st.jgunA: the hand in j_gun's frame where it holds).
-	local function hold_of(clip, u)
-		local U, H = TIFG_JGUN_UNDRIVEN, TIFG_JGUN_HOLD
-		local src = clip.from or clip.seq or ""
-		if not U or U[src] then return 0 end
-		local e = H and H[src]
-		if not e then return 0 end
-		local n = #e.r
-		local x = math.Clamp(u or 0, 0, 1) * ((clip.frames or (n * 3)) - 1) / 3 + 1
-		local i = math.Clamp(math.floor(x), 1, n)
-		local k = math.Clamp(x - i, 0, 1)
-		local i2 = math.min(n, i + 1)
-		return e.r[i] + (e.r[i2] - e.r[i]) * k, e, i, i2, k
-	end
-	-- The let-go gun's origin in the clip's own space at that sample (e.o, from the raw MW19 clip), model space.
-	local function hold_pos(e, i, i2, k)
-		local o = e.o
-		if not o or #o < i2 * 3 then return nil end
-		local a, b = (i - 1) * 3, (i2 - 1) * 3
-		local x = o[a + 1] + (o[b + 1] - o[a + 1]) * k
-		local y = o[a + 2] + (o[b + 2] - o[a + 2]) * k
-		local z = o[a + 3] + (o[b + 3] - o[a + 3]) * k
-		return Vector(-y, x, z) -- studiomdl's turn: SMD -> model space
-	end
-	-- Whether a clip animates the gun bone at all (campaign clips do; MP locomotion keys one fixed rotation).
-	-- (0.35.3: without these tables every clip held the gun in the hand's frame: guns ~20 deg high on the aimed
-	-- strafes / idles. Say so once instead of failing quietly.)
 	if not (TIFG_JGUN_UNDRIVEN and TIFG_JGUN_HOLD) and not Bd.WarnedJgun then
 		Bd.WarnedJgun = true
 		MsgC(Color(255, 120, 80), "[TIF] tif_mw_anims gun tables (zz_jgun.lua) not loaded on this client: guns follow the hand, not the gun bone\n")
 	end
-	local function driven(clip)
-		local U = TIFG_JGUN_UNDRIVEN
-		local src = clip.from or clip.seq or ""
-		return (U and not U[src] and TIFG_JGUN_HOLD) and 1 or 0
-	end
 	local lj, uj, best, bestW = 0, 0, nil, 0
 	local ld, ud = 0, 0
 	local bestO
-	for _, e in ipairs(legTop) do
-		local r, h, i, i2, k = hold_of(e.clip, st.legCycle[e.clip] or clip_cycle(st, e.clip, speed > 5))
+	for idx = 1, #legTop do
+		local e = legTop[idx]
+		local r, h, i, i2, k = hold_of(e.clip, st.legCycle[e.clip] or clip_cycle(st, e.clip, moving))
 		lj = lj + e.w * r
-		ld = ld + e.w * driven(e.clip)
+		ld = ld + e.w * clip_driven(e.clip)
 		if h and e.w * r > bestW then best, bestW, bestO = h, e.w * r, hold_pos(h, i, i2, k) end
 	end
 	if total > 0 then lj, ld = lj / total, ld / total end
-	local uw = math.min(1, utotal)
-	for _, e in ipairs(ubTop) do
+	local uw = math_min(1, utotal)
+	for idx = 1, #ubTop do
+		local e = ubTop[idx]
 		local r, h, i, i2, k = hold_of(e.clip, st.ubCycle[e.clip])
 		uj = uj + e.w * r
-		ud = ud + e.w * driven(e.clip)
-		if h and e.w * r * 2 > bestW then best, bestW, bestO = h, e.w * r * 2, hold_pos(h, i, i2, k) end -- the overlay owns the arms
+		ud = ud + e.w * clip_driven(e.clip)
+		if h and e.w * r * 2 > bestW then best, bestW, bestO = h, e.w * r * 2, hold_pos(h, i, i2, k) end
 	end
 	if utotal > 0 then uj, ud = uj / utotal, ud / utotal end
 	st.jgunW = uw * uj + (1 - uw) * lj
-	-- How much the gun's rotation comes from the gun bone (cl_body gun_pose): the clips' blend of driven ones.
 	st.jrotW = uw * ud + (1 - uw) * ld
 	if best then
 		if not best.m then
@@ -1221,7 +1269,13 @@ local function compose(ent, st, dt, now)
 		end
 		st.jgunA = best.m
 	end
-	st.jgunO = bestO
+	if bestO then
+		local jo = st.jgunO
+		if not jo then jo = Vector() st.jgunO = jo end
+		jo.x, jo.y, jo.z = bestO.x, bestO.y, bestO.z
+	else
+		st.jgunO = nil
+	end
 	st.rikW = 0
 
 	-- Aim pitch drives GTG's pitch-blend sequences.
@@ -1359,79 +1413,67 @@ Bd.GunInfo = gun_info
 
 -- studiomdl's compile turn (+90 deg about Z), taken back off a baked gun's frame: Rz(-90).
 local UNTURN = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
-
--- The gun's rotation in campaign clips: the gun bone's, times KR. On the raw MW19 clips (CoD skeleton) the right
--- wrist sits at one spot on j_gun in every clip set and the left wrist on the handguard: j_gun IS the gun. Our
--- retarget keeps j_gun's offset from the shoulder, not the wrist, so its position is off, but its rotation is the
--- gun's, while the retargeted hand bends at the wrist against it (0 deg in aims, 24 in patrol / alert carries:
--- calm idles had the gun off both hands). KR: the hand frame in j_gun's frame over 125 aim / CQB frames (where the
--- hand frame is right); scratchpad render_jrot.py. Position: the right wrist (the gun's origin).
--- (0.19.4 swung the hand-frame gun onto the left wrist instead: it tilted with every fidget of the left hand.)
 local KR = Matrix({ { 0.9966, -0.0653, 0.0500, 0 }, { -0.0672, -0.9970, 0.0374, 0 }, { 0.0474, -0.0406, -0.9981, 0 },
 	{ 0, 0, 0, 1 } })
--- The gun's world pos / angles in the right hand (MW19 body), or nil. Also used by the left-hand IK
--- (cl_gunhold.lua, inside the host's bone build), so it reads the hand from whatever src has built.
+local KR_UNTURN = KR * UNTURN
+
+local rHandOf, jGunOf = {}, {}
+local function cached_bone(cache, ent, name)
+	local mdl = ent:GetModel()
+	local b = cache[mdl]
+	if b == nil then
+		b = ent:LookupBone(name) or false
+		cache[mdl] = b
+	end
+	return b or nil
+end
+
+local GUN_M = Matrix()
+local GUN_OFF = Vector()
+local BONE_RM, BONE_JM, BONE_MUZ = Matrix(), Matrix(), Matrix()
+local CopyBone = TIF.CopyBone
+
 local function gun_pose(st, src, gi)
-	local rb = src:LookupBone(R_HAND)
-	local rm = gi and rb and src:GetBoneMatrix(rb)
+	local rb = cached_bone(rHandOf, src, R_HAND)
+	local rm = gi and rb and CopyBone(src, rb, BONE_RM)
 	if not rm then return nil end
+	local baked = IsValid(st.gun) and (st.gun.tifHold or st.gun.tifFree)
+	if baked then
+		local hp = rm:GetTranslation()
+		local ha = (rm * UNTURN):GetAngles()
+		local rw = st.pistol and 0 or (st.jrotW or 0)
+		local jw = st.jgunW or 0
+		if rw < 0.001 and jw < 0.001 then return hp, ha end
+		local jb = cached_bone(jGunOf, src, "j_gun")
+		local jm = jb and CopyBone(src, jb, BONE_JM)
+		if not jm then return hp, ha end
+		local ga = (jm * KR_UNTURN):GetAngles()
+		local ang = rw >= 0.999 and ga or LerpAngle(rw, ha, ga)
+		local pos = hp
+		if jw > 0.001 then
+			local o = st.jgunO
+			local rp = o and src:LocalToWorld(o) or (st.jgunA and (jm * st.jgunA):GetTranslation())
+			if rp then pos = LerpVector(jw, hp, rp) end
+		end
+		return pos, ang
+	end
 	local fwd, right, up = rm:GetForward(), rm:GetRight(), rm:GetUp()
 	local grip = rm:GetTranslation() + fwd * GRIP_IN
-	-- Held from the right hand alone (until our own guns carry grip points): the barrel and the gun's up are fixed
-	-- in the hand's frame, so clips that take the left hand off the gun (or swing the arms) don't twist it.
-	-- Measured from MW19's aims: rifles fingers 0.84 / hand right 0.49 / down 0.24; pistols 0.97 / left 0.24 /
-	-- up 0.06; the gun's up ~ the hand's down (-0.99, a little back and left) in every rifle, LMG, RPG and walk aim.
-	local barrel
-	if st.pistol then
-		barrel = fwd * 0.97 - right * 0.24 + up * 0.06
-	else
-		barrel = fwd * 0.84 + right * 0.49 - up * 0.24
-	end
+	local barrel = st.pistol and (fwd * 0.97 - right * 0.24 + up * 0.06) or (fwd * 0.84 + right * 0.49 - up * 0.24)
 	barrel:Normalize()
 	local wup = -up * 0.99 - fwd * 0.08 - right * 0.12
 	wup = wup - barrel * wup:Dot(barrel)
 	if wup:LengthSqr() < 0.01 then wup = -up end
 	wup:Normalize()
-	local w = Matrix()
-	w:SetForward(barrel)
-	w:SetRight(-wup:Cross(barrel))
-	w:SetUp(wup)
-	local r = w * gi.inv
-	local ang = r:GetAngles()
-	local off = Vector(gi.grip)
-	off:Rotate(ang)
-	local hpos = grip - off
-	-- Baked MW guns were exported in the MW world model's right-hand frame, origin at the wrist's spot on the gun.
-	-- Placed at the right wrist, turned like the gun bone (KR above), and where the clip lets go of the gun, where
-	-- the raw clip has it (st.jgunO). History: 0.19.0-0.19.1 put it on j_gun's position (off after our retarget);
-	-- 0.19.2-0.19.3 in the hand's frame (wrong in calm clips); 0.19.4 swung that onto the left wrist (tilted with
-	-- every fidget).
-	local baked = IsValid(st.gun) and (st.gun.tifHold or st.gun.tifFree)
-	if not baked then return hpos, ang end
-	-- studiomdl turns every model +90 deg about Z (SMD faces -Y, models +X): the bodies' bone frames and our gun
-	-- mesh both got it, so the frames above (SMD conventions) take the gun's turn back off (0.19.2 had the guns
-	-- yawed 90 deg to the right).
-	local hp = rm:GetTranslation()
-	local ha = (rm * UNTURN):GetAngles()
-	local rw = st.pistol and 0 or (st.jrotW or 0)
-	local jw = st.jgunW or 0
-	if rw < 0.001 and jw < 0.001 then return hp, ha end
-	local jb = src:LookupBone("j_gun")
-	local jm = jb and src:GetBoneMatrix(jb)
-	if not jm then return hp, ha end
-	-- Rotation: the gun bone's (campaign clips), the hand's (MP locomotion), blended like the clips.
-	local ga = (jm * KR * UNTURN):GetAngles()
-	local ang = rw >= 0.999 and ga or LerpAngle(rw, ha, ga)
-	-- Position: the right wrist; where the clip lets go of the gun (st.jgunW: grenades, activities, the RPG reload),
-	-- where the raw MW19 clip has it.
-	local pos = hp
-	if jw > 0.001 then
-		-- Where the raw MW19 clip has it (st.jgunO, clip space), else the gun bone's motion from the held frame.
-		local o = st.jgunO
-		local rp = o and src:LocalToWorld(o) or (st.jgunA and (jm * st.jgunA):GetTranslation())
-		if rp then pos = LerpVector(jw, hp, rp) end
-	end
-	return pos, ang
+	GUN_M:Identity()
+	GUN_M:SetForward(barrel)
+	GUN_M:SetRight(-wup:Cross(barrel))
+	GUN_M:SetUp(wup)
+	local ang = (GUN_M * gi.inv):GetAngles()
+	local g = gi.grip
+	GUN_OFF.x, GUN_OFF.y, GUN_OFF.z = g.x, g.y, g.z
+	GUN_OFF:Rotate(ang)
+	return grip - GUN_OFF, ang
 end
 Bd.GunPose = gun_pose
 
@@ -1550,9 +1592,11 @@ end
 -- MW19 body: the host is drawn rotated (the bone-merged faction model and the gun follow its bones).
 -- GTA body: the Prone Mod faction model (parented, not bone-merged) is tilted directly.
 local TILT_MAX = 35
-local tiltTrace = { mask = MASK_SOLID_BRUSHONLY }
-local function ground_z(p)
-	tiltTrace.start, tiltTrace.endpos = p + Vector(0, 0, 30), p - Vector(0, 0, 60)
+local tiltStart, tiltEnd, tiltOut = Vector(), Vector(), {}
+local tiltTrace = { start = tiltStart, endpos = tiltEnd, mask = MASK_SOLID_BRUSHONLY, output = tiltOut }
+local function ground_z(x, y, z)
+	tiltStart.x, tiltStart.y, tiltStart.z = x, y, z + 30
+	tiltEnd.x, tiltEnd.y, tiltEnd.z = x, y, z - 60
 	local tr = util.TraceLine(tiltTrace)
 	return tr.Hit and tr.HitPos.z or nil
 end
@@ -1561,28 +1605,29 @@ local function prone_tilt(ent, st, dt, now, weight, target)
 	if weight > 0 and now >= (st.tiltNext or 0) then
 		st.tiltNext = now + 0.15
 		local pos, yaw = ent:GetPos(), ent:GetAngles().y
-		local r = math.rad(yaw)
-		local fwd, right = Vector(math.cos(r), math.sin(r), 0), Vector(math.sin(r), -math.cos(r), 0)
-		local zf, zb = ground_z(pos + fwd * 30), ground_z(pos - fwd * 30)
-		local zr, zl = ground_z(pos + right * 12), ground_z(pos - right * 12)
-		st.tiltWantP = (zf and zb) and math.Clamp(math.deg(math.atan2(zb - zf, 60)), -TILT_MAX, TILT_MAX) or 0
-		st.tiltWantR = (zr and zl) and math.Clamp(math.deg(math.atan2(zl - zr, 24)), -TILT_MAX, TILT_MAX) or 0
+		local r = math_rad(yaw)
+		local cx, sy = math.cos(r), math.sin(r)
+		local zf, zb = ground_z(pos.x + cx * 30, pos.y + sy * 30, pos.z), ground_z(pos.x - cx * 30, pos.y - sy * 30, pos.z)
+		local zr, zl = ground_z(pos.x + sy * 12, pos.y - cx * 12, pos.z), ground_z(pos.x - sy * 12, pos.y + cx * 12, pos.z)
+		st.tiltWantP = (zf and zb) and math_clamp(math_deg(math_atan2(zb - zf, 60)), -TILT_MAX, TILT_MAX) or 0
+		st.tiltWantR = (zr and zl) and math_clamp(math_deg(math_atan2(zl - zr, 24)), -TILT_MAX, TILT_MAX) or 0
 	end
 	local wp, wr = (st.tiltWantP or 0) * weight, (st.tiltWantR or 0) * weight
 	st.tiltP = approach(st.tiltP or 0, wp, 60, dt)
 	st.tiltR = approach(st.tiltR or 0, wr, 60, dt)
-	local on = math.abs(st.tiltP) > 0.05 or math.abs(st.tiltR) > 0.05
+	local on = math_abs(st.tiltP) > 0.05 or math_abs(st.tiltR) > 0.05
 	if target == "host" then
 		if on then
-			local a = ent:GetAngles()
-			ent:SetRenderAngles(Angle(st.tiltP, a.y, st.tiltR))
+			SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = st.tiltP, ent:GetAngles().y, st.tiltR
+			ent:SetRenderAngles(SCRATCH_ANG)
 			st.tiltOn = true
 		elseif st.tiltOn then
 			ent:SetRenderAngles(nil)
 			st.tiltOn = false
 		end
 	elseif IsValid(target) then
-		target:SetLocalAngles(Angle(st.tiltP, 0, st.tiltR))
+		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = st.tiltP, 0, st.tiltR
+		target:SetLocalAngles(SCRATCH_ANG)
 	end
 end
 
@@ -1751,8 +1796,13 @@ L.NEAR, L.RADIUS, L.MARGIN, L.OFF_AFTER = 160, 64, 12, 0.3
 L.on, L.every = true, 4
 L.eye, L.fwd, L.half = Vector(), Vector(1, 0, 0), math.pi
 L.view = nil
+local LOD_VIEW = { pos = Vector(), fwd = Vector(1, 0, 0), fov = 90, t = 0 }
 hook.Add("RenderScene", "tif_body_lod", function(origin, angles, fov)
-	L.view = { pos = Vector(origin), fwd = angles:Forward(), fov = fov, t = RealTime() }
+	LOD_VIEW.pos.x, LOD_VIEW.pos.y, LOD_VIEW.pos.z = origin.x, origin.y, origin.z
+	LOD_VIEW.fwd = angles:Forward()
+	LOD_VIEW.fov = fov
+	LOD_VIEW.t = RealTime()
+	L.view = LOD_VIEW
 end)
 function L.Frame()
 	L.on = cvLOD:GetBool()
@@ -1774,8 +1824,9 @@ function L.Frame()
 end
 local function in_cone(ent)
 	local d = ent:WorldSpaceCenter() - L.eye
-	local dist = d:Length()
-	if dist < L.NEAR then return true end
+	local dist2 = d.x * d.x + d.y * d.y + d.z * d.z
+	if dist2 < L.NEAR * L.NEAR then return true end
+	local dist = math.sqrt(dist2)
 	local a = L.half + math.asin(math.min(1, L.RADIUS / dist))
 	if a >= math.pi then return true end
 	return d:Dot(L.fwd) >= dist * math.cos(a)
@@ -1852,7 +1903,7 @@ local function muzzle_local(model)
 		local bm = at and e:GetBoneMatrix(b)
 		if bm then
 			local p, ang = WorldToLocal(at.Pos, at.Ang, bm:GetTranslation(), bm:GetAngles())
-			m = { bone = e:GetBoneName(b), pos = p, ang = ang }
+			m = { bone = e:GetBoneName(b), boneIdx = b, pos = p, ang = ang }
 		end
 		e:Remove()
 	end
@@ -1860,20 +1911,19 @@ local function muzzle_local(model)
 	return m or nil
 end
 
-local function muzzle_world(g)
+local function muzzle_world_pa(g)
 	local m = muzzle_local(g:GetModel())
 	if not m then return nil end
-	local b = g:LookupBone(m.bone)
-	local bm = b and g:GetBoneMatrix(b)
+	local bm = m.boneIdx and CopyBone(g, m.boneIdx, BONE_MUZ)
 	if not bm then return nil end
-	local p, a = LocalToWorld(m.pos, m.ang, bm:GetTranslation(), bm:GetAngles())
-	return { Pos = p, Ang = a }
+	return LocalToWorld(m.pos, m.ang, bm:GetTranslation(), bm:GetAngles())
 end
 
 function Bd.MuzzleWorld(ent)
 	local st = States[ent]
 	if not st or st.offScreen or not IsValid(st.gun) or ent:IsDormant() then return nil end
-	return muzzle_world(st.gun)
+	local p, a = muzzle_world_pa(st.gun)
+	return p and { Pos = p, Ang = a } or nil
 end
 
 -- Muzzle flash sprites.
@@ -1882,19 +1932,19 @@ hook.Add("PostDrawTranslucentRenderables", "tif_body_flash", function(depth, sky
 	local now = CurTime()
 	for ent, st in pairs(States) do
 		if st.flashAt and not st.offScreen and now - st.flashAt < FLASH_TIME and IsValid(st.gun) and IsValid(ent) and not ent:IsDormant() then
-			local at = muzzle_world(st.gun)
-			if at then
+			local pos, ang = muzzle_world_pa(st.gun)
+			if pos then
 				local s = math.Rand(10, 16)
 				render.SetMaterial(FLASH_MAT)
-				render.DrawSprite(at.Pos + at.Ang:Forward() * 3, s, s, color_white)
+				render.DrawSprite(pos + ang:Forward() * 3, s, s, color_white)
 				render.SetMaterial(GLOW_MAT)
-				render.DrawSprite(at.Pos, s * 2.2, s * 2.2, Color(255, 200, 120, 160))
+				render.DrawSprite(pos, s * 2.2, s * 2.2, FLASH_GLOW_COL)
 				if st.lightAt ~= st.flashAt then
 					st.lightAt = st.flashAt
 					local dl = DynamicLight(ent:EntIndex())
 					if dl then
-						dl.pos, dl.r, dl.g, dl.b = at.Pos, 255, 190, 110
-						dl.brightness, dl.decay, dl.size, dl.dietime = 2, 3000, 160, CurTime() + 0.05
+						dl.pos, dl.r, dl.g, dl.b = pos, 255, 190, 110
+						dl.brightness, dl.decay, dl.size, dl.dietime = 2, 3000, 160, now + 0.05
 					end
 				end
 			end

@@ -93,6 +93,24 @@ function TIF.Fmt(n, dec)
 	return string.format("%." .. (dec or 2) .. "f", n or 0)
 end
 
+local ENTITY = FindMetaTable and FindMetaTable("Entity")
+local CopyBoneMatrix = ENTITY and ENTITY.CopyBoneMatrix
+local VMATRIX = FindMetaTable and FindMetaTable("VMatrix")
+local SetField = VMATRIX and VMATRIX.SetField
+local GetField = VMATRIX and VMATRIX.GetField
+
+-- Zero-alloc bone matrix read using Entity:CopyBoneMatrix when available.
+function TIF.CopyBone(ent, bone, out)
+	if not bone then return nil end
+	if CopyBoneMatrix then
+		SetField(out, 4, 4, 0)
+		CopyBoneMatrix(ent, bone, out)
+		if GetField(out, 4, 4) == 0 then return nil end
+		return out
+	end
+	return ent:GetBoneMatrix(bone)
+end
+
 -- Trace from a player's eyes to find a spawn spot on the ground in front of them.
 function TIF.SpotInFront(ply, dist)
 	local start = ply:EyePos()

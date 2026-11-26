@@ -60,7 +60,7 @@ check(n.strafe and not n.kwalk and st.hipWant == 0, "calm wade 110 off: the gun-
 n = run(st, 0, 10, 110)
 check(n.kidle and not n.strafe, "calm wade barely moving: still the calm set")
 -- vb_pose applies it to pelvis / Spine / Spine1 and resets it on full-body actions
-check(src:find("ManipulateBoneAngles(bp, Angle(h, 0, 0))", 1, true) and src:find("ManipulateBoneAngles(st.vbSp0, Angle(0, 0, -h * 0.5))", 1, true),
+check(src:find("ent:ManipulateBoneAngles(bp, SCRATCH_ANG)", 1, true) and src:find("ent:ManipulateBoneAngles(st.vbSp0, SCRATCH_ANG2)", 1, true),
 	"pelvis pitch, spine roll back")
 check(src:find("st.hipWant = 0 -- (set by leg_targets", 1, true) ~= nil, "reset each frame before the action branches")
 -- 0.38.9: an activity clip that lets go of the gun anywhere carries it all through (no code sling at its ends)
