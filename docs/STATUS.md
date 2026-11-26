@@ -955,6 +955,20 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.54: US Marines in MARPAT woodland, a separate faction (2026-11-25, NOT yet seen in game)
+User: "add these usmc marpat woodland as a seperate faction" (Workshop 3466197531, app 222880: an Insurgency retexture
+of the security team).
+- The pack's security_light / standard / heavy are byte for byte the INS2 models the starter Marines are built from
+  (same VVD, textures, bodygroups); 4 of its textures differ (uniform top, helmet cover, both trousers) and one VMT
+  (pants_02 $color2 0.85 vs 0.75). VPK = the loose files.
+- tools/factions/make_marpat.py: materials/models/tif/ins2/usmc_wood/ (17 VMTs: the 4 woodland diffuse maps here,
+  everything else pointing at the base Marines' textures; 8 MB) and the base Marines' finished LOD QCs recompiled as
+  models/tif_factions/ins2/marpat_<light|standard|heavy>.mdl with the woodland folder first in $cdmaterials; ragdoll
+  copied with the new checksum. Same TIF skeleton, LODs and infected-male ragdoll as the Marines.
+- Faction `usmc_woodland` "US Marines (MARPAT Woodland)": side ally, allied with usmc (they don't fight each other;
+  everyone else does), the Marines' voices and loadouts (AT4 included).
+- Harness: marpat.lua 26. All suites pass.
+
 ### 0.38.53: soldiers talk more (2026-11-25, NOT yet seen in game)
 User's friend: talking "doesnt feel like enough". Before: TIF.Say let one line through per faction every 0.9 s and per
 soldier every 2.5 s, at level 80 (under gunfire's 95-150); lines only on moments (first contact, reload, kill, man

@@ -2,7 +2,7 @@
 -- Files are loaded by prefix: sv_ = server only, cl_ = client only, sh_ = both.
 
 TIF = TIF or {}
-TIF.Version = "0.38.53"
+TIF.Version = "0.38.54"
 TIF.Root = "tif/"
 -- The local dev addon (tif_devtools: debug overlays, test / diagnostic commands; not shipped) is loaded after
 -- everything else when it's installed. TIF.Dev tells code that registers a dev-only command in place.

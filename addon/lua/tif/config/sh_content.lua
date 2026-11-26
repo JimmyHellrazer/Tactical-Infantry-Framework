@@ -115,6 +115,19 @@ TIF.RegisterFaction("usmc", {
 	},
 })
 
+do
+	local usmc = TIF.Factions.usmc
+	TIF.RegisterFaction("usmc_woodland", {
+		name = "US Marines (MARPAT Woodland)",
+		side = "ally",
+		models = { INS2 .. "marpat_light.mdl", INS2 .. "marpat_standard.mdl", INS2 .. "marpat_heavy.mdl" },
+		voices = { "bf3marine", "specops" },
+		allies = { usmc = true },
+		weapons = table.Copy(usmc.weapons),
+		loadouts = table.Copy(usmc.loadouts),
+	})
+end
+
 local BF4RU = "models/tif_factions/bf4ru/"
 local function bf4ru(list)
 	local out = {}

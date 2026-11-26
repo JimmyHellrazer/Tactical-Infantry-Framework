@@ -1,0 +1,22 @@
+"VertexLitGeneric"
+{
+	$basetexture 	"models/tif/ins2/usmc/t_usmc_gear_01b_c"
+	$bumpmap 		"models/tif/ins2/usmc/t_usmc_gear_01_n"
+"$color2" "[0.85 0.85 0.85]"
+	"$phong"                        "1"
+	"$phongalbedotint"              "1"
+	"$phongtint"                    "[.6 .8 1]"
+	"$phongboost"                   "2"
+//	"$phongexponent"                "70"
+	"$phongfresnelranges"           "[1 2.5 7]"
+	"$phongexponenttexture"         "models/tif/ins2/usmc/t_usmc_gear_01_g"
+
+	"$envmap"                       "env_cubemap"
+	"$normalmapalphaenvmapmask"		"1"
+	"$envmaptint"                   "[0.025 0.025 0.025]"
+
+    $selfillum 1
+    $selfillummask "models/tif/ins2/usmc/t_usmc_gear_01_glow"   
+    $selfillummaskscale 5.0    
+}
+

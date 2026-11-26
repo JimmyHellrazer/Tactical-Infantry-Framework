@@ -64,7 +64,7 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 - Three starter factions: **Insurgents** and **US Marines** (Insurgency 2 characters by MadIvan18), light / standard /
   heavy outfits, randomised gear, several voice packs each; **Russian Ground Forces** (MadIvan18's Battlefield 4
   Russians: flora, khaki, EMR, Baku, Aftermath and recon kits, always helmeted) on the Russian SOF guns. All three fight
-  each other.
+  each other. **US Marines (MARPAT Woodland)**: the Marines in woodland camo, a faction of their own, allied with them.
 - Faction editor (`tif_factions`), camo variants, modular factions built from body / head / headgear parts.
 - Content packs register factions and voices from their own addon; a server API (`TIF.API`) drives squads, room
   clears, garrisons, civilians, vehicles and shields from game modes. See `docs/WORKSHOP.md` (developer section).
@@ -121,7 +121,7 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 | `tools/guns/at4_build.py` | The disposable AT4 and its spent tube, from SandSWEP Launchers' model (decimated, rebuilt in TIF's gun frame). |
 | `tools/props/` | Hand props for animations (the breach sledgehammer). |
 | `tools/air/` | Reinforcement helicopters and MW cars (companion addons). |
-| `tools/factions/make_ins2.py` | The starter factions: Insurgency 2 characters rebuilt on TIF's own ValveBiped skeleton (needs codport). `make_bf4ru.py`: the Russian Ground Forces, same flow (no blue camo, no scrambled headgear, never bare-headed). `vvd_headfix.py`: moves vertices left on a model's root bone onto the head. |
+| `tools/factions/make_ins2.py` | The starter factions: Insurgency 2 characters rebuilt on TIF's own ValveBiped skeleton (needs codport). `make_marpat.py`: the woodland Marines (the INS2 Marines' builds recompiled on a woodland texture set). `make_bf4ru.py`: the Russian Ground Forces, same flow (no blue camo, no scrambled headgear, never bare-headed). `vvd_headfix.py`: moves vertices left on a model's root bone onto the head. |
 | `tools/harness/` | Offline Lua tests (LuaJIT via `lupa`): `python run.py <suite>.lua`. `run.py` points at the addon's `lua/` folder. |
 | `tools/sync_addon.ps1` | Refreshes `docs/` from the design notes folder. (On the dev machine `garrysmod/addons/tactical_infantry_framework` is a junction to `addon/`, so the addon itself needs no syncing.) |
 
@@ -129,6 +129,7 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 
 - Animations and sounds: Call of Duty: Modern Warfare (2019 / 2022). Fan project, not affiliated with Activision or
   Infinity Ward.
+- MARPAT woodland Marine textures: Workshop item 3466197531 (Insurgency).
 - Starter faction characters: Insurgency 2 and Battlefield 4 Russian Ground Forces models by MadIvan18, used with
   permission.
 - Voices: TFA-VOX Insurgency: Sandstorm Mercenary, TFA-VOX Battlefield 3 U.S. Marine, and the Sandstorm-style packs
