@@ -25,8 +25,10 @@ local weights = {}
 
 local function quat_local(triggers, A, a, C, c)
 	local x, y, z, w = quat_of(A, a)
+	local n = #triggers
 	local total = 0
-	for i, tr in ipairs(triggers) do
+	for i = 1, n do
+		local tr = triggers[i]
 		local q = tr.trigger
 		local d = math_abs(q[1] * x + q[2] * y + q[3] * z + q[4] * w)
 		if d > 1 then d = 1 end
@@ -40,9 +42,11 @@ local function quat_local(triggers, A, a, C, c)
 		qx, qy, qz, qw = t.quat[1], t.quat[2], t.quat[3], t.quat[4]
 		px, py, pz = t.pos[1], t.pos[2], t.pos[3]
 	else
-		for i, tr in ipairs(triggers) do
-			local s = weights[i] / total
+		local invTotal = 1 / total
+		for i = 1, n do
+			local s = weights[i] * invTotal
 			if s > 0 then
+				local tr = triggers[i]
 				local q = tr.quat
 				if qx * q[1] + qy * q[2] + qz * q[3] + qw * q[4] < 0 then qx, qy, qz, qw = -qx, -qy, -qz, -qw end
 				qx, qy, qz, qw = qx + s * q[1], qy + s * q[2], qz + s * q[3], qw + s * q[4]

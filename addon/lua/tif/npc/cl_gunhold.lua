@@ -26,9 +26,19 @@ local B = {
 	lup = "ValveBiped.Bip01_L_UpperArm", lfore = "ValveBiped.Bip01_L_Forearm", lhand = "ValveBiped.Bip01_L_Hand",
 }
 
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+local BONE_TMP = Matrix()
+local boneCache = {}
 local function bpos(ent, name)
-	local i = ent:LookupBone(name)
-	local m = i and ent:GetBoneMatrix(i)
+	local mdl = ent:GetModel()
+	local c = boneCache[mdl]
+	if not c then c = {} boneCache[mdl] = c end
+	local i = c[name]
+	if i == nil then
+		i = ent:LookupBone(name) or false
+		c[name] = i
+	end
+	local m = i and CopyBone(ent, i, BONE_TMP)
 	return m and m:GetTranslation() or nil
 end
 
@@ -188,10 +198,13 @@ local function arm(ent, side)
 	return a or nil
 end
 
--- Two-bone solve of one arm toward hand position T (weight already applied), keeping the elbow on its side.
--- handRot: the hand's new world rotation (a Matrix, translation ignored), or nil to keep the clip's.
+local M_U, M_F, M_H, M_G = Matrix(), Matrix(), Matrix(), Matrix()
+local DELTA_BUF = {}
+
 local function solve_arm(e, a, T, handRot)
-	local mU, mF, mH = e:GetBoneMatrix(a.u), e:GetBoneMatrix(a.f), e:GetBoneMatrix(a.h)
+	local mU = CopyBone(e, a.u, M_U)
+	local mF = CopyBone(e, a.f, M_F)
+	local mH = CopyBone(e, a.h, M_H)
 	if not (mU and mF and mH) then return false end
 	local A, Bp, C = mU:GetTranslation(), mF:GetTranslation(), mH:GetTranslation()
 	local lenA, lenB = A:Distance(Bp), Bp:Distance(C)
@@ -213,10 +226,10 @@ local function solve_arm(e, a, T, handRot)
 	local newF = tr(B2) * R2 * R1 * tr(-Bp) * mF
 	local newH = Matrix(handRot or mH)
 	newH:SetTranslation(T2)
-	local delta = { u = newU * mU:GetInverseTR(), f = newF * mF:GetInverseTR(), h = newH * mH:GetInverseTR() }
+	DELTA_BUF.u, DELTA_BUF.f, DELTA_BUF.h = newU * mU:GetInverseTR(), newF * mF:GetInverseTR(), newH * mH:GetInverseTR()
 	for b, which in pairs(a.gov) do
-		local m = e:GetBoneMatrix(b)
-		if m then e:SetBoneMatrix(b, delta[which] * m) end
+		local m = CopyBone(e, b, M_G)
+		if m then e:SetBoneMatrix(b, DELTA_BUF[which] * m) end
 	end
 	e:SetBoneMatrix(a.u, newU)
 	e:SetBoneMatrix(a.f, newF)
@@ -255,27 +268,32 @@ local function finger_bones(e)
 	return list
 end
 
+local FINGER_OFFS = {}
+local F_WB, F_WP = Matrix(), Matrix()
+
 local function apply_fingers(e, F)
 	local list = finger_bones(e)
-	-- Each finger keeps its length (its offset from its parent); only the rotation is the pose's.
-	local offs = {}
-	for i, f in ipairs(list) do
-		local wb, wp = e:GetBoneMatrix(f.b), e:GetBoneMatrix(f.p)
-		if wb and wp then offs[i] = (wp:GetInverseTR() * wb):GetTranslation() end
+	local n = #list
+	for i = 1, n do
+		local f = list[i]
+		local wb = CopyBone(e, f.b, F_WB)
+		local wp = CopyBone(e, f.p, F_WP)
+		FINGER_OFFS[i] = (wb and wp) and (wp:GetInverseTR() * wb):GetTranslation() or false
 	end
 	F._m = F._m or {}
-	for i, f in ipairs(list) do
+	for i = 1, n do
+		local f = list[i]
 		local r = F[f.name]
-		local wp = offs[i] and e:GetBoneMatrix(f.p)
+		local off = FINGER_OFFS[i]
+		local wp = off and CopyBone(e, f.p, F_WP)
 		if r and wp then
 			local m = F._m[f.name]
 			if not m then
 				m = Matrix({ { r[1], r[2], r[3], 0 }, { r[4], r[5], r[6], 0 }, { r[7], r[8], r[9], 0 }, { 0, 0, 0, 1 } })
 				F._m[f.name] = m
 			end
-			local l = Matrix(m)
-			l:SetTranslation(offs[i])
-			e:SetBoneMatrix(f.b, wp * l)
+			m:SetTranslation(off)
+			e:SetBoneMatrix(f.b, wp * m)
 		end
 	end
 end
@@ -284,15 +302,18 @@ M.ApplyFingers = apply_fingers
 local TURN = Matrix({ { 0, -1, 0, 0 }, { 1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
 local LH = Matrix({ { 0.8743, 0.1756, 0.4524, 0 }, { 0.4463, -0.6573, -0.6072, 0 }, { 0.1908, 0.7329, -0.6531, 0 },
 	{ 0, 0, 0, 1 } })
+local TURN_LH = TURN * LH
+local VERT_OFF = Vector(2.0, -2.05, -0.8)
 
 M.FINGER_RANGE = 700
-local R_NEAR, R_FAR = 12, 20  -- right hand: the clip's hand this close to the grip, full IK; this far, none
+local R_NEAR, R_FAR = 12, 20
+local IK_LM, IK_RM = Matrix(), Matrix()
 
 local function ik_solve(e)
 	local st = Bd.State and Bd.State(e)
 	if not st or not IsValid(st.gun) or st.writeFrame ~= FrameNumber() then return end
 	local la = arm(e, "L")
-	local lm = la and e:GetBoneMatrix(la.h)
+	local lm = la and CopyBone(e, la.h, IK_LM)
 	local wR0, wL0 = st.ikRW or 0, st.ikW or 0
 	if wR0 < 0.01 and wL0 < 0.01 then return end
 	local gi = Bd.GunInfo(st.gun:GetModel())
@@ -300,11 +321,9 @@ local function ik_solve(e)
 	local pos, ang = Bd.GunPose(st, e, gi)
 	if not pos then return end
 
-	-- Right hand onto the grip, as MW19 does: held, the gun's frame is the hand's (baked guns), so the hand goes
-	-- to the gun's origin with the gun's rotation.
 	if wR0 > 0.01 then
 		local a = arm(e, "R")
-		local mH = a and e:GetBoneMatrix(a.h)
+		local mH = a and CopyBone(e, a.h, IK_RM)
 		if mH then
 			local C = mH:GetTranslation()
 			local w = wR0 * math.Clamp(1 - (C:Distance(pos) - R_NEAR) / (R_FAR - R_NEAR), 0, 1)
@@ -314,21 +333,13 @@ local function ik_solve(e)
 		end
 	end
 
-	-- Left hand onto the handguard (grip_l, MW19's tag_ik_loc_le: the wrist's spot) in the clip's own hand
-	-- rotation, or around a vertical foregrip in a rotation built from the gun's axes.
-	-- (0.19.3 aimed at the grip with the palm facing back; 0.19.4 turned the clip's hand by a fixed rotation, but
-	-- MW19's handguard hand isn't palm-up, so it came out above the grip with the fingers pointing down.)
 	local hold = st.gun.tifHold
 	local fp = hold and hold.fingerPose or ""
 	local vert = gi.gripV and string.find(fp, "grip", 1, true) and not string.find(fp, "ang", 1, true)
-	-- (hold.gripL: the left-hand spot for guns whose model has no tag_ik_loc_le, e.g. the RPG; gun_holds.py)
 	local hgl = hold and hold.gripL
 	local tgt = gi.gripL or gi.gripV or (hgl and Vector(hgl[1], hgl[2], hgl[3]))
 	if wL0 < 0.01 or not tgt then return end
-	-- Vertical grip, model space (after studiomdl's turn): forward +y, left +x, up -z. grip_v is 2.8 below the rail
-	-- mount (the grip runs 0-4.1 below it): the wrist 2 behind and 2 left of the grip's middle, so the palm lies on
-	-- its left side and the fingers wrap its front (within ~1 of MW19's tag_ik_loc_le).
-	if vert then tgt = gi.gripV + Vector(2.0, -2.05, -0.8) end
+	if vert then tgt = gi.gripV + VERT_OFF end
 	local a = la
 	local mH = lm
 	if not mH then return end
@@ -338,9 +349,6 @@ local function ik_solve(e)
 	if w < 0.01 then return end
 	local handRot
 	if vert then
-		-- ValveBiped left hand (rest pose): +x wrist -> knuckles, index on +z, palm toward -y. On a vertical grip:
-		-- knuckles forward and a little round to the right, index on top, palm facing right (onto the grip).
-		-- Baked guns after studiomdl's turn: barrel = -Right, top = -Up, the gun's right = -Forward.
 		local F, U, Rt = -ang:Right(), -ang:Up(), -ang:Forward()
 		local X = F * 0.93 + Rt * 0.36
 		X = X - U * X:Dot(U)
@@ -352,15 +360,11 @@ local function ik_solve(e)
 		hm:SetUp(U)
 		handRot = rot_of(LerpAngle(w, mH:GetAngles(), hm:GetAngles()))
 	elseif st.wkind ~= "rpg" then
-		-- On the handguard: the hand turned like MW19's handguard hold relative to the gun (LH, the left hand in the
-		-- gun's frame over 169 aim / CQB frames, 12 deg spread; scratchpad lhand_rot.py). The clip's own hand is
-		-- 30-50 deg off it in calm / alert carries (the retarget's wrist bend): it hung open below the handguard.
-		-- Game frames: hand = gun * TURN * LH (TURN = studiomdl's +90 deg about Z, the gun's frame being turned).
-		local full = rot_of(ang) * TURN * LH
+		local full = rot_of(ang) * TURN_LH
 		full:SetTranslation(vector_origin)
 		handRot = rot_of(LerpAngle(w, mH:GetAngles(), full:GetAngles()))
-	end	solve_arm(e, a, LerpVector(w, C, target), handRot)
-	-- The gun's own MW19 grip for the fingers (handguard, or the foregrip's).
+	end
+	solve_arm(e, a, LerpVector(w, C, target), handRot)
 	if hold and hold.fingers and w > 0.5 and e:GetPos():DistToSqr(EyePos()) < M.FINGER_RANGE * M.FINGER_RANGE then
 		apply_fingers(e, hold.fingers)
 	end

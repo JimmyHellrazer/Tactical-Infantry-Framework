@@ -12,14 +12,11 @@ P.BLEND = 0.25
 -- NW2 flag -> the clip whose prop (and stowed pose) it shows
 P.CARRY = { tif_sledge = "mwq_br_sledge" }
 
--- (0.38.23, user: "the angle of the hammer is off by one of the yaw/pitch") studiomdl turns every model +90 deg about
--- Z (SMD faces -Y, models +X): the prop's mesh got it too, so its pose (worked out in SMD frames) takes it back off,
--- as the baked guns do (cl_body UNTURN).
 local UNTURN = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
+local UNTURN_M = Matrix()
 local function unturn(ang)
-	local m = Matrix()
-	m:SetAngles(ang)
-	return (m * UNTURN):GetAngles()
+	UNTURN_M:SetAngles(ang)
+	return (UNTURN_M * UNTURN):GetAngles()
 end
 P.Unturn = unturn
 
@@ -39,14 +36,26 @@ function P.Remove(st)
 	st.prop, st.propFrom, st.propKey = nil, nil, nil
 end
 
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+local PROP_M = Matrix()
+local propBoneCache = {}
 local function bone_world(ent, name)
-	local b = ent:LookupBone(name)
-	local m = b and ent:GetBoneMatrix(b)
+	local mdl = ent.GetModel and ent:GetModel() or ""
+	local c = propBoneCache[mdl]
+	if not c then c = {} propBoneCache[mdl] = c end
+	local b = c[name]
+	if b == nil then
+		b = ent:LookupBone(name) or false
+		c[name] = b
+	end
+	local m = b and CopyBone(ent, b, PROP_M)
 	if not m then return nil end
 	return m:GetTranslation(), m:GetAngles()
 end
 
--- The prop's world pose at clip position u (0..1), or nil.
+local VA, VB = Vector(), Vector()
+local AA, AB = Angle(), Angle()
+
 local function clip_pose(ent, def, u)
 	local fr = def.frames
 	local n = #fr
@@ -54,15 +63,18 @@ local function clip_pose(ent, def, u)
 	local i = math.min(n, math.floor(x))
 	local a, b = fr[i], fr[math.min(n, i + 1)]
 	local k = x - i
-	-- (between a held frame and a stowed one: no blending across bones, the nearer frame)
 	if a[1] ~= b[1] then
 		if k >= 0.5 then a = b end
 		k = 0
 	end
 	local bp, ba = bone_world(ent, def.bones[a[1]])
 	if not bp then return nil end
-	local lp = LerpVector(k, Vector(a[2], a[3], a[4]), Vector(b[2], b[3], b[4]))
-	local la = LerpAngle(k, Angle(a[5], a[6], a[7]), Angle(b[5], b[6], b[7]))
+	VA.x, VA.y, VA.z = a[2], a[3], a[4]
+	VB.x, VB.y, VB.z = b[2], b[3], b[4]
+	AA.p, AA.y, AA.r = a[5], a[6], a[7]
+	AB.p, AB.y, AB.r = b[5], b[6], b[7]
+	local lp = LerpVector(k, VA, VB)
+	local la = LerpAngle(k, AA, AB)
 	return LocalToWorld(lp, la, bp, ba)
 end
 
@@ -70,7 +82,9 @@ local function stow_pose(ent, def)
 	local s = def.stow
 	local bp, ba = bone_world(ent, def.bones[2])
 	if not bp then return nil end
-	return LocalToWorld(Vector(s[1], s[2], s[3]), Angle(s[4], s[5], s[6]), bp, ba)
+	VA.x, VA.y, VA.z = s[1], s[2], s[3]
+	AA.p, AA.y, AA.r = s[4], s[5], s[6]
+	return LocalToWorld(VA, AA, bp, ba)
 end
 
 function P.Update(ent, st, now)

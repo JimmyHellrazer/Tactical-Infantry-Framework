@@ -424,10 +424,14 @@ if CLIENT then
 		b = { b[1] - k[1] * pb, b[2] - k[2] * pb, b[3] - k[3] * pb }
 		return math.atan2(dot(k, cross(a, b)), dot(a, b))
 	end
+	local MOD_M, MOD_MC, MOD_MU, MOD_MF, MOD_MH = Matrix(), Matrix(), Matrix(), Matrix(), Matrix()
+	local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+
 	-- turn bone i (world rows R, origin p) and the bones in list about world axis k through o by ang
 	local function turn_bones(ent, list, D, o)
-		for _, i in ipairs(list) do
-			local m = ent:GetBoneMatrix(i)
+		for idx = 1, #list do
+			local i = list[idx]
+			local m = CopyBone(ent, i, MOD_M)
 			if m then
 				local R, p = rows(m)
 				local d = p - o
@@ -442,18 +446,17 @@ if CLIENT then
 		if not data then return end
 		local sh = M.TwistShares
 		local FOREARM_SHARE, WRIST_SHARE, SHOULDER_SHARE = sh.forearm or 0, sh.wrist or 0, sh.shoulder or 0
-		for _, a in ipairs(data) do
-			local mc, mu, mf, mh = ent:GetBoneMatrix(a.c), ent:GetBoneMatrix(a.u), ent:GetBoneMatrix(a.f), ent:GetBoneMatrix(a.h)
+		for ai = 1, #data do
+			local a = data[ai]
+			local mc = CopyBone(ent, a.c, MOD_MC)
+			local mu = CopyBone(ent, a.u, MOD_MU)
+			local mf = CopyBone(ent, a.f, MOD_MF)
+			local mh = CopyBone(ent, a.h, MOD_MH)
 			if mc and mu and mf and mh then
 				local C = rows(mc)
 				local U, pu = rows(mu)
 				local F, pf = rows(mf)
 				local H, ph = rows(mh)
-				-- Elbow as a hinge (2026-11-13, user: upper arms tilted in, forearms skinny): GTG's offsets keep each bone's
-				-- direction but not its roll, and codport's rest elbow is bent 47 deg where the host's is near straight,
-				-- so the upper arm came out rolled up to ~45 deg off its bend plane. Roll the upper arm about its own
-				-- direction until its rest hinge axis is the real bend axis (cross of upper arm and forearm), then the
-				-- forearm likewise; joint positions are untouched. Fades out for a near-straight arm (no bend plane).
 				local dU = unit({ pf.x - pu.x, pf.y - pu.y, pf.z - pu.z })
 				local dF = unit({ ph.x - pf.x, ph.y - pf.y, ph.z - pf.z })
 				local nb = cross(dU, dF)
@@ -468,15 +471,14 @@ if CLIENT then
 				end
 				local Df = axis_rot(dF, angle_about(app(F, a.hF), app(U, a.hU), dF))
 				local Fb = mul(Df, F)
-				-- hand's roll about the forearm, from rest
 				local th = twist(mul(mul(tr(Fb), H), tr(a.hRest)), a.fAxis)
 				local roll = axis_rot(a.fAxis, th * FOREARM_SHARE)
 				local F2 = mul(Fb, roll)
 				set(ent, a.f, F2, pf)
-				-- carry the forearm's other bones along (world D = F2 F^T about the forearm's origin)
 				local D = mul(F2, tr(F))
-				for _, i in ipairs(a.carry) do
-					local m = ent:GetBoneMatrix(i)
+				for ci = 1, #a.carry do
+					local i = a.carry[ci]
+					local m = CopyBone(ent, i, MOD_M)
 					if m then
 						local R, p = rows(m)
 						local d = p - pf
@@ -484,7 +486,7 @@ if CLIENT then
 							D[7] * d.x + D[8] * d.y + D[9] * d.z))
 					end
 				end
-				ent:SetBoneMatrix(a.h, mh)  -- (the hand keeps the host's rotation)
+				ent:SetBoneMatrix(a.h, mh)
 				if a.w then
 					local Rw = mul(mul(Fb, axis_rot(a.fAxis, th * WRIST_SHARE)), a.wRest)
 					local o = a.wPos
@@ -596,7 +598,7 @@ if CLIENT then
 		local over = M.SwayModels[string.lower(model)]
 		if istable(over) then S = setmetatable(over, { __index = M.SwaySettings }) end
 		local st = ent.tifSway
-		local m0 = ent:GetBoneMatrix(data[1].b)
+		local m0 = CopyBone(ent, data[1].b, MOD_M)
 		if not m0 then return end
 		local _, p0 = rows(m0)
 		if EyePos and (EyePos() - p0):LengthSqr() > S.dist * S.dist then
@@ -614,9 +616,10 @@ if CLIENT then
 		local h = n > 0 and dt / n or 0
 		local K, drag, g = S.stiffness, S.drag, S.gravity
 		local cosLim = math.cos(math.rad(S.limit))
-		for k, c in ipairs(data) do
+		for k = 1, #data do
+			local c = data[k]
 			local K, cosLim = K * c.stiff, math.cos(math.rad(S.limit * c.limit))
-			local m = ent:GetBoneMatrix(c.b)
+			local m = CopyBone(ent, c.b, MOD_M)
 			if m then
 				local R, o = rows(m)
 				local ov = { o.x, o.y, o.z }

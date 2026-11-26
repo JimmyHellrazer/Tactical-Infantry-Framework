@@ -10,7 +10,10 @@ E.AHEAD = 200
 E.HEAD = "ValveBiped.Bip01_Head1"
 
 local offsets = {}
-local cosCone = math.cos(math.rad(E.CONE))
+local coneRad = math.rad(E.CONE)
+local cosCone, sinCone = math.cos(coneRad), math.sin(coneRad)
+local HEAD_M = Matrix and Matrix()
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
 
 local function eyes_offset(f, ent, head)
 	local model = f:GetModel() or ""
@@ -20,7 +23,7 @@ local function eyes_offset(f, ent, head)
 	local idx = f:LookupAttachment("eyes")
 	if idx and idx > 0 then
 		local a = f:GetAttachment(idx)
-		local hm = ent:GetBoneMatrix(head)
+		local hm = CopyBone(ent, head, HEAD_M)
 		if a and hm then
 			local lp, la = WorldToLocal(a.Pos, a.Ang, hm:GetTranslation(), hm:GetAngles())
 			o = { pos = lp, ang = la }
@@ -36,8 +39,7 @@ local function in_cone(fwd, want)
 	local side = want - fwd * d
 	if side:LengthSqr() < 1e-6 then return fwd end
 	side:Normalize()
-	local r = math.rad(E.CONE)
-	return fwd * math.cos(r) + side * math.sin(r)
+	return fwd * cosCone + side * sinCone
 end
 
 function E.Update(ent, st)
@@ -53,7 +55,7 @@ function E.Update(ent, st)
 	if not head then return end
 	local o = eyes_offset(f, ent, head)
 	if not o then return end
-	local hm = ent:GetBoneMatrix(head)
+	local hm = CopyBone(ent, head, HEAD_M)
 	if not hm then return end
 	local ePos, eAng = LocalToWorld(o.pos, o.ang, hm:GetTranslation(), hm:GetAngles())
 	local fwd = eAng:Forward()

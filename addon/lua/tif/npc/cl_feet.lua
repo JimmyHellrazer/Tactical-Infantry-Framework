@@ -64,24 +64,28 @@ local function act_ok(name)
 	return F.ACTS[string.sub(name, 1, 4)] == true
 end
 
-local traceIn = { mask = MASK_PLAYERSOLID_BRUSHONLY }
+local traceStart, traceEnd, traceOut = Vector(), Vector(), {}
+local traceIn = { start = traceStart, endpos = traceEnd, mask = MASK_PLAYERSOLID_BRUSHONLY, output = traceOut }
 local function ground(ent, p, base)
-	traceIn.start = Vector(p.x, p.y, base + 22)
-	traceIn.endpos = Vector(p.x, p.y, base - 26)
+	traceStart.x, traceStart.y, traceStart.z = p.x, p.y, base + 22
+	traceEnd.x, traceEnd.y, traceEnd.z = p.x, p.y, base - 26
 	traceIn.filter = ent
 	local tr = util.TraceLine(traceIn)
 	if not tr.Hit or tr.StartSolid or tr.HitNormal.z < 0.5 then return 0 end
 	return math.Clamp(tr.HitPos.z - base, -F.OFF_MAX, F.OFF_MAX)
 end
 
+local BONE_M = Matrix()
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+
 local function body_matrix(ent, L, drop, lw)
-	local M
 	if lw ~= 0 then
-		local pm = ent:GetBoneMatrix(L.pelvis)
+		local pm = CopyBone(ent, L.pelvis, BONE_M)
 		if not pm then return nil end
 		local axis = ent:GetForward()
 		local piv = pm:GetTranslation() - F.UP * 30
-		local c, s = math.cos(math.rad(lw)), math.sin(math.rad(lw))
+		local r = math.rad(lw)
+		local c, s = math.cos(r), math.sin(r)
 		local x, y, z = axis.x, axis.y, axis.z
 		local t = 1 - c
 		local rot = Matrix({
@@ -92,11 +96,10 @@ local function body_matrix(ent, L, drop, lw)
 		local T1, T2 = Matrix(), Matrix()
 		T1:SetTranslation(piv + F.UP * drop)
 		T2:SetTranslation(-piv)
-		M = T1 * rot * T2
-	else
-		M = Matrix()
-		M:SetTranslation(F.UP * drop)
+		return T1 * rot * T2
 	end
+	local M = Matrix()
+	M:SetTranslation(F.UP * drop)
 	return M
 end
 
@@ -116,8 +119,10 @@ local function cb(ent)
 	if drop ~= 0 or lw ~= 0 then
 		local M = body_matrix(ent, L, drop, lw)
 		if M then
-			for _, b in ipairs(L.sub) do
-				local m = ent:GetBoneMatrix(b)
+			local sub = L.sub
+			for i = 1, #sub do
+				local b = sub[i]
+				local m = CopyBone(ent, b, BONE_M)
 				if m then ent:SetBoneMatrix(b, M * m) end
 			end
 		end
@@ -125,10 +130,12 @@ local function cb(ent)
 	if fw > 0.01 and st.footOff then
 		local solve = TIF.GunHold and TIF.GunHold.SolveTwoBone
 		if solve then
-			for i, a in ipairs(L.sides) do
+			local sides = L.sides
+			for i = 1, #sides do
+				local a = sides[i]
 				local off = st.footOff[i] * fw
 				if math.abs(off - drop) > 0.05 then
-					local m = ent:GetBoneMatrix(a.h)
+					local m = CopyBone(ent, a.h, BONE_M)
 					if m then solve(ent, a, m:GetTranslation() + F.UP * (off - drop)) end
 				end
 			end
@@ -146,7 +153,8 @@ function F.Prepare(ent, st, now, dt)
 	local fn = FrameNumber()
 	if fn ~= frameNo then frameNo, used = fn, 0 end
 	local speed = st.speed2d or 0
-	local near = ent:GetPos():DistToSqr(EyePos()) < cvRange:GetFloat() ^ 2
+	local rng = cvRange:GetFloat()
+	local near = ent:GetPos():DistToSqr(EyePos()) < rng * rng
 	local able = near and st.vb and not st.vbProne and act_ok(st.actName) and used < cvMax:GetInt()
 	local want = (able and cvIK:GetBool()) and math.Clamp(1 - (speed - F.SPEED_FULL) / (F.SPEED_OFF - F.SPEED_FULL), 0, 1) or 0
 	st.footW = math.Approach(st.footW or 0, want, dt * 6)
@@ -169,8 +177,9 @@ function F.Prepare(ent, st, now, dt)
 			if L then
 				local base = ent:GetPos().z
 				st.footTgt = st.footTgt or { 0, 0 }
-				for i, a in ipairs(L.sides) do
-					local m = ent:GetBoneMatrix(a.h)
+				local sides = L.sides
+				for i = 1, #sides do
+					local m = CopyBone(ent, sides[i].h, BONE_M)
 					if m then st.footTgt[i] = ground(ent, m:GetTranslation(), base) end
 				end
 			end

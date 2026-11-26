@@ -50,13 +50,17 @@ local function mag_bones(g)
 	return b or nil
 end
 
--- The mag's rest transform relative to the root bone, per model (read on the first bone build).
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+local M_ROOT, M_MAG, M_HAND, M_DROP = Matrix(), Matrix(), Matrix(), Matrix()
+local lHandOf = {}
+
 local relOf = {}
 local function mag_rel(ent, b)
 	local model = ent:GetModel()
 	local r = relOf[model]
 	if r then return r end
-	local rm, mm = ent:GetBoneMatrix(b.root), ent:GetBoneMatrix(b.mag)
+	local rm = CopyBone(ent, b.root, M_ROOT)
+	local mm = CopyBone(ent, b.mag, M_MAG)
 	if not (rm and mm) then return nil end
 	r = rm:GetInverseTR() * mm
 	relOf[model] = r
@@ -68,14 +72,14 @@ local function build_gun(ent)
 	if not mode then return end
 	local b = mag_bones(ent)
 	if not b then return end
-	local mm = ent:GetBoneMatrix(b.mag)
+	local mm = CopyBone(ent, b.mag, M_MAG)
 	if not mm then return end
 	if mode == "hide" then
 		mm:Scale(TINY)
 		ent:SetBoneMatrix(b.mag, mm)
 	elseif mode == "hand" and ent.tifMagPalm then
 		local rel = mag_rel(ent, b)
-		local rm = ent:GetBoneMatrix(b.root)
+		local rm = CopyBone(ent, b.root, M_ROOT)
 		if not (rel and rm) then return end
 		local m = rm * rel
 		m:SetTranslation(ent.tifMagPalm)
@@ -89,20 +93,20 @@ local function build_drop(ent)
 	local b = mag_bones(ent)
 	local d = ent.tifDrop
 	if not (b and d) then return end
-	local rm = ent:GetBoneMatrix(b.root)
+	local rm = CopyBone(ent, b.root, M_ROOT)
 	if rm then
 		rm:Scale(TINY)
 		ent:SetBoneMatrix(b.root, rm)
 	end
-	local m = Matrix()
-	m:SetTranslation(d.pos)
-	m:SetAngles(d.ang)
-	ent:SetBoneMatrix(b.mag, m)
+	M_DROP:Identity()
+	M_DROP:SetTranslation(d.pos)
+	M_DROP:SetAngles(d.ang)
+	ent:SetBoneMatrix(b.mag, M_DROP)
 end
 
 local function spawn_drop(g, b)
 	if not cvDrop:GetBool() then return end
-	local mm = g:GetBoneMatrix(b.mag)
+	local mm = CopyBone(g, b.mag, M_MAG)
 	if not mm then return end
 	local pos = mm:GetTranslation()
 	if pos:DistToSqr(EyePos()) > DROP_RANGE * DROP_RANGE then return end
@@ -120,7 +124,8 @@ local function spawn_drop(g, b)
 	drops[#drops + 1] = { ent = e }
 end
 
-local trace = { mask = MASK_SOLID_BRUSHONLY }
+local traceOut = {}
+local trace = { mask = MASK_SOLID_BRUSHONLY, output = traceOut }
 local function think_drops(dt, now)
 	for i = #drops, 1, -1 do
 		local e = drops[i].ent
@@ -134,13 +139,14 @@ local function think_drops(dt, now)
 			trace.start, trace.endpos = d.pos, to
 			local tr = util.TraceLine(trace)
 			if tr.Hit then
-				-- On its side, flat on the ground, keeping its heading.
 				d.pos = tr.HitPos + tr.HitNormal * 1.2
-				d.ang = Angle(0, d.ang.y, 90)
+				d.ang.p, d.ang.r = 0, 90
 				d.landed = true
 			else
 				d.pos = to
-				d.ang = d.ang + d.spin * dt
+				d.ang.p = d.ang.p + d.spin.p * dt
+				d.ang.y = d.ang.y + d.spin.y * dt
+				d.ang.r = d.ang.r + d.spin.r * dt
 			end
 			e:SetPos(d.pos)
 			e:InvalidateBoneCache()
@@ -152,8 +158,6 @@ hook.Add("Think", "tif_gunmag_drops", function()
 	if #drops > 0 then think_drops(FrameTime(), CurTime()) end
 end)
 
--- Every frame for each soldier, after the gun is placed (cl_body). st.magClip / st.magU / st.magKey: the reload
--- clip playing, its cycle and an id of this reload (set by cl_body where it plays reloads).
 function M.Update(ent, st)
 	local g = st.gun
 	if not IsValid(g) then return end
@@ -173,7 +177,6 @@ function M.Update(ent, st)
 		elseif hideFrom and u >= hideFrom and u < e.att then
 			mode = "hide"
 		end
-		-- The old mag falls once per reload.
 		if e.drop and u >= e.drop and u < e.att and st.magDropped ~= st.magKey then
 			st.magDropped = st.magKey
 			g:SetupBones()
@@ -181,8 +184,13 @@ function M.Update(ent, st)
 		end
 	end
 	if mode == "hand" then
-		local hb = ent:LookupBone(L_HAND)
-		local hm = hb and ent:GetBoneMatrix(hb)
+		local mdl = ent:GetModel()
+		local hb = lHandOf[mdl]
+		if hb == nil then
+			hb = ent:LookupBone(L_HAND) or false
+			lHandOf[mdl] = hb
+		end
+		local hm = hb and CopyBone(ent, hb, M_HAND)
 		if hm then
 			g.tifMagPalm = LocalToWorld(M.PALM, angle_zero, hm:GetTranslation(), hm:GetAngles())
 		else

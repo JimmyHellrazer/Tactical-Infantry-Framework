@@ -4,11 +4,21 @@ local MERGE = PMS.MERGE
 local math_abs = math.abs
 
 local OUT = Matrix()
+local IN = Matrix()
 local ENTITY, VMATRIX = FindMetaTable("Entity"), FindMetaTable("VMatrix")
-local GetBoneMatrix, SetBoneMatrix = ENTITY.GetBoneMatrix, ENTITY.SetBoneMatrix
-local Unpack, SetUnpacked = VMATRIX.Unpack, VMATRIX.SetUnpacked
+local GetBoneMatrix, CopyBoneMatrix, SetBoneMatrix = ENTITY.GetBoneMatrix, ENTITY.CopyBoneMatrix, ENTITY.SetBoneMatrix
+local Unpack, SetUnpacked, SetField = VMATRIX.Unpack, VMATRIX.SetUnpacked, VMATRIX.SetField
 
 local function read(ent, bone, A, o)
+	if CopyBoneMatrix then
+		SetField(IN, 4, 4, 0)
+		CopyBoneMatrix(ent, bone, IN)
+		local a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, _, _, _, m16 = Unpack(IN)
+		if m16 == 0 then return false end
+		A[o + 1], A[o + 2], A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9], A[o + 10], A[o + 11], A[o + 12] =
+			a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12
+		return true
+	end
 	local m = GetBoneMatrix(ent, bone)
 	if not m then return false end
 	A[o + 1], A[o + 2], A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9], A[o + 10], A[o + 11], A[o + 12] = Unpack(m)
@@ -92,7 +102,8 @@ end
 function PMS.Chain(src, map, origin, steps)
 	local W, E, has = map.SW, map.SE, map.SH
 	local K, P, RL = map.K, map.P, map.RL
-	for _, k in ipairs(steps) do
+	for i = 1, #steps do
+		local k = steps[i]
 		local o, p = k * 12 - 12, P[k]
 		local ok
 		if K[k] == MERGE then

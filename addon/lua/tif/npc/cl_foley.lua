@@ -226,7 +226,8 @@ function C.Track(ent, st, now, clip, cyc, near)
 			elseif not wrapped and cyc - p > 0.5 then
 				-- (a jump: a teleport, a resync)
 			else
-				for _, e in ipairs(ev) do
+				for i = 1, #ev do
+					local e = ev[i]
 					local t = e[1]
 					if (not wrapped and t > p and t <= cyc) or (wrapped and (t > p or t <= cyc)) then C.Fire(ent, st, e, clip, now) end
 				end
