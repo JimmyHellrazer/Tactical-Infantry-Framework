@@ -45,6 +45,7 @@ local function blocked_before(a, b, margin)
 	local t = line(a, b)
 	return t.Hit and (1 - t.Fraction) * a:Distance(b) > margin
 end
+
 local function reaches(a, b, margin)
 	local t = line(a, b)
 	return not t.Hit or (1 - t.Fraction) * a:Distance(b) < margin
@@ -109,7 +110,9 @@ local function evaluate(p, threat, threatEye, traces)
 	if not g.Hit then pt.reject = "no ground" return pt end
 	origin = Vector(g.HitPos)
 	pt.pos = origin
-	if not IsValid(navmesh.GetNearestNavArea(origin, false, 72, false, true)) then pt.reject = "off navmesh" return pt end
+	if not IsValid(navmesh.GetNearestNavArea(origin, false, 72, false, true)) then
+		pt.reject = "off navmesh" return pt
+	end
 
 	if not spend(traces, 1) then pt.reject = "budget" return pt end
 	hull.start, hull.endpos = origin, origin

@@ -80,7 +80,9 @@ local function setup_door(cq, d, fromRoom)
 		local method = commanded and cq.method or pick_method(cq, d)
 		cq.breachPlan = breach_plan(cq, cq.team, method)
 
-		if not cq.breachPlan and (method == "grenade" or method == "hammer") then cq.breachPlan = breach_plan(cq, cq.team, method == "hammer" and "kick" or "open") end
+		if not cq.breachPlan and (method == "grenade" or method == "hammer") then
+			cq.breachPlan = breach_plan(cq, cq.team, method == "hammer" and "kick" or "open")
+		end
 	elseif cvVariety:GetBool() and #cq.team >= 2 and math.random() < CQB.NODOOR_CHANCE then
 		cq.breachPlan = breach_plan(cq, cq.team, "nodoor")
 	end
@@ -94,6 +96,7 @@ local function locked(d)
 end
 
 local cvDoorOff = CreateConVar("tif_cqb_door_off", "1", FCVAR_ARCHIVE, "Room clears: kicked doors come off, opened doors stop blocking (1/0)")
+
 local function door_has_portal(e)
 	local name = e:GetName()
 	if not name or name == "" then return false end
@@ -104,6 +107,7 @@ local function door_has_portal(e)
 	return false
 end
 CQB.DoorHasPortal = door_has_portal
+
 local function door_off(e, inward, hard)
 	if not (cvDoorOff:GetBool() and IsValid(e)) then return end
 	if not hard or e:GetClass() ~= "prop_door_rotating" or door_has_portal(e) then
@@ -170,6 +174,7 @@ local function next_door(cq, room)
 end
 
 CQB.GHOST = COLLISION_GROUP_NPC_SCRIPTED
+
 local function team_ghost(m, on)
 	if not IsValid(m) or not m.GetCollisionGroup then return end
 	if on then
@@ -302,7 +307,9 @@ function CQB.Start(sq, target, quiet, opts)
 end
 
 local function cclip(m, n) return m.tifHomeHost and TIF.GTG.Clip(n, m.tifHomeHost) or nil end
+
 local function travel_yaw(c) return math.deg(math.atan2(c.move[2], c.move[1])) end
+
 local function flat_yaw(v) return Vector(v.x, v.y, 0):Angle().y end
 
 local function lr_variant(m, fmt, wantLeft)
@@ -324,6 +331,7 @@ local function aim_travel(c, pos, target)
 end
 
 CQB.CROSS_SHIFT_MAX = 40
+
 local function cross_point(c, S, yaw, center, n)
 	if not TIF.Action.RootAt then return nil end
 	local r = math.rad(yaw)
@@ -344,6 +352,7 @@ local function cross_point(c, S, yaw, center, n)
 	end
 	return nil
 end
+
 local function centre_cross(c, S0, target, center, n)
 	local S = Vector(S0)
 	local lat = Vector(-n.y, n.x, 0)
@@ -409,6 +418,7 @@ function CQB.GlideStep(npc, now)
 end
 
 CQB.THROUGH_BACK, CQB.THROUGH_IN, CQB.THROUGH_NEAR = 40, 48, 72
+
 function CQB.Through(npc, cq, goal, now)
 	local d = cq and cq.door
 	if not (d and cq.inward and not d.stair) or BLD.Closed(d) then return nil end
@@ -451,10 +461,12 @@ CQB.GO_WARP_MIN = 6
 CQB.GO_WARP_AT = 0.1
 
 local UP40 = Vector(0, 0, 40)
+
 local function line_clear(a, b, npc)
 	local tr = util.TraceLine({ start = a + UP40, endpos = b + UP40, mask = MASK_NPCSOLID_BRUSHONLY, filter = npc })
 	return not tr.Hit or tr.Fraction > 0.97
 end
+
 local function clip_path_clear(npc, c, yaw, cq, from)
 	if not (c and TIF.Action.RootAt and cq and cq.door) then return true end
 	local p0 = from or npc:GetPos()
@@ -609,7 +621,9 @@ function breach_plan(cq, team, method)
 
 		for _, tg in ipairs(goC.tags or {}) do
 			local ev = istable(tg[4]) and tg[4].MoveEvent
-			if isstring(ev) and (string.find(ev, "door", 1, true) or string.find(ev, "kick", 1, true)) then plan[i].doorU = tg[2] break end
+			if isstring(ev) and (string.find(ev, "door", 1, true) or string.find(ev, "kick", 1, true)) then
+				plan[i].doorU = tg[2] break
+			end
 		end
 
 		if (method == "kick" or method == "breach") and i == 1 and TIF.Action.RootAt then
@@ -641,6 +655,7 @@ end
 
 CQB.FLASH_DEPTH = 220
 local cvFlash = CreateConVar("tif_cqb_flash", "1", FCVAR_ARCHIVE, "Breachers flash rooms first: 0 off, 1 allies of players, 2 all")
+
 local function allied_to_players(m)
 	for _, ply in player.Iterator() do
 		if TIF.Relation(m, ply) == TIF.REL_ALLY then return true end
@@ -670,6 +685,7 @@ end
 local cvFlashChance = CreateConVar("tif_cqb_flash_chance", "0.55", FCVAR_ARCHIVE, "Share of rooms breachers flash first (0-1)")
 CQB.AFTER_BANG = 0.25
 CQB.FLASH_WAIT_MAX = 5
+
 local function flash_in(sq, cq, team, now)
 	local mode = cvFlash:GetInt()
 	local GR = TIF.GrenadeMW
@@ -1014,7 +1030,9 @@ function CQB.Go(sq, opts)
 			local d = cq.door
 			if d and not d.stair and BLD.Closed(d) and not cq.opening then
 				cq.breachPlan = breach_plan(cq, cq.team, cq.method)
-				if not cq.breachPlan and (cq.method == "grenade" or cq.method == "hammer") then cq.breachPlan = breach_plan(cq, cq.team, cq.method == "hammer" and "kick" or "open") end
+				if not cq.breachPlan and (cq.method == "grenade" or cq.method == "hammer") then
+					cq.breachPlan = breach_plan(cq, cq.team, cq.method == "hammer" and "kick" or "open")
+				end
 			end
 		end
 		if opts.onEntry ~= nil then cq.onEntry = opts.onEntry or nil end

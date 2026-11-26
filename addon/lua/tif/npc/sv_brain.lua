@@ -104,6 +104,7 @@ local function mate_across(npc)
 	end
 	return false
 end
+
 local function low_ready(npc, now, coverFire)
 	local c = npc.tifPrimaryC
 	local hot = npc.tifFire.want or coverFire or (c and c.visible)
@@ -132,9 +133,13 @@ local function low_ready(npc, now, coverFire)
 		end
 	else
 		npc.tifLRWant = nil
-		if on and (hot or not eligible or now - (npc.tifLROn or 0) >= LR_MIN) then npc:SetNW2Bool("tif_lowready", false) end
+		if on and (hot or not eligible or now - (npc.tifLROn or 0) >= LR_MIN) then
+			npc:SetNW2Bool("tif_lowready", false)
+		end
 	end
-	if on and (npc.tifLowReadyUntil or 0) > now and npc.tifAction then npc.tifAction = npc.tifAction .. " [friendly in line]" end
+	if on and (npc.tifLowReadyUntil or 0) > now and npc.tifAction then
+		npc.tifAction = npc.tifAction .. " [friendly in line]"
+	end
 end
 
 local function sidestep_point(npc, threatPos, avoid)
@@ -495,7 +500,9 @@ local function cqb(npc, c, now)
 	npc.tifMode = A.MODE_AIM
 	npc.tifAction = "cqb: " .. (t.label or "")
 
-	if TIF.MeleeMW and c and c.visible and npc:GetPos():DistToSqr(c.pos) < 200 * 200 and TIF.MeleeMW.Try(npc, c, now) then return end
+	if TIF.MeleeMW and c and c.visible and npc:GetPos():DistToSqr(c.pos) < 200 * 200 and TIF.MeleeMW.Try(npc, c, now) then
+		return
+	end
 	local shooting = c and c.visible and c.ent and npc:GetPos():DistToSqr(c.pos) < 1800 * 1800
 
 	local cqS = npc.tifSquad and npc.tifSquad.cqb

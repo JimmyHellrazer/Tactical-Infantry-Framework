@@ -514,6 +514,7 @@ hook.Add("Tick", "tif_vehicle_exit_guard", function()
 end)
 
 local function driveby() return false end
+
 local function end_driveby(npc)
 	if not npc.tifDriveBy then return end
 	npc.tifDriveBy = nil
@@ -566,9 +567,11 @@ end
 local function in_vehicle(ent)
 	return IsValid(ent) and (ent.tifVeh ~= nil or ent.tifLeaving ~= nil or (ent.tifBoard ~= nil and ent.tifBoard.phase ~= "walk"))
 end
+
 hook.Add("PhysgunPickup", "tif_vehicle_riders", function(ply, ent)
 	if in_vehicle(ent) then return false end
 end)
+
 hook.Add("GravGunPickupAllowed", "tif_vehicle_riders", function(ply, ent)
 	if in_vehicle(ent) then return false end
 end)

@@ -47,6 +47,7 @@ function L.Flush()
 end
 
 timer.Create("tif_logfile_flush", L.FLUSH, 0, L.Flush)
+
 hook.Add("ShutDown", "tif_logfile", L.Flush)
 
 local function join(...)
@@ -57,7 +58,9 @@ end
 
 local log0, warn0, err0 = TIF.Log, TIF.Warn, TIF.Error
 function TIF.Log(...) log0(...) L.Line("log", join(...)) end
+
 function TIF.Warn(...) warn0(...) L.Line("WARN", join(...)) end
+
 function TIF.Error(...) err0(...) L.Line("ERROR", join(...)) end
 
 function TIF.Event(tag, ...) L.Line(tag, join(...)) end

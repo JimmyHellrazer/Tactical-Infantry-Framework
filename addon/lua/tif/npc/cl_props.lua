@@ -6,6 +6,7 @@ Props.CARRY = { tif_sledge = "mwq_br_sledge" }
 
 local UNTURN_MAT = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
 local SCRATCH_MAT = Matrix()
+
 local function unturn(ang)
 	SCRATCH_MAT:SetAngles(ang)
 	return (SCRATCH_MAT * UNTURN_MAT):GetAngles()
@@ -93,7 +94,9 @@ function Props.Update(ent, state, now)
 	end
 	if not def then
 		for flag, clipName in pairs(Props.CARRY) do
-			if ent:GetNW2Bool(flag, false) and propClips[clipName] then def, key = propClips[clipName], "stow:" .. clipName break end
+			if ent:GetNW2Bool(flag, false) and propClips[clipName] then
+				def, key = propClips[clipName], "stow:" .. clipName break
+			end
 		end
 	end
 

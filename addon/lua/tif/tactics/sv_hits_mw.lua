@@ -18,6 +18,7 @@ H.BAN_FILE = "tif/death_bans.txt"
 
 H.DEFAULT_BANS = { "sdr_com_exp_stand_death02_gut_lg_2" }
 H.Banned = H.Banned or {}
+
 local function load_bans()
 	H.Banned = {}
 	for _, n in ipairs(H.DEFAULT_BANS) do H.Banned[n] = true end
@@ -27,7 +28,9 @@ local function load_bans()
 		if n ~= "" then H.Banned[n] = true end
 	end
 end
+
 load_bans()
+
 local function save_bans()
 	file.CreateDir("tif")
 	local t = {}
@@ -104,6 +107,7 @@ local function region_list(t, sit, region)
 end
 
 H.BLAST_MIN = 30
+
 local function real_blast(dmg)
 	return dmg and dmg:IsExplosionDamage() and not dmg:IsBulletDamage() and dmg:GetDamage() >= H.BLAST_MIN
 end
@@ -129,6 +133,7 @@ local function now_firing(npc)
 end
 
 H.LEDGE_DROP = 110
+
 local function ledge(npc)
 	local pos, fwd = npc:GetPos(), npc:GetForward()
 	fwd.z = 0
@@ -182,11 +187,15 @@ local function situation(npc, dmg)
 		if cov.t == "lc" or cov.t == "rc" then return { "cover_cr", "crouch" } end
 		return { "cover_" .. cov.t, "stand" }
 	end
-	if dmg and (dmg:IsDamageType(DMG_CLUB) or dmg:IsDamageType(DMG_SLASH)) and not crouched then return { "melee", "stand" } end
+	if dmg and (dmg:IsDamageType(DMG_CLUB) or dmg:IsDamageType(DMG_SLASH)) and not crouched then
+		return { "melee", "stand" }
+	end
 
 	if speed < H.RUN_SPEED then
 		local l = ledge(npc)
-		if l then return { "ledge_" .. l .. "_" .. (crouched and "cr" or "st"), "ledge_" .. l .. "_st", crouched and "crouch" or "stand" } end
+		if l then
+			return { "ledge_" .. l .. "_" .. (crouched and "cr" or "st"), "ledge_" .. l .. "_st", crouched and "crouch" or "stand" }
+		end
 	end
 
 	if now_firing(npc) and math.random() < H.FIREAIR_CHANCE then
@@ -294,6 +303,7 @@ end
 
 H.SHOT_RADIUS = 9
 H.DyingLong = H.DyingLong or {}
+
 function H.ShotEnd(npc, pos, force)
 	local dy = npc.tifDying
 	if not (dy and dy.chain) or dy.shotEnd then return false end
@@ -422,11 +432,15 @@ function H.Pain(npc, dmg)
 	if not H.Use(npc) or npc.tifDead then return false end
 
 	if npc.tifKnock then return true end
-	if real_blast(dmg) and dmg:GetDamage() >= H.KNOCK_MIN and npc:Health() > 0 and H.Knockdown(npc, dmg) then return true end
+	if real_blast(dmg) and dmg:GetDamage() >= H.KNOCK_MIN and npc:Health() > 0 and H.Knockdown(npc, dmg) then
+		return true
+	end
 	local now = CurTime()
 
 	if dmg:IsDamageType(DMG_BURN) then
-		if now < (npc.tifNextFireReact or 0) or npc.tifAct or npc.tifCov or npc.tifVeh or npc.tifDowned then return true end
+		if now < (npc.tifNextFireReact or 0) or npc.tifAct or npc.tifCov or npc.tifVeh or npc.tifDowned then
+			return true
+		end
 		local set = npc.tifProne and "mwz_fire_pr_" or "mwz_fire_"
 		local list = {}
 		for i = 1, 12 do if TIF.GTG.Clip(set .. i, npc.tifHostId) then list[#list + 1] = set .. i end end
@@ -498,7 +512,9 @@ function H.Pain(npc, dmg)
 	local region = REGION[npc.tifLastHitGroup] or "torso"
 
 	local cands = {}
-	if TIF.CoverBehave.MW and TIF.CoverBehave.MW.HoldsPistol and TIF.CoverBehave.MW.HoldsPistol(npc) then cands[#cands + 1] = "pstl" end
+	if TIF.CoverBehave.MW and TIF.CoverBehave.MW.HoldsPistol and TIF.CoverBehave.MW.HoldsPistol(npc) then
+		cands[#cands + 1] = "pstl"
+	end
 	if dmg:GetDamage() >= H.BIG_PAIN and (sit == "stand" or sit == "crouch") then cands[#cands + 1] = sit .. "big" end
 	local speed = npc.loco:GetVelocity():Length2D()
 	if sit == "stand" and npc:GetNW2Bool("tif_cqb", false) and speed > 30 then
@@ -548,6 +564,7 @@ local function bone_pos(rag, name)
 	local m = b and CopyBone(rag, b, HIT_BONE_M)
 	return m and m:GetTranslation() or nil
 end
+
 function H.LieOf(rag)
 	local pel, head = bone_pos(rag, "ValveBiped.Bip01_Pelvis"), bone_pos(rag, "ValveBiped.Bip01_Head1")
 	local l, r = bone_pos(rag, "ValveBiped.Bip01_L_UpperArm"), bone_pos(rag, "ValveBiped.Bip01_R_UpperArm")
@@ -664,6 +681,7 @@ function H.Busy(npc, now)
 end
 
 local cvBlast = CreateConVar("tif_blast_scale", "1.6", FCVAR_ARCHIVE, "Multiplier on blast damage TIF soldiers take")
+
 hook.Add("EntityTakeDamage", "tif_blast_scale", function(ent, dmg)
 	if ent.TIFSoldier and real_blast(dmg) then dmg:ScaleDamage(math.max(0, cvBlast:GetFloat())) end
 end)

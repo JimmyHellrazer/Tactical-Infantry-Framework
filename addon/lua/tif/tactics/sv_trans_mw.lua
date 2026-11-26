@@ -48,6 +48,7 @@ function T.SettleU(c)
 	settleOf[c] = v
 	return v
 end
+
 local function settle_stop(npc, name)
 	local a = npc.tifAct
 	if not a then return end
@@ -141,6 +142,7 @@ end
 T.MoveSet = move_set
 
 T.FIGHT_STOP = { run = "jog" }
+
 function T.FightStopSet(npc, set)
 	local alt = set and T.FIGHT_STOP[set]
 	if alt and npc.tifAware == TIF.AWARE.ENGAGED and sets(npc.tifHomeHost).stop[alt] then return alt end
@@ -231,7 +233,9 @@ local function prone_stop(npc, m, here)
 		if not m.goal or npc:GetPos():DistToSqr(m.goal) > 30 * 30 then return nil end
 	end
 	local opts = { root = true, clear = true }
-	if not here and m.goal then opts.to = { pos = Vector(m.goal.x, m.goal.y, npc:GetPos().z), yaw = npc:GetAngles().y } end
+	if not here and m.goal then
+		opts.to = { pos = Vector(m.goal.x, m.goal.y, npc:GetPos().z), yaw = npc:GetAngles().y }
+	end
 	local d = Act.Play(npc, name, opts)
 	if not d then return nil end
 	mark(npc)
@@ -299,9 +303,12 @@ function T.ExitVel(c, yaw0, u)
 end
 
 T.STANCE_TURN_MIN = 35
+
 function T.Stance(npc, from, to)
 	if not T.Use(npc) or not free(npc) then return false end
-	if npc.loco:GetVelocity():Length2DSqr() > 20 * 20 or (TIF.Move.Moving and TIF.Move.Moving(npc)) then return false end
+	if npc.loco:GetVelocity():Length2DSqr() > 20 * 20 or (TIF.Move.Moving and TIF.Move.Moving(npc)) then
+		return false
+	end
 	local host = npc.tifHomeHost
 	local name
 	if from == TIF.Anim.STANCE_STAND and to == TIF.Anim.STANCE_CROUCH then
@@ -337,8 +344,11 @@ end
 T.REV_MIN = 130
 T.REV_SPEED = 45
 T.REV_COOLDOWN = 1.5
+
 local function rev_set(npc, speed)
-	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH or relaxed(npc) or pistol(npc) or not npc.tifFace then return nil end
+	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH or relaxed(npc) or pistol(npc) or not npc.tifFace then
+		return nil
+	end
 	local cqb = npc:GetNW2Bool("tif_cqb", false)
 	if speed == "tactical" then return cqb and "cqbwalk" or "walk" end
 	if speed == "run" or speed == "aimrun" then return cqb and "cqbfast" or "jog" end

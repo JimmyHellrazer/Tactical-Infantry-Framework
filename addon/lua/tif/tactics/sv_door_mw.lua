@@ -30,6 +30,7 @@ local function variants(host, side, kind)
 end
 
 D.TOUCH = 44
+
 function D.Check(npc, m, now)
 	if not cv:GetBool() or npc.tifCQB or npc.tifVeh or npc.tifDowned or npc.tifCov then return false end
 	if now < (npc.tifNextDoorCheck or 0) then return false end

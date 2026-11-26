@@ -144,9 +144,12 @@ function SQ.SetOrder(sq, kind, pos, yaw, opts)
 end
 
 SQ.SIGNAL_CHANCE = 0.7
+
 function SQ.Signal(sq, kind)
 	local L = sq.leader
-	if not is_valid_leader(L) or L.tifAct or L.tifCov or L.tifProne or L.tifVeh or L.tifDowned or L.tifReact then return end
+	if not is_valid_leader(L) or L.tifAct or L.tifCov or L.tifProne or L.tifVeh or L.tifDowned or L.tifReact then
+		return
+	end
 	if not (L.tifHomeHost and TIF.GTG.IsVB(L.tifHomeHost)) or math.random() > SQ.SIGNAL_CHANCE then return end
 	if L.loco:GetVelocity():Length2DSqr() > 20 * 20 or L.tifAware == TIF.AWARE.ENGAGED then return end
 	local name
@@ -244,6 +247,7 @@ local function patrol_lead(npc, sq, o, now)
 end
 
 SQ.PACE = { rush = 700, move = 1600 }
+
 function SQ.AdvancePace(sq, npc, o, now)
 	local pace = o.pace or "move"
 	if pace == "careful" or o.slowed then return "tactical" end

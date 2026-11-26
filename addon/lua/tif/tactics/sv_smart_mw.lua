@@ -16,7 +16,9 @@ local function yaw_dir(y)
 	local r = math.rad(y)
 	return Vector(math.cos(r), math.sin(r), 0)
 end
+
 local function has(npc, name) return npc.tifHomeHost and TIF.GTG.Clip(name, npc.tifHomeHost) ~= nil end
+
 local function clip(npc, name) return npc.tifHomeHost and TIF.GTG.Clip(name, npc.tifHomeHost) end
 
 local function trace(a, b, skip)

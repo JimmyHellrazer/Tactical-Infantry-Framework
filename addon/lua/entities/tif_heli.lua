@@ -155,7 +155,9 @@ if CLIENT then
 			self.loop:SetSoundLevel(105)
 			self.loop:PlayEx(0, 70)
 		end
-		if self.loop then self.loop:ChangeVolume(math.min(1, rpm * 1.4), 0.2) self.loop:ChangePitch(70 + 30 * rpm, 0.2) end
+		if self.loop then
+			self.loop:ChangeVolume(math.min(1, rpm * 1.4), 0.2) self.loop:ChangePitch(70 + 30 * rpm, 0.2)
+		end
 	end
 
 	function ENT:Wash(rpm)
@@ -368,6 +370,7 @@ function ENT:SetRoute(route)
 end
 
 function ENT:Phase() return self.phase end
+
 function ENT:Arrived() return self.phase == "hold" end
 
 function ENT:Release()

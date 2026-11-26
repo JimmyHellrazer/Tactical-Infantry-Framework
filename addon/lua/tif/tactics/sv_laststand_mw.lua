@@ -58,6 +58,7 @@ end
 
 local CRAWL = { { 0, "fwd_0" }, { 45, "fwd_45" }, { 90, "fwd_90" }, { 135, "bwd_135" }, { 180, "bwd_180" },
 	{ -135, "bwd_-135" }, { -90, "fwd_-90" }, { -45, "fwd_-45" } }
+
 local function crawl_clip(rel)
 	local best, bd
 	for _, c in ipairs(CRAWL) do
@@ -186,12 +187,15 @@ end
 LS.Abort = abort
 
 LS.BUDDY_SHARE = 0.5
+
 local function buddy_start(npc, p, d, now)
 	local rel = math.AngleDifference((npc:GetPos() - p:GetPos()):Angle().y, p:GetAngles().y)
 	local sd = rel > 0 and "4" or "6"
 	local pre = "mwbr_laststand_"
 	for _, ph in ipairs({ "in", "mid", "out" }) do
-		if not (has(npc, pre .. "help_" .. ph .. "_" .. sd) and has(p, pre .. "hurt_" .. ph .. "_" .. sd)) then return nil end
+		if not (has(npc, pre .. "help_" .. ph .. "_" .. sd) and has(p, pre .. "hurt_" .. ph .. "_" .. sd)) then
+			return nil
+		end
 	end
 	Move.Stop(npc)
 	Move.Stop(p)

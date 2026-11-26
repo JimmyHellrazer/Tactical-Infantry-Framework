@@ -326,7 +326,9 @@ local function plan(sq, now)
 		moving, covering = covering, moving
 		t.goal = advance_goal(moving, threat, obj)
 		SQ.Log(sq, "bound: group ", t.moving, " moves (", #moving, "), ", #covering, " cover; ", math.floor(dist), "u from enemy")
-		if moving[1] then TIF.Say(moving[1], (moving[1].tifSupp or 0) > 0.3 and "cover_me" or (obj and "advance" or "moving"), 0.6) end
+		if moving[1] then
+			TIF.Say(moving[1], (moving[1].tifSupp or 0) > 0.3 and "cover_me" or (obj and "advance" or "moving"), 0.6)
+		end
 		if covering[1] then TIF.Say(covering[1], "suppressing", 0.5) end
 	end
 	for _, m in ipairs(covering) do set_role(m, "base", nil) end

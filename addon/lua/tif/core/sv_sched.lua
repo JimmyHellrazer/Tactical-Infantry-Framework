@@ -89,6 +89,7 @@ local function update_tiers()
 		end
 	end
 end
+
 timer.Create("tif_sched_tiers", 1, 0, update_tiers)
 
 hook.Add("Tick", "tif_sched", function()

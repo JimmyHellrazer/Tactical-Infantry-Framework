@@ -293,4 +293,5 @@ end
 local weaponCache = setmetatable({}, { __mode = "k" })
 
 function A.WeaponSet() return nil end
+
 function A.PitchPose() return 0 end

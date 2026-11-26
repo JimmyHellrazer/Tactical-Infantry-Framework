@@ -81,6 +81,7 @@ function TIF.FactionCanon(id)
 	local A = TIF.FactionAlias
 	return (A and id and A[id]) or id
 end
+
 local function names_it(list, id)
 	if not list then return false end
 	if list[id] then return true end
@@ -99,6 +100,7 @@ end
 
 local relCache = {}
 function TIF.ClearRelationCache() relCache = {} end
+
 timer.Create("tif_relation_cache", 1, 0, TIF.ClearRelationCache)
 
 local relation_of

@@ -3,7 +3,7 @@ local pass, fail = 0, 0
 local function check(c, what) if c then pass = pass + 1 else fail = fail + 1 print("FAIL: " .. what) end end
 local stored = { tif_mw_ram1500 = {}, tif_mw_hilux = {}, gtav_insurgent = {} }
 local src = io.open(ROOT .. "tif/vehicle/sv_mounted.lua"):read("*a")
-local block = src:match("(MT%.CAR_FALLBACK = .-\nend\nfunction MT%.VehicleClass.-\nend\n)")
+local block = src:match("(MT%.CAR_FALLBACK = .-\nend\n+function MT%.VehicleClass.-\nend\n)")
 check(block ~= nil, "fallback block")
 local MT = {}
 local env = setmetatable({ MT = MT, isstring = function(x) return type(x) == "string" end, scripted_ents = { GetStored = function(c) return stored[c] end } }, { __index = _G })

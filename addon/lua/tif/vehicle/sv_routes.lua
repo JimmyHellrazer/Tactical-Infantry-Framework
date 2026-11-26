@@ -99,10 +99,12 @@ local function grounded(a, b)
 	end
 	return true
 end
+
 local function clear(a, b)
 	hull.start, hull.endpos = a, b
 	return not util.TraceHull(hull).Hit and grounded(a, b)
 end
+
 local function simplify(pts)
 	local out = { pts[1] }
 	local i = 1

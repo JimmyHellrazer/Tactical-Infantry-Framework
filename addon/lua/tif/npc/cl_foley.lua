@@ -213,7 +213,9 @@ function C.Track(ent, st, now, clip, cyc, near)
 				for i = 1, #ev do
 					local e = ev[i]
 					local t = e[1]
-					if (not wrapped and t > p and t <= cyc) or (wrapped and (t > p or t <= cyc)) then C.Fire(ent, st, e, clip, now) end
+					if (not wrapped and t > p and t <= cyc) or (wrapped and (t > p or t <= cyc)) then
+						C.Fire(ent, st, e, clip, now)
+					end
 				end
 			end
 		end
@@ -224,6 +226,7 @@ end
 C.CIV_SCAN = 0.5
 local civs, civScanT, bySeq = {}, 0, nil
 local civState = setmetatable({}, { __mode = "k" })
+
 local function clip_of_seq(name)
 	if not bySeq then
 		bySeq = {}

@@ -9,6 +9,7 @@ W.HOLD_LONG = 30
 W.MARK_RADIUS = 1000
 
 local function ev(...) if TIF.Event then TIF.Event("watch", ...) end end
+
 local function name_of(e) return IsValid(e) and (e:GetClass() .. "#" .. e:EntIndex()) or "-" end
 
 function W.Check(now)
@@ -78,9 +79,13 @@ local function describe(e, from)
 		bits[#bits + 1] = "\"" .. tostring(e.tifAction or "-") .. "\""
 		bits[#bits + 1] = "act " .. (e.tifAct and e.tifAct.name or "-")
 		if e.tifCQB then bits[#bits + 1] = "cqb " .. tostring(e.tifCQB.label) end
-		if e.tifShield then bits[#bits + 1] = "shield " .. tostring(e.tifShield.varName) .. "/" .. tostring(e.tifShield.phase) end
+		if e.tifShield then
+			bits[#bits + 1] = "shield " .. tostring(e.tifShield.varName) .. "/" .. tostring(e.tifShield.phase)
+		end
 		if e.tifMelee then bits[#bits + 1] = "melee " .. tostring(e.tifMelee.fight or e.tifMelee.phase) end
-		if e.tifMove and e.tifMove.goal then bits[#bits + 1] = string.format("moving (%.0f u to go)", e.tifMove.goal:Distance(p)) end
+		if e.tifMove and e.tifMove.goal then
+			bits[#bits + 1] = string.format("moving (%.0f u to go)", e.tifMove.goal:Distance(p))
+		end
 		if e.tifDead or e.tifDying then bits[#bits + 1] = "dying" end
 	else
 		bits[#bits + 1] = "state " .. tostring(e.state)

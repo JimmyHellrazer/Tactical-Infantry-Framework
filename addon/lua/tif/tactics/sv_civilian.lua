@@ -42,7 +42,9 @@ end
 
 local list = {}
 function Civ.Register(civ) list[civ] = true end
+
 function Civ.Unregister(civ) list[civ] = nil end
+
 function Civ.List()
 	local out = {}
 	for c in pairs(list) do if IsValid(c) then out[#out + 1] = c end end

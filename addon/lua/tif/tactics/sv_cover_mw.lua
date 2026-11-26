@@ -57,7 +57,9 @@ local CORNER = { ls = true, rs = true, lc = true, rc = true }
 local CROUCHED = { cr = true, lc = true, rc = true, st = true }
 local OVER = { cr = true, st = true }
 MW.CROUCH_CORNER = 0.4
+
 local function has_type(cov, t) return cov.host and TIF.GTG.Clip("mwc_" .. t .. "_hide", cov.host) ~= nil end
+
 local function cover_type(cov)
 	if cov.high then
 		local l = cov.side == "l"
@@ -69,6 +71,7 @@ local function cover_type(cov)
 end
 
 local function hide_yaw(cov) return LEFT[cov.t] and cov.ny - 90 or cov.ny + 90 end
+
 local function threat_yaw(cov) return cov.ny + 180 end
 
 local function find_edge(pt, t, z)
@@ -128,6 +131,7 @@ local TO_R = { rs = true, cr = true, st = true, rc = true }
 local TO_L = { ls = true, cr = true, st = true, lc = true }
 local SHUF_TO = { ls = { r = TO_R }, lc = { r = TO_R }, rs = { l = TO_L }, rc = { l = TO_L },
 	cr = { l = TO_L, r = TO_R }, st = { l = TO_L, r = TO_R } }
+
 local function travel(c) return c and math.sqrt(c.move[1] ^ 2 + c.move[2] ^ 2) or 0 end
 
 function MW.PlanShuffle(npc, cov)
@@ -165,6 +169,7 @@ end
 local GAITS = { jog = true, run = true }
 
 MW.CQB_WALK_MAX = 130
+
 local function cqb_style(npc, cov)
 	if npc.tifCQB or npc:GetNW2Bool("tif_cqb", false) then return true end
 	if cov.indoor == nil then
@@ -174,6 +179,7 @@ local function cqb_style(npc, cov)
 	return cov.indoor
 end
 MW.CqbStyle = cqb_style
+
 local function arrivals(npc, cov, gait)
 	cov.arrCache = cov.arrCache or {}
 	local key = cov.t .. gait
@@ -282,11 +288,14 @@ end
 MW.EXIT_COMMIT = 45
 MW.EXIT_CUT = 0.5
 MW.EXIT_WALK_CUT = 0.8
+
 local function exit_goal(npc)
 	local pos = npc:GetPos()
 	local sq = npc.tifSquad
 	local lead = sq and sq.leader
-	if IsValid(lead) and lead ~= npc and not lead.tifDead and lead:GetPos():DistToSqr(pos) > 220 * 220 then return lead:GetPos() end
+	if IsValid(lead) and lead ~= npc and not lead.tifDead and lead:GetPos():DistToSqr(pos) > 220 * 220 then
+		return lead:GetPos()
+	end
 	local post = (npc.tifGuardPost and npc.tifGuardPost.pos) or npc.tifPost
 	if post and post:DistToSqr(pos) > 150 * 150 then return post end
 	return nil
@@ -329,7 +338,9 @@ function MW.PickXin(npc, cov, maxErr, yaw, crouched)
 			if not c then break end
 			local e = math.abs(math.AngleDifference(want, c.move[3] or 0))
 
-			if not be or e < be - 1 or (math.abs(e - be) <= 1 and math.random() < 0.5) then best, be, bt = n, e, c.move[3] or 0 end
+			if not be or e < be - 1 or (math.abs(e - be) <= 1 and math.random() < 0.5) then
+				best, be, bt = n, e, c.move[3] or 0
+			end
 		end
 		if best and be <= (maxErr or MW.XIN_MAX_ERR) then return best, bt end
 	end
@@ -1114,6 +1125,7 @@ local FLASH = {
 
 local INTERRUPTIBLE = { mwt_ = true, mwl_ = true, mwx_ = true, mws_ = true, mwr_ = true, mwi_ = true, mwa_ = true,
 	mwk_ = true }
+
 function R.Think(npc, now)
 
 	if TIF.React22 then TIF.React22.Think(npc, now) end
@@ -1162,7 +1174,9 @@ local cvGrenades = CreateConVar("tif_grenades", "1", FCVAR_ARCHIVE, "Soldiers th
 function GR.ReleaseU(c)
 	for _, t in ipairs(c and c.tags or {}) do
 		local a = t[4]
-		if istable(a) and isstring(a.MoveEvent) and string.find(a.MoveEvent, "grenade_throw", 1, true) then return t[2] end
+		if istable(a) and isstring(a.MoveEvent) and string.find(a.MoveEvent, "grenade_throw", 1, true) then
+			return t[2]
+		end
 	end
 	return 0.58
 end
@@ -1198,7 +1212,9 @@ end
 
 local OPEN = { [0] = "mwg_throw_stand", [1] = "mwg_throw_crouch", [2] = "mwg_throw_prone" }
 function GR.OpenThrow(npc, c, now, lost)
-	if npc.tifThrow or npc.tifAct or npc.tifCov or npc.tifVeh or npc.tifDowned or not c or c.visible then return false end
+	if npc.tifThrow or npc.tifAct or npc.tifCov or npc.tifVeh or npc.tifDowned or not c or c.visible then
+		return false
+	end
 	if not (TIF.HitsMW and TIF.HitsMW.Use(npc)) then return false end
 	local st = npc.tifProne and 2 or (npc:GetTIFStance() == A.STANCE_CROUCH and 1 or 0)
 	local name = OPEN[st]

@@ -32,12 +32,15 @@ end
 function API.SquadHold(sq, pos, yaw) TIF.Squad.SetOrder(sq, "hold", pos, yaw) end
 
 function API.SpawnCivilian(pos, opts) return TIF.Civ and TIF.Civ.Spawn(pos, opts) or nil end
+
 function API.ScareCivilians(pos, radius, amount) if TIF.Civ then TIF.Civ.Scare(pos, radius or 1500, amount or 0.6) end end
+
 function API.Civilians() return TIF.Civ and TIF.Civ.List() or {} end
 
 function API.SetCivilianLeaveShare(k) if TIF.Civ then TIF.Civ.LEAVE_SHARE = math.Clamp(k, 0, 1) end end
 
 function API.SetFlashlights(state) if TIF.Flashlight then TIF.Flashlight.Set(state) end end
+
 function API.SquadFree(sq) TIF.Squad.SetOrder(sq, "free") end
 
 function API.SquadAdvance(sq, pos, opts) TIF.Squad.SetOrder(sq, "advance", pos, nil, opts) end
@@ -112,19 +115,23 @@ end
 function API.SquadClearing(sq) return sq ~= nil and sq.cqb ~= nil end
 
 function API.HumanShield(captor, civ, opts) return TIF.Shield and TIF.Shield.Start(captor, civ, opts) or nil end
+
 function API.HumanShieldOf(ent) return ent and (ent.tifShield or ent.tifHeld) or nil end
 
 function API.SquadClearGo(sq, opts) return TIF.CQB.Go(sq, opts) end
+
 function API.SquadStopClear(sq, reason) TIF.CQB.Stop(sq, reason) end
 
 function API.SquadClearDoor(sq) return sq and sq.cqb and sq.cqb.door or nil end
 
 function API.SquadSetLeader(sq, ent) if sq and IsValid(ent) then TIF.Squad.SetLeader(sq, ent) end end
+
 function API.SquadFormation(sq, f)
 	if sq and table.HasValue(TIF.Squad.FORMATIONS, f) then sq.formation = f TIF.Squad.Publish(sq) end
 end
 
 function API.RoomAt(pos) return TIF.Building.RoomAt(pos) end
+
 function API.DoorRooms(d, fromPos)
 	if not d then return nil, nil end
 	local BLD = TIF.Building
@@ -134,6 +141,7 @@ function API.DoorRooms(d, fromPos)
 	if fromPos:DistToSqr(pa) <= fromPos:DistToSqr(pb) then return ra, rb end
 	return rb, ra
 end
+
 function API.RoomCenter(room)
 	if not (room and room.areas and #room.areas > 0) then return nil end
 	local c = Vector()
@@ -232,7 +240,9 @@ function API.SquadState(sq)
 	for ent, k in pairs(sq.knowledge or {}) do
 		if TIF.IsLiveCombatant(ent) and now - k.time < 15 then
 			st.enemies = st.enemies + 1
-			if not st.lastContact or k.time > st.lastContact.time then st.lastContact = { pos = Vector(k.pos), time = k.time } end
+			if not st.lastContact or k.time > st.lastContact.time then
+				st.lastContact = { pos = Vector(k.pos), time = k.time }
+			end
 		end
 	end
 	st.mount = sq.mount and sq.mount.phase or nil
@@ -255,7 +265,9 @@ function API.SquadEnemies(sq, maxAge)
 end
 
 function API.Garrison(def) return TIF.Base.Garrison(def) end
+
 function API.RemoveGarrison(base) if base then TIF.Base.Remove(base) end end
+
 function API.GarrisonAdopt(base, sq, job) return TIF.Base.Adopt(base, sq, job) end
 
 function API.GarrisonRelease(base, list)
@@ -348,16 +360,21 @@ function API.PaintVehicle(veh, c, c2)
 		veh:SetColor(Color(c.r, c.g, c.b, veh:GetColor().a))
 	end
 end
+
 function API.Mount(sq, veh) return TIF.Mounted.Mount(sq, veh) end
 
 function API.MountPassive(sq, veh) return TIF.Mounted.MountPassive(sq, veh) end
 
 function API.PlayerSquad(ply) return TIF.Squad.ForPlayer(ply) end
+
 function API.AddToSquad(sq, npc) TIF.Squad.Add(sq, npc) return npc.tifSquad == sq end
+
 function API.SquadOrder(sq, kind, pos, yaw) TIF.Squad.SetOrder(sq, kind, pos, yaw) end
 
 function API.MountSeated(sq, veh) return TIF.Mounted.MountSeated(sq, veh) end
+
 function API.DriveTo(sq, pos, stay) return TIF.Mounted.DriveTo(sq, pos, stay) end
+
 function API.Dismount(sq) return TIF.Mounted.Dismount(sq, nil, "ordered") end
 
 function API.MountPhase(sq) return sq and sq.mount and sq.mount.phase or nil end
@@ -369,6 +386,7 @@ function API.Convoy(squads, pos, stay)
 end
 
 function API.VehicleUsable(veh) return TIF.Glide.IsUsable(veh) end
+
 function API.VehicleDestroyed(veh)
 	if not IsValid(veh) or veh.hasExploded then return true end
 	return veh.GetChassisHealth ~= nil and veh:GetChassisHealth() <= 0

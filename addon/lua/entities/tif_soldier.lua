@@ -126,7 +126,9 @@ function ENT:Initialize()
 	local parts = ""
 
 	local modMain, modParts
-	if TIF.Modular and TIF.Modular.Pick then modMain, modParts = TIF.Modular.Pick(fac, self.tifArchId or "rifleman") end
+	if TIF.Modular and TIF.Modular.Pick then
+		modMain, modParts = TIF.Modular.Pick(fac, self.tifArchId or "rifleman")
+	end
 	if modMain then vis, parts = modMain, modParts or "" end
 	local skin, groups = random_look(vis, fac)
 	if modMain and fac.modular.skins == false then skin = 0 end
@@ -214,6 +216,7 @@ end
 
 util.AddNetworkString("tif_slots_missing")
 local lastRefresh = setmetatable({}, { __mode = "k" })
+
 net.Receive("tif_slots_missing", function(_, ply)
 	local ent = net.ReadEntity()
 	if not (IsValid(ent) and ent.TIFSoldier and ent.tifSlots and not ent.tifDead) then return end
@@ -254,6 +257,7 @@ function ENT:TIFSetHost(id)
 end
 
 local SLIM_MIN, SLIM_MAX, SLIM_CROUCH = Vector(-7, -7, 0), Vector(7, 7, 72), Vector(7, 7, 46)
+
 function ENT:TIFApplyStance()
 	local crouch = self:GetTIFStance() == 1
 
@@ -263,6 +267,7 @@ function ENT:TIFApplyStance()
 		self:SetCollisionBounds(HULL_MIN, crouch and CROUCH_MAX or STAND_MAX)
 	end
 end
+
 function ENT:TIFSetSlim(on)
 	on = on or nil
 	if self.tifSlim == on then return end

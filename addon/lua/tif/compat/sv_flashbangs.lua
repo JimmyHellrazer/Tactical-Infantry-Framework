@@ -10,6 +10,7 @@ function TIF.FlashScale(thrower, ent)
 	if thrower ~= ent and TIF.Relation(thrower, ent) ~= TIF.REL_ALLY then return 1 end
 	return math.Clamp(cvFriendly:GetFloat(), 0, 1)
 end
+
 local function thrower_of(inflictor)
 	if not IsValid(inflictor) then return nil end
 	local o = inflictor.GetOwner and inflictor:GetOwner()
@@ -63,6 +64,8 @@ local function hook_sandswep()
 		return r
 	end
 end
+
 hook.Add("InitPostEntity", "tif_flashbangs", hook_sandswep)
+
 hook.Add("OnReloaded", "tif_flashbangs", hook_sandswep)
 timer.Simple(0, hook_sandswep)

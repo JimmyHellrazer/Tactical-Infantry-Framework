@@ -132,6 +132,7 @@ function M.SetGoal(npc, pos, speed, tag, faceYaw)
 end
 
 M.SPRINT_DIST = 300
+
 function M.CombatGait(npc, goal)
 	local m = npc.tifMove
 	if m.goal and goal and m.goal:DistToSqr(goal) < SAME_GOAL * SAME_GOAL
@@ -189,6 +190,7 @@ function M.UpdateThreatAreas(npc)
 end
 
 local LANE_TAN = math.tan(math.rad(10))
+
 local function in_lane(lanes, p)
 	for i = 1, #lanes do
 		local l = lanes[i]
@@ -267,6 +269,7 @@ function M.RunGunDir(npc)
 end
 
 M.SPRINT_SCALE = 1.0
+
 function sprint_speed(npc, m, sp, now)
 	local full = speed_of(npc, sp)
 	if sp ~= "sprint" then
@@ -387,6 +390,7 @@ function speed_of(npc, mode)
 	if w and w > 0 and mode ~= "crawl" then v = math.min(v, M.WADE_CAP[w] or v) end
 	return v
 end
+
 function base_speed(npc, mode)
 	local s = npc.tifSpeeds
 	local mult = npc.tifArch.speeds
@@ -548,6 +552,7 @@ function M.Step(npc)
 end
 
 local FACE_ANG = Angle and Angle(0, 0, 0)
+
 function M.Face(npc, dt)
 
 	if npc.tifVeh or npc.tifLeaving then return end

@@ -174,7 +174,9 @@ function P.Busy(npc, now)
 	if pend and now >= pend.at then
 		npc.tifPendingReact = nil
 
-		if not npc.tifPassiveBusy and not npc.tifAct and npc.tifAware ~= AW.ENGAGED and not in_cqb(npc) then pend.fn(now) end
+		if not npc.tifPassiveBusy and not npc.tifAct and npc.tifAware ~= AW.ENGAGED and not in_cqb(npc) then
+			pend.fn(now)
+		end
 	end
 	local r = npc.tifPassiveBusy
 	if r then
@@ -209,6 +211,7 @@ end
 P.NEWENEMY_R = 600
 P.POINT_R = 900
 P.POINT_SQUAD_COOLDOWN = 25
+
 local function dir8(npc, pos)
 	local d = math.AngleDifference((pos - npc:GetPos()):Angle().y, npc:GetAngles().y)
 	local a = math.abs(d)
@@ -224,6 +227,7 @@ local function dir_num(npc, pos) return (string.gsub(dir8(npc, pos), "^2[lr]$", 
 local GRADE = { footstep = "sm", gunfire = "smed", explosion = "smed", man_down = "smed", alarm = "smed" }
 
 P.MW22_SHARE = 0.5
+
 local function mw22_variant(npc, grade, posture, mv, pos)
 	local kind = (grade == "lg") and "threat" or "cur"
 	local d = dir_to(npc, pos)
@@ -242,7 +246,9 @@ local function react(npc, now, grade, pos, posture, opts)
 	local mv = moving(npc) and "walk" or "idle"
 	local name = "mwr_" .. posture .. "_" .. mv .. "_" .. grade .. "_" .. dir_to(npc, pos)
 	if not has(npc, name) then name = "mwr_" .. posture .. "_idle_" .. grade .. "_" .. dir_to(npc, pos) end
-	if grade ~= "look" and math.random() < P.MW22_SHARE then name = mw22_variant(npc, grade, posture, mv, pos) or name end
+	if grade ~= "look" and math.random() < P.MW22_SHARE then
+		name = mw22_variant(npc, grade, posture, mv, pos) or name
+	end
 	if not has(npc, name) then return false end
 	Move.Stop(npc)
 	local rate = opts and opts.rate or 1
@@ -255,7 +261,9 @@ local function react(npc, now, grade, pos, posture, opts)
 end
 
 function P.OnAware(npc, old, new, now)
-	if not P.Use(npc) or npc.tifCov or npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifSurrendered then return end
+	if not P.Use(npc) or npc.tifCov or npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifSurrendered then
+		return
+	end
 	if in_cqb(npc) then npc.tifPendingReact = nil return end
 	if npc.tifActivity then return end
 	if npc.tifPassiveBusy then return end
@@ -342,6 +350,7 @@ end
 local INVESTIGATE = { "mwi_around", "mwi_middle", "mwi_up", "mwi_radio",
 
 	"mwi_area1", "mwi_area2", "mwi_area3", "mwi_area4", "mwi_threat1", "mwi_threat2", "mwi_threat3" }
+
 function P.Investigate(npc, now)
 	if not P.Use(npc) then return false end
 	local stim = npc.tifStim

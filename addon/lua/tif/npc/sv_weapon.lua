@@ -9,16 +9,20 @@ local cvDamage = CreateConVar("tif_damage_scale", "1", FCVAR_ARCHIVE, "Multiplie
 
 local cvDamageFriendly = CreateConVar("tif_damage_friendly", "1", FCVAR_ARCHIVE, "Multiplier on damage dealt by soldiers on the players' side")
 local cvDamageEnemy = CreateConVar("tif_damage_enemy", "1", FCVAR_ARCHIVE, "Multiplier on damage dealt by soldiers not on the players' side")
+
 function TIF.SideDamageScale(npc)
 	local friendly = TIF.FactionRelation(TIF.FactionOf(npc), TIF.PlayerFaction()) == TIF.REL_ALLY
 	return math.max(0, (friendly and cvDamageFriendly or cvDamageEnemy):GetFloat())
 end
+
 local cvAccuracy = CreateConVar("tif_accuracy_scale", "1", FCVAR_ARCHIVE, "Higher = more accurate soldiers (divides aim error)")
 
 CreateConVar("tif_health_scale", "1", FCVAR_ARCHIVE, "Multiplier on soldier health (new soldiers)")
 local cvReaction = CreateConVar("tif_reaction_scale", "1", FCVAR_ARCHIVE, "Multiplier on how long soldiers take to react to a new enemy (lower = faster)")
 local cvView = CreateConVar("tif_view_scale", "1", FCVAR_ARCHIVE, "Multiplier on how far soldiers can see")
+
 function TIF.ReactionScale() return math.max(0, cvReaction:GetFloat()) end
+
 function TIF.ViewScale() return math.max(0.1, cvView:GetFloat()) end
 
 hook.Add("EntityTakeDamage", "tif_side_damage", function(target, dmg)
@@ -144,6 +148,7 @@ end
 function W.Switching(npc) return npc.tifSwitch ~= nil end
 
 W.SIDEARM = "weapon_tifmw_m19"
+
 function W.ForcePistol(npc)
 	local arms = npc.tifArms
 	if not arms then return false end
@@ -266,6 +271,7 @@ W.SEMI = {
 	heavy = { close = { 1, 1 }, mid = { 1, 1 }, long = { 1, 1 },
 		gap = { { 1.8, 2.2 }, { 2.2, 2.7 }, { 2.7, 3.3 } }, pause = { { 1.8, 2.2 }, { 2.2, 2.7 }, { 2.7, 3.3 } } },
 }
+
 local function semi_of(def) return def and def.semi and W.SEMI[def.semi] or nil end
 
 local function band(dist)
@@ -301,7 +307,9 @@ local function burst_size(npc, w, def, dist, braced, walking)
 	if b[2] <= 1 and kind ~= "pistol" then return 1 end
 	local P = W.PROFILES[kind] or W.PROFILES.rifle
 	local bn = band(dist)
-	if def and not def.auto and kind ~= "shotgun" and kind ~= "pistol" then return (bn == "close" and math.random() < 0.5) and 2 or 1 end
+	if def and not def.auto and kind ~= "shotgun" and kind ~= "pistol" then
+		return (bn == "close" and math.random() < 0.5) and 2 or 1
+	end
 	if kind == "lmg" and braced then return math.random(b[1], b[2]) end
 	local r = P[bn]
 
@@ -354,7 +362,9 @@ function W.CoveringBurst(npc, now)
 	local arch = npc.tifArch
 	local w = npc.tifWep
 	if not w or w.reloadEnd > 0 or w.ammo < 4 or (w.def and w.def.projectile) then return false end
-	if npc.tifAware ~= TIF.AWARE.ENGAGED or now < (npc.tifNextCoverFire or 0) or npc.tifVeh or npc.tifProne then return false end
+	if npc.tifAware ~= TIF.AWARE.ENGAGED or now < (npc.tifNextCoverFire or 0) or npc.tifVeh or npc.tifProne then
+		return false
+	end
 	npc.tifNextCoverFire = now + 3
 	local c = npc.tifPrimaryC
 	if not c or now - (c.seenAt or -99) > 2.5 then return false end
@@ -536,6 +546,7 @@ local function registered(name)
 	end
 	return h
 end
+
 local function shot_sound(npc, w, src)
 	local mw = w.def and w.def.mw
 	if mw and registered(mw.fire) then
@@ -650,7 +661,9 @@ function W.Think(npc, now)
 	to:Normalize()
 	local fwd = npc:GetForward()
 
-	if not npc.tifBlind and not npc.tifVeh and not npc.tifAimFree and to:Dot(fwd) < (covering and 0.5 or AIM_TOLERANCE) then return end
+	if not npc.tifBlind and not npc.tifVeh and not npc.tifAimFree and to:Dot(fwd) < (covering and 0.5 or AIM_TOLERANCE) then
+		return
+	end
 
 	local def = w.def
 

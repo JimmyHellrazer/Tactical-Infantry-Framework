@@ -208,7 +208,9 @@ function P.Update(npc, dt, now)
 	for e, c in pairs(K.contacts) do
 		if not TIF.IsLiveCombatant(e) then
 
-			if npc.tifPrimary == e and c.confirmed and (now - c.seenAt) < 3 and TIF.IsDead(e) then TIF.Say(npc, "kill", 0.6) end
+			if npc.tifPrimary == e and c.confirmed and (now - c.seenAt) < 3 and TIF.IsDead(e) then
+				TIF.Say(npc, "kill", 0.6)
+			end
 			K.contacts[e] = nil
 		else
 			if c.visible and (now - (c.lastCheck or 0)) > STALE_SIGHT then c.visible = false end

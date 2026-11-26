@@ -5,6 +5,7 @@ local Prof = TIF.Prof
 
 local cvCrowd = CreateConVar("tif_crowd", "1", FCVAR_ARCHIVE,
 	"Soldiers and civilians steer round each other and come apart when they overlap (0: off)")
+
 function Crowd.On() return cvCrowd:GetBool() end
 
 Crowd.LOOK = 80
@@ -22,6 +23,7 @@ Crowd.UNSTACK_AFTER = 1.0
 Crowd.UNSTACK_GAP = 2.0
 
 local function prof_begin(name) if Prof then Prof.Begin(name) end end
+
 local function prof_end() if Prof then Prof.End() end end
 
 local bodyList, bodyPool, lastScanTime = {}, {}, -1
@@ -69,6 +71,7 @@ function Crowd.Bodies(now)
 	for i = #bodyList, count + 1, -1 do bodyList[i] = nil end
 	return bodyList
 end
+
 function Crowd.Invalidate() lastScanTime = -1 end
 
 local SIDE_MIN, SIDE_MAX = Vector(-12, -12, 8), Vector(12, 12, 56)
@@ -140,7 +143,9 @@ function Crowd.Steer(ent, forward, wantSpeed, goal, now)
 				elseif blockerAhead < 40 then
 					state.cap = math.min(wantSpeed, 30)
 				end
-				if alongSpeed < -Crowd.FOLLOW and blockerAhead < 40 then state.cap = math.min(state.cap or wantSpeed, wantSpeed * 0.6) end
+				if alongSpeed < -Crowd.FOLLOW and blockerAhead < 40 then
+					state.cap = math.min(state.cap or wantSpeed, wantSpeed * 0.6)
+				end
 			end
 		end
 		prof_end()
@@ -194,8 +199,11 @@ end
 
 Crowd.WAY_DIST, Crowd.WAY_T, Crowd.WAY_SPEED, Crowd.WAY_AGAIN = 40, 1.2, 70, 4
 Crowd.Way = Crowd.Way or {}
+
 function Crowd.MakeWay(blocker, mover, forward, now)
-	if not cvCrowd:GetBool() or not (IsValid(blocker) and blocker.TIFSoldier and blocker.tifMove and blocker.loco and IsValid(mover)) then return false end
+	if not cvCrowd:GetBool() or not (IsValid(blocker) and blocker.TIFSoldier and blocker.tifMove and blocker.loco and IsValid(mover)) then
+		return false
+	end
 	if blocker.tifMove.goal or blocker.tifAct or blocker.tifCov or blocker.tifProne or blocker.tifVeh or blocker.tifShield
 		or blocker.tifMelee or blocker.tifBipod or blocker.tifDowned or blocker.tifDead or (blocker.tifCQB and blocker.tifCQB.wait) then return false end
 	if now < (blocker.tifWayNext or 0) then return false end

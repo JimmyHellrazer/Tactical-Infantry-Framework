@@ -57,5 +57,7 @@ local function open(holdMode)
 end
 
 concommand.Add("tif_menu", function() open(false) end, nil, "Open the squad order menu")
+
 concommand.Add("+tif_menu", function() open(true) end)
+
 concommand.Add("-tif_menu", function() if IsValid(frame) then frame:Close() end end)

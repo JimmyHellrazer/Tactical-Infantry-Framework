@@ -100,7 +100,9 @@ admin("tif_order", function(ply, args)
 	local tr = ply:GetEyeTrace()
 	local sq
 
-	if IsValid(tr.Entity) and tr.Entity.TIFSoldier and tr.Entity.tifSquad and TIF.Relation(tr.Entity, ply) == TIF.REL_ALLY then sq = tr.Entity.tifSquad end
+	if IsValid(tr.Entity) and tr.Entity.TIFSoldier and tr.Entity.tifSquad and TIF.Relation(tr.Entity, ply) == TIF.REL_ALLY then
+		sq = tr.Entity.tifSquad
+	end
 	if not sq then
 		for _, s in pairs(TIF.Squad.List) do if s.leader == ply then sq = s break end end
 	end

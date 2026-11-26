@@ -79,7 +79,9 @@ function FE.Sanitize(t)
 	if istable(t.bodyRules) then
 		local rules = {}
 		for _, r in ipairs(t.bodyRules) do
-			if istable(r) and isstring(r[1]) and isstring(r[2]) then rules[#rules + 1] = { string.lower(r[1]), string.lower(r[2]) } end
+			if istable(r) and isstring(r[1]) and isstring(r[2]) then
+				rules[#rules + 1] = { string.lower(r[1]), string.lower(r[2]) }
+			end
 		end
 		if #rules > 0 then def.bodyRules = rules end
 	end
@@ -90,7 +92,9 @@ function FE.Sanitize(t)
 			retarget = t.modular.retarget == true }
 		if t.modular.skins == false then mod.skins = false end
 		for slot, list in pairs(t.modular.slots) do
-			if isstring(slot) and istable(list) then mod.slots[slot] = clean_list(list, SERVER and util.IsValidModel or nil) end
+			if isstring(slot) and istable(list) then
+				mod.slots[slot] = clean_list(list, SERVER and util.IsValidModel or nil)
+			end
 		end
 		for _, c in ipairs(istable(t.modular.combos) and t.modular.combos or {}) do
 			if istable(c) then
@@ -123,7 +127,9 @@ function FE.Sanitize(t)
 		local l = istable(t.loadouts) and t.loadouts[role]
 		if istable(l) then
 			local p, s = clean_list(l.primary, isGun), clean_list(l.secondary, isGun)
-			if #p > 0 or #s > 0 then def.loadouts[role] = { primary = #p > 0 and p or nil, secondary = #s > 0 and s or nil } end
+			if #p > 0 or #s > 0 then
+				def.loadouts[role] = { primary = #p > 0 and p or nil, secondary = #s > 0 and s or nil }
+			end
 		end
 	end
 	if not def.loadouts.default or not def.loadouts.default.primary then

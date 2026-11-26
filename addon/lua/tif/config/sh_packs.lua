@@ -45,6 +45,7 @@ local function variant_by_id(def, id)
 end
 
 TIF.VariantOverrides = TIF.VariantOverrides or {}
+
 function TIF.SetVariantOverride(owner, faction, mode)
 	if faction == nil then TIF.VariantOverrides[owner] = nil return end
 	local t = TIF.VariantOverrides[owner] or {}
@@ -117,11 +118,14 @@ local function check_all(print_ok)
 	if bad == 0 and print_ok then MsgN("[TIF] Every faction model can dress the soldier body.") end
 	return bad
 end
+
 if SERVER then
 	hook.Add("InitPostEntity", "tif_visual_check", function()
 		timer.Simple(8, function()
 			local n = check_all(false)
-			if n > 0 then TIF.Warn(n, " faction model(s) can't dress the soldier body; soldiers get the faction's other models instead") end
+			if n > 0 then
+				TIF.Warn(n, " faction model(s) can't dress the soldier body; soldiers get the faction's other models instead")
+			end
 		end)
 	end)
 end
@@ -130,6 +134,7 @@ TIF.VisualCheck = check_all
 
 TIF.VARIETY_WINDOW = 8
 TIF.VarietyBags = TIF.VarietyBags or {}
+
 function TIF.VarietyPick(facId, key, options)
 	local n = options and #options or 0
 	if n == 0 then return nil end
@@ -184,4 +189,5 @@ end
 for _, e in ipairs(TIF_CONTENT or {}) do
 	if istable(e) and isfunction(e[2]) then run(e[1], e[2]) end
 end
+
 TIF_CONTENT = nil

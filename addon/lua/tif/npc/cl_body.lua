@@ -290,6 +290,7 @@ local function add(t, clip, w)
 end
 
 Bd.HIP_MAX, Bd.HIP_RATE = 70, 240
+
 local function hip_turn(st, relAng, moveK)
 	st.hipWant = math.Clamp(relAng, -Bd.HIP_MAX, Bd.HIP_MAX) * math.Clamp(moveK, 0, 1)
 end
@@ -376,7 +377,7 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		return T, set
 	end
 
-	local AL =(PS and PS.alert) or (st.light and legs.alertFlash) or legs.alert
+	local AL = (PS and PS.alert) or (st.light and legs.alertFlash) or legs.alert
 	if AL and st.alertPosture and mode == 1 and stance ~= 1
 		and (speed < 10 or (math.abs(relAng) < 70 and speed < AL.walkSpeed * 1.5)) then
 		st.handLight = AL.handLight == true
@@ -629,6 +630,7 @@ Bd.KICK_W = 1
 Bd.BIPOD_W = 0.4
 Bd.BIPOD_HOLD = 1.2
 local cvKick = CreateClientConVar("tif_recoil_scale", "1", true, false, "MW19 body: strength of the recoil kicks (0 = off)")
+
 local function pool_of(K, kind, st)
 	local p = K[kind] and K[kind][st]
 	return p and #p > 0 and p or nil
@@ -661,6 +663,7 @@ local function kick_pool(ent, st, K)
 	return own(crouched), 1
 end
 Bd.KickPool = kick_pool
+
 local function recoil_kicks(ent, st, legs, now)
 	if not (st.vb and (legs.kicks or legs.whizby)) then return end
 	local K = legs.kicks
@@ -751,6 +754,7 @@ end
 local cvTrim = CreateClientConVar("tif_aim_trim", "1.2", true, false, "MW19 body: degrees the aimed upper body is tipped down (gun level at ~1.2)")
 Bd.AIM_TRIM = 1.2
 Bd.KICK, Bd.KICK_T = 2.5, 0.09
+
 local function vb_pose(ent, st, now, dt)
 	local b2, b4 = st.vbSpine2, st.vbSpine4
 	if b2 == nil then
@@ -813,6 +817,7 @@ local function vb_pose(ent, st, now, dt)
 end
 
 local HOLD_POS = Vector(0, 0, 0)
+
 local function hold_of(clip, u)
 	local U, H = TIFG_JGUN_UNDRIVEN, TIFG_JGUN_HOLD
 	local src = clip.from or clip.seq or ""
@@ -1684,6 +1689,7 @@ hook.Add("RenderScene", "tif_body_lod", function(origin, angles, fov)
 	LOD_VIEW.t = RealTime()
 	L.view = LOD_VIEW
 end)
+
 function L.Frame()
 	L.on = cvLOD:GetBool()
 	L.every = math.max(1, cvLODEvery:GetInt())
@@ -1702,6 +1708,7 @@ function L.Frame()
 	local tv = th / aspect
 	L.half = math.atan(math.sqrt(th * th + tv * tv)) + math.rad(L.MARGIN)
 end
+
 local function in_cone(ent)
 	local d = ent:WorldSpaceCenter() - L.eye
 	local dist2 = d.x * d.x + d.y * d.y + d.z * d.z
@@ -1711,6 +1718,7 @@ local function in_cone(ent)
 	if a >= math.pi then return true end
 	return d:Dot(L.fwd) >= dist * math.cos(a)
 end
+
 function L.OnScreen(ent, st)
 	if not L.live then return true end
 	if in_cone(ent) then

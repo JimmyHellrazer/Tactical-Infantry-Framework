@@ -15,12 +15,17 @@ function M.mul3(a, b)
 end
 
 function M.tr3(a) return { a[1], a[4], a[7], a[2], a[5], a[8], a[3], a[6], a[9] } end
+
 function M.mulv(a, v)
 	return { a[1] * v[1] + a[2] * v[2] + a[3] * v[3], a[4] * v[1] + a[5] * v[2] + a[6] * v[3], a[7] * v[1] + a[8] * v[2] + a[9] * v[3] }
 end
+
 function M.sub(a, b) return { a[1] - b[1], a[2] - b[2], a[3] - b[3] } end
+
 function M.dot(a, b) return a[1] * b[1] + a[2] * b[2] + a[3] * b[3] end
+
 function M.cross(a, b) return { a[2] * b[3] - a[3] * b[2], a[3] * b[1] - a[1] * b[3], a[1] * b[2] - a[2] * b[1] } end
+
 function M.len(a) return math_sqrt(M.dot(a, a)) end
 
 function M.unit(a)
@@ -92,7 +97,9 @@ end
 local function read_quat_rule(f, at, size)
 	f:Seek(at)
 	local control, count, index = f:ReadLong(), f:ReadLong(), f:ReadLong()
-	if count < 1 or count > MAX_TRIGGERS or at + index < 0 or at + index + count * TRIGGER_SIZE > size then return nil end
+	if count < 1 or count > MAX_TRIGGERS or at + index < 0 or at + index + count * TRIGGER_SIZE > size then
+		return nil
+	end
 	local triggers = {}
 	for k = 1, count do
 		local v = read_floats(f, at + index + (k - 1) * TRIGGER_SIZE, 12, {})
@@ -107,7 +114,9 @@ local function read_hitboxes(f, size, n)
 	if sets < 1 or at < 0 or at + 12 > size then return {} end
 	f:Seek(at + 4)
 	local count, index = f:ReadLong(), f:ReadLong()
-	if count < 0 or count > MAX_HITBOXES or at + index < 0 or at + index + count * HITBOX_SIZE > size then return {} end
+	if count < 0 or count > MAX_HITBOXES or at + index < 0 or at + index + count * HITBOX_SIZE > size then
+		return {}
+	end
 	local out, v = {}, {}
 	for h = 0, count - 1 do
 		local o = at + index + h * HITBOX_SIZE

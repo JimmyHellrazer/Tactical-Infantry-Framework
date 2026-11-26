@@ -55,7 +55,9 @@ local function first_clip(npc, list)
 end
 
 function CAS.TryDown(npc, dmg)
-	if not cvOn:GetBool() or npc.tifDowned or npc.tifDead or npc.tifVeh or npc.tifSurrendered or npc.tifNoDown then return false end
+	if not cvOn:GetBool() or npc.tifDowned or npc.tifDead or npc.tifVeh or npc.tifSurrendered or npc.tifNoDown then
+		return false
+	end
 	local amount = dmg:GetDamage()
 	if amount < npc:Health() then return false end
 	if amount > 150 or dmg:IsExplosionDamage() or npc.tifLastHitGroup == HITGROUP_HEAD then return false end

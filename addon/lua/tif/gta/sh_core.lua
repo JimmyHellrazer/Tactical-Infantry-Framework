@@ -67,6 +67,7 @@ TIFG.Rec = Rec
 hook.Add("EntityRemoved", "tif_gta_assets_rec", function(ent, full_update)
 	if not full_update then Recs[ent] = nil end
 end)
+
 local sight_out = {}
 local sight_tr = { mask = MASK_SOLID_BRUSHONLY, output = sight_out }
 
@@ -75,6 +76,7 @@ function TIFG.ClearSight(from, to, filter)
 	util.TraceLine(sight_tr)
 	return not sight_out.Hit
 end
+
 local MUZZLES = { "Gun_Muzzle", "muzzle", "muzzle_flash" }
 local HANDS = { "PH_R_Hand", "ValveBiped.Bip01_R_Hand" }
 
@@ -119,6 +121,7 @@ function TIFG.MuzzleAttachment(e)
 	end
 	return e.gtg_muz_att, e.gtg_muz_axis, e.gtg_muz_side
 end
+
 TIFG.FPS = 30
 local FPS = TIFG.FPS
 
@@ -471,6 +474,7 @@ end
 function TIFG.Unarmed(w)
 	return IsValid(w) and TIFG.Data.melee.unarmed[w:GetClass()] == true
 end
+
 TIFG.Characters = TIFG.Characters or {}
 TIFG.ByModel = TIFG.ByModel or {}
 TIFG.Aliases = TIFG.Aliases or {}
@@ -483,6 +487,7 @@ function TIFG.PMS.Worn(ent)
 end
 
 function TIFG.IsPerson(e) return IsValid(e) and (e:IsPlayer() or e:IsNPC() or e:IsNextBot()) end
+
 function TIFG.IsLivePerson(e) return IsValid(e) and (e:IsPlayer() and e:Alive() or e:IsNPC() or e:IsNextBot()) end
 
 function TIFG.HeelLift(ent)
@@ -490,6 +495,7 @@ function TIFG.HeelLift(ent)
 	local id = TIFG.ByModel[ent:GetModel()]
 	return id and TIFG.Data.heels[id] or 0
 end
+
 TIFG.RegistryVersion = TIFG.RegistryVersion or 0
 
 local DEFAULT_SEQUENCES = { idle = "gtg_idle", walk = "gtg_walk", run = "gtg_run", sprint = "gtg_sprint" }
@@ -558,6 +564,7 @@ function TIFG.GetCharacterList()
 	table.sort(out, by_name)
 	return out
 end
+
 local check_content
 function TIFG.GetCharacter(ply)
 	local r = Rec(ply)
@@ -584,6 +591,7 @@ TIFG.Motion = TIFG.Motion or { CHUTE = -1, COVER = -2, STRAFE = -3, State = func
 TIFG.IN_BLOCK, TIFG.IN_DETONATE = IN_BULLRUSH, IN_GRENADE2
 
 TIFG.Weapons = TIFG.Weapons or {}
+
 function TIFG.RegisterWeaponDef(swep)
 	TIFG.Weapons[swep.ClassName] = swep
 	TIFG.RegisterWeapon(swep, swep.ClassName)

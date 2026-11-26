@@ -501,6 +501,7 @@ timer.Create("tif_base_tick", 0.5, 0, function()
 end)
 
 local function vec_out(v) return { math.Round(v.x, 1), math.Round(v.y, 1), math.Round(v.z, 1) } end
+
 local function vec_in(t) return Vector(t[1], t[2], t[3]) end
 
 function B.Serialize(def)

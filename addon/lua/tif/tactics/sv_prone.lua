@@ -48,6 +48,7 @@ function P.Available(npc)
 end
 
 function P.Is(npc) return npc.tifProne ~= nil end
+
 function P.Ready(npc) return npc.tifProne ~= nil and npc.tifProne.phase == P.IN end
 
 local function net_phase(npc, phase, now)
@@ -56,6 +57,7 @@ local function net_phase(npc, phase, now)
 end
 
 P.DIVE_SPEED = 110
+
 local function dive(npc)
 	local id = npc.tifHomeHost
 	if not (id and TIF.GTG.IsVB(id)) then return nil end

@@ -32,6 +32,7 @@ local function suppressed(ent)
 end
 
 local lastShotEvent = setmetatable({}, { __mode = "k" })
+
 hook.Add("EntityFireBullets", "tif_events", function(ent, data)
 	if not IsValid(ent) then return end
 
@@ -43,6 +44,7 @@ hook.Add("EntityFireBullets", "tif_events", function(ent, data)
 end)
 
 local lastStep = setmetatable({}, { __mode = "k" })
+
 hook.Add("PlayerFootstep", "tif_events", function(ply, pos)
 	local now = CurTime()
 	if (lastStep[ply] or 0) > now - 0.3 then return end

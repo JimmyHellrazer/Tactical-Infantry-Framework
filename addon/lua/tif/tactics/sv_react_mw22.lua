@@ -110,11 +110,13 @@ hook.Add("Think", "tif_react22_grenades", function()
 end)
 
 R.VEH_SPEED, R.VEH_TIME, R.VEH_LANE = 220, 1.3, 70
+
 local function is_vehicle(e)
 	if e:IsVehicle() then return true end
 	local c = e:GetClass()
 	return string.find(c, "glide", 1, true) ~= nil or string.find(c, "fphysics", 1, true) ~= nil or e.IsGlideVehicle == true
 end
+
 function R.VehicleDodge(npc, veh, now)
 	if not free(npc) or npc.tifVeh then return false end
 	local v = veh:GetVelocity()

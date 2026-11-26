@@ -151,6 +151,7 @@ local function push(h, f, id)
 		i = p
 	end
 end
+
 local function pop(h)
 	local top = h[1]
 	local last = table.remove(h)

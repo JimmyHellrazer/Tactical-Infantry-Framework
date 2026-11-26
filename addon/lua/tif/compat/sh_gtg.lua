@@ -108,7 +108,9 @@ function A.DoorWindow(clip)
 end
 
 function A.DriveBySet() return nil end
+
 function A.DriveByWeapon() return false end
+
 function A.SweepPhase() return 0.5 end
 
 if SERVER then
@@ -153,6 +155,7 @@ local KIND = {
 	smg = "smg", micro_smg = "smg", assault_smg = "smg",
 }
 A.WEAPON_KIND = KIND
+
 function A.WeaponKind(class)
 	local def = class and A.WeaponDef(class)
 	return KIND[string.lower(def and tostring(def.hold or "") or "")] or "rifle"

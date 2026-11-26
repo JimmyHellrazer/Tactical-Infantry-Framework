@@ -146,7 +146,9 @@ function Action.Tick(npc, now)
 	local curPos = npc:GetPos()
 	local targetZ = act.lift and Lerp(smoothstep(progress), act.lift[1], act.lift[2]) or curPos.z
 	local warpFrac = act.warp and smoothstep(math.min(1, progress / math.max(0.01, act.warpU or 1))) or 0
-	if act.rootz then targetZ = act.startPos.z + Action.ZAt(act.clip, progress) + ((act.warp and act.warp.dz) or 0) * warpFrac end
+	if act.rootz then
+		targetZ = act.startPos.z + Action.ZAt(act.clip, progress) + ((act.warp and act.warp.dz) or 0) * warpFrac
+	end
 	if act.to then
 		local blend = smoothstep(progress)
 		local pos = LerpVector(blend, act.startPos, act.to.pos)

@@ -58,8 +58,12 @@ local function names(npc, cov, kind)
 		local v = cov.high and "_enter_hi" or "_enter_45"
 		return { W .. "blindfire_" .. hw .. "_" .. s .. v, "cw2_blindfire_" .. hw .. "_" .. s .. v }
 	end
-	if kind == "blind" then return { W .. "blindfire_" .. hw .. "_" .. s .. "_aim_med", "cw2_blindfire_" .. hw .. "_" .. s .. "_aim_med" } end
-	if kind == "blind_out" then return { W .. "blindfire_" .. hw .. "_" .. s .. "_exit", "cw2_blindfire_" .. hw .. "_" .. s .. "_exit" } end
+	if kind == "blind" then
+		return { W .. "blindfire_" .. hw .. "_" .. s .. "_aim_med", "cw2_blindfire_" .. hw .. "_" .. s .. "_aim_med" }
+	end
+	if kind == "blind_out" then
+		return { W .. "blindfire_" .. hw .. "_" .. s .. "_exit", "cw2_blindfire_" .. hw .. "_" .. s .. "_exit" }
+	end
 	return {}
 end
 
@@ -87,7 +91,9 @@ end
 CB.Log = dlog
 
 local function set_phase(npc, cov, phase, now)
-	if cov.phase ~= phase then dlog(npc, cov.phase or "-", " -> ", phase, cov.high and " (high " or " (low ", cov.side or "?", ")") end
+	if cov.phase ~= phase then
+		dlog(npc, cov.phase or "-", " -> ", phase, cov.high and " (high " or " (low ", cov.side or "?", ")")
+	end
 	cov.phase, cov.t0 = phase, now
 	npc.tifAction = "cover: " .. phase
 end

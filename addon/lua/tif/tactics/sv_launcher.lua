@@ -37,7 +37,9 @@ function L.IsVehicle(e)
 	if not IsValid(e) then return false end
 	if e:IsVehicle() or e.tifVeh or e.IsGlideVehicle or e.tifHeli then return true end
 	local c = e:GetClass()
-	if string.find(c, "glide", 1, true) or string.find(c, "heli", 1, true) or string.find(c, "lvs_", 1, true) then return true end
+	if string.find(c, "glide", 1, true) or string.find(c, "heli", 1, true) or string.find(c, "lvs_", 1, true) then
+		return true
+	end
 	if e:IsPlayer() and e:InVehicle() then return true end
 	return false
 end

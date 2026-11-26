@@ -13,6 +13,7 @@ MO.SHAKEN, MO.BROKEN, MO.RECOVER = 0.45, 0.2, 0.35
 
 MO.OFF = false
 MO.SURRENDER = false
+
 function MO.Enabled() return not MO.OFF and cvOn:GetBool() end
 
 local function base_of(npc)
@@ -45,6 +46,7 @@ function MO.Add(npc, amount)
 end
 
 function MO.State(npc) return npc.tifMoraleState or "steady" end
+
 function MO.Shaken(npc) return MO.Enabled() and npc.tifMoraleState ~= nil and npc.tifMoraleState ~= "steady" end
 
 function MO.OnDeath(npc, attacker)
@@ -104,7 +106,9 @@ local function drift(npc, now)
 	if quiet then
 		local base = base_of(npc)
 		local rate = 0.02
-		if sq and IsValid(sq.leader) and sq.leader ~= npc and sq.leader:GetPos():DistToSqr(npc:GetPos()) < 600 * 600 then rate = 0.035 end
+		if sq and IsValid(sq.leader) and sq.leader ~= npc and sq.leader:GetPos():DistToSqr(npc:GetPos()) < 600 * 600 then
+			rate = 0.035
+		end
 		if m < base then m = math.min(base, m + rate) end
 	end
 	npc.tifMorale = math.Clamp(m, 0, 1)

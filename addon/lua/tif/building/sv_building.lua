@@ -20,6 +20,7 @@ local function flat(v)
 end
 
 BLD.IndoorCache = {}
+
 function BLD.AreaIndoor(area)
 	local id = area:GetID()
 	local v = BLD.IndoorCache[id]

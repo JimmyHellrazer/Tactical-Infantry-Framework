@@ -26,6 +26,7 @@ M.ATT_WIN = 0.65
 local function cvar(name, def, help)
 	return CreateConVar(name, def, FCVAR_ARCHIVE, help)
 end
+
 local cvMelee = cvar("tif_melee", "1", "MW19 soldiers butt-stroke enemies up close (1/0)")
 local cvFights = cvar("tif_melee_fights", "1", "MW19 soldiers wrestle enemy soldiers up close: paired melee fights (1/0)")
 
@@ -297,7 +298,9 @@ function M.PairScan(now)
 	if not (cvMelee:GetBool() and cvFights:GetBool()) then return end
 	local list = {}
 	for _, s in ipairs(TIF.Soldiers or {}) do
-		if IsValid(s) and now - (s.tifMeleeFightAt or -99) > M.FIGHT_COOLDOWN and pair_free(s) then list[#list + 1] = s end
+		if IsValid(s) and now - (s.tifMeleeFightAt or -99) > M.FIGHT_COOLDOWN and pair_free(s) then
+			list[#list + 1] = s
+		end
 	end
 	local used = {}
 	for i = 1, #list do

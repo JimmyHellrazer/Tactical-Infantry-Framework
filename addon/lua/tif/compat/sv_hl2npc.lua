@@ -18,6 +18,7 @@ end
 hook.Add("OnEntityCreated", "tif_hl2npc", function(ent)
 	timer.Simple(0, function() track(ent) end)
 end)
+
 hook.Add("EntityRemoved", "tif_hl2npc", function(ent)
 	if not (ent:IsNPC() or (ent.IsNextBot and ent:IsNextBot())) or ent.TIFSoldier then return end
 	for i = #TIF.NPCs, 1, -1 do if TIF.NPCs[i] == ent then table.remove(TIF.NPCs, i) end end
@@ -28,6 +29,7 @@ timer.Simple(1, function() for _, e in ipairs(ents.GetAll()) do track(e) end end
 function TIF.NPCRefresh()
 	for _, e in ipairs(TIF.NPCs) do if IsValid(e) then e.tifNpcSide, e.tifRelTo = nil, nil end end
 end
+
 cvars.AddChangeCallback("tif_player_faction", function() TIF.NPCRefresh() end, "tif_hl2npc")
 
 local DISP = { [TIF.REL_HOSTILE] = D_HT, [TIF.REL_ALLY] = D_LI, [TIF.REL_NEUTRAL] = D_NU }
@@ -53,6 +55,7 @@ local function sync()
 	end
 end
 TIF.NPCSync = sync
+
 timer.Create("tif_hl2npc_sync", 1, 0, sync)
 
 cvars.AddChangeCallback("tif_hl2_npcs", function(_, _, new)

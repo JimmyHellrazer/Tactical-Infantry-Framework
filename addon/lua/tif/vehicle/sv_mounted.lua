@@ -19,12 +19,14 @@ end
 
 MT.CAR_FALLBACK = { "tif_mw_cherokee", "tif_mw_ram1500", "tif_mw_hilux", "tif_mw_tundra", "tif_mw_defender",
 	"tif_mw_ram1500_armor", "tif_mw_choptop" }
+
 function MT.DefaultCar()
 	for _, c in ipairs(MT.CAR_FALLBACK) do
 		if scripted_ents.GetStored(c) then return c end
 	end
 	return nil
 end
+
 function MT.VehicleClass(class)
 	if not isstring(class) then return MT.DefaultCar() end
 	if scripted_ents.GetStored(class) then return class end

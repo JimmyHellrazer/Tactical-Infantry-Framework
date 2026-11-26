@@ -65,7 +65,9 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 		landWhy = why
 	end
 
-	if not def.ropeHub then return nil, (landWhy and (landWhy .. "; ") or "") .. "the " .. def.name .. " can't rope down" end
+	if not def.ropeHub then
+		return nil, (landWhy and (landWhy .. "; ") or "") .. "the " .. def.name .. " can't rope down"
+	end
 	local rh = ropeHub or def.ropeHub
 	local maxRh = rh + ((def.maxRopeHub or def.ropeHub) - def.ropeHub)
 
@@ -271,6 +273,9 @@ TIF.API = TIF.API or {}
 local API = TIF.API
 
 function API.CallHeli(opts) return Air.Call(opts or {}) end
+
 function API.HeliRelease(heli) if IsValid(heli) and heli.Release then heli:Release() end end
+
 function API.CheckLZ(pos, typeId, want) return Air.CheckLZ(pos, typeId, want) end
+
 function API.Helis() return Air.List() end

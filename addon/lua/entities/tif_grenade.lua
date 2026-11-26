@@ -117,7 +117,9 @@ if SERVER then
 			SafeRemoveEntityDelayed(dl, 0.15)
 		end
 
-		if TIF and TIF.FlashAt then TIF.FlashAt(pos, FLASH_R, self, IsValid(self:GetOwner()) and self:GetOwner() or nil) end
+		if TIF and TIF.FlashAt then
+			TIF.FlashAt(pos, FLASH_R, self, IsValid(self:GetOwner()) and self:GetOwner() or nil)
+		end
 
 		local thrower = IsValid(self:GetOwner()) and self:GetOwner() or nil
 		for _, ply in player.Iterator() do

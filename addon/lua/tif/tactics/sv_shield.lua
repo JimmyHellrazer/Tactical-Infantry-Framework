@@ -53,6 +53,7 @@ SH.VARIANTS = {
 
 local cvShield = CreateConVar("tif_shield", "1", FCVAR_ARCHIVE,
 	"Enemy soldiers sometimes grab a civilian as a human shield (MW19 / Clean House clips, 1/0)")
+
 function SH.On() return cvShield:GetBool() end
 
 local function data(name) return TIF.ShieldData and TIF.ShieldData[name] end
@@ -213,7 +214,9 @@ function SH.Start(npc, civ, opts)
 		yaw = math.deg(math.atan2(to.y, to.x)) - math.deg(math.atan2(sy, sx))
 	end
 
-	if varName == "ch" and not (TIF.Weapon and TIF.Weapon.ForcePistol and TIF.Weapon.ForcePistol(npc)) then return nil end
+	if varName == "ch" and not (TIF.Weapon and TIF.Weapon.ForcePistol and TIF.Weapon.ForcePistol(npc)) then
+		return nil
+	end
 	local sc = { captor = npc, hostage = civ, origin = origin, yaw = yaw, opts = opts, started = now, var = var, varName = varName }
 	local hold = opts.hold or (varName == "ch" and SH.CH_HOLD_MAX or SH.HOLD)
 	sc.holdUntil = istable(hold) and now + math.Rand(hold[1], hold[2]) or (hold and now + hold) or nil
@@ -231,7 +234,9 @@ function SH.Start(npc, civ, opts)
 	place(npc, sc, sc.att, 0)
 	place(civ, sc, sc.vic, 0, shift_k(sc, first, 0))
 	TIF.Say(npc, "contact", 0.8)
-	if TIF.Event then TIF.Event("shield", "start ", varName, " ", first, ": captor ", npc:EntIndex(), ", hostage ", civ:EntIndex()) end
+	if TIF.Event then
+		TIF.Event("shield", "start ", varName, " ", first, ": captor ", npc:EntIndex(), ", hostage ", civ:EntIndex())
+	end
 	hook.Run("TIF_ShieldStart", sc)
 	return sc
 end
@@ -241,10 +246,14 @@ local function enemy_near(sc, dist)
 	local pos = npc:GetPos()
 	local d2 = dist * dist
 	for _, p in player.Iterator() do
-		if TIF.IsLiveCombatant(p) and TIF.Relation(npc, p) == TIF.REL_HOSTILE and p:GetPos():DistToSqr(pos) < d2 then return p end
+		if TIF.IsLiveCombatant(p) and TIF.Relation(npc, p) == TIF.REL_HOSTILE and p:GetPos():DistToSqr(pos) < d2 then
+			return p
+		end
 	end
 	for _, s in ipairs(TIF.Soldiers) do
-		if s ~= npc and TIF.IsLiveCombatant(s) and TIF.Relation(npc, s) == TIF.REL_HOSTILE and s:GetPos():DistToSqr(pos) < d2 then return s end
+		if s ~= npc and TIF.IsLiveCombatant(s) and TIF.Relation(npc, s) == TIF.REL_HOSTILE and s:GetPos():DistToSqr(pos) < d2 then
+			return s
+		end
 	end
 	return nil
 end
@@ -260,7 +269,9 @@ local function tick_scene(sc, now)
 	if P.loop then u = u % 1 end
 
 	if not (npc.tifAct and npc.tifAct.name == sc.att) and not npc.tifDead then
-		if TIF.Event then TIF.Event("shield", "captor ", npc:EntIndex(), " lost his clip (", npc.tifAct and npc.tifAct.name or "none", "): put back") end
+		if TIF.Event then
+			TIF.Event("shield", "captor ", npc:EntIndex(), " lost his clip (", npc.tifAct and npc.tifAct.name or "none", "): put back")
+		end
 		Act.Play(npc, sc.att, LOCK_OK)
 		if npc.tifAct then
 			npc.tifAct.t0 = sc.t0
@@ -302,6 +313,7 @@ end
 local shotOut = {}
 local shotTr = { mask = MASK_SHOT, output = shotOut }
 local SH_BONE_M = Matrix and Matrix()
+
 function SH.AIShot(sc, now)
 	sc.nextAIShot = now + SH.AI_SHOT_RETRY
 	local npc, civ = sc.captor, sc.hostage
@@ -394,7 +406,9 @@ function SH.Try(npc, c, now)
 	local enemyYaw = math.deg(math.atan2(toE.y, toE.x))
 	local civs = {}
 	for _, civ in ipairs(TIF.Civ.List()) do
-		if hostage_ok(civ) and civ.state ~= "leave" and math.abs(civ:GetPos().z - pos.z) < 20 then civs[#civs + 1] = civ end
+		if hostage_ok(civ) and civ.state ~= "leave" and math.abs(civ:GetPos().z - pos.z) < 20 then
+			civs[#civs + 1] = civ
+		end
 	end
 	if #civs == 0 then return false end
 
@@ -439,7 +453,9 @@ hook.Add("EntityTakeDamage", "tif_shield", function(ent, dmg)
 		local var = sc.var
 
 		if att == sc.hostage then dmg:ScaleDamage(0) return true end
-		if sc.phase == var.shot or sc.phase == var.vdeath or sc.phase == var.vdeathHead then dmg:ScaleDamage(0) return true end
+		if sc.phase == var.shot or sc.phase == var.vdeath or sc.phase == var.vdeathHead then
+			dmg:ScaleDamage(0) return true
+		end
 
 		if dmg:IsExplosionDamage() and dmg:GetDamage() >= ent:Health() then ent.tifActLock = nil return end
 		dmg:ScaleDamage(0)
@@ -454,7 +470,9 @@ hook.Add("EntityTakeDamage", "tif_shield", function(ent, dmg)
 		local var = hs.var
 		if var.vdeath then
 
-			if hs.phase == var.vdeath or hs.phase == var.vdeathHead or hs.phase == var.shot then dmg:ScaleDamage(0) return true end
+			if hs.phase == var.vdeath or hs.phase == var.vdeathHead or hs.phase == var.shot then
+				dmg:ScaleDamage(0) return true
+			end
 			local head = dmg:GetDamagePosition().z > ent:GetPos().z + 50
 			hs.killer = att
 			dmg:ScaleDamage(0)

@@ -200,7 +200,9 @@ function ENT:BodyUpdate()
 		end
 		self:FrameAdvance()
 
-		if c and not c.loop and not self.civOneShot and self:GetCycle() >= 0.99 and self.civRole ~= self.civHoldLast then self:SetCycle(0) end
+		if c and not c.loop and not self.civOneShot and self:GetCycle() >= 0.99 and self.civRole ~= self.civHoldLast then
+			self:SetCycle(0)
+		end
 	else
 		self:BodyMoveXY()
 	end
@@ -275,6 +277,7 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 	end
 	return "ok"
 end
+
 ENT.STUCK_T, ENT.STUCK_MAX, ENT.CIV_SIDE_T = 0.6, 3, 0.8
 
 function ENT:Wait(t, keepState)
@@ -299,6 +302,7 @@ end
 ENT.Numpad = numpad
 
 local UP = Vector(0, 0, 18)
+
 local function hull(self)
 	local mins, maxs = self:GetCollisionBounds()
 	return Vector(mins.x, mins.y, 0), Vector(maxs.x, maxs.y, math.max(20, maxs.z - 18))
@@ -485,6 +489,7 @@ end
 
 local SCARED = { "civ_cower_1", "civ_cower_2", "civ_cower_3", "civ_kneel_2", "civ_kneel_4", "civ_kneel_5",
 	"chain_1", "chain_2", "chain_3" }
+
 function ENT:ScaredPose()
 	if (self.fear or 0) >= 0.9 and self.var % 2 == 0 then
 		local p = self:Variant("civ_prone_", 6)
