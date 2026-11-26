@@ -1,13 +1,3 @@
--- Fallen-through-the-world failsafe (server). On maps like gm_fork a soldier can end up under a
--- displacement (a bad spawn spot, a vehicle exit, a ragdoll get-up) and fall to the bottom of the
--- water or the void below. Checked every 2 s for every soldier on foot:
---   lost   fully under water, or no navmesh under his feet with the nearest nav area well above
---          him (he's under the ground, not just off the mesh on a ledge)
---   after 3 checks in a row (about 6 s): moved to the nearest nav area above (clear of anyone
---          standing there); if there's none, or it happens a third time, removed.
--- tif_rescue 0 turns it off; tif_rescue_all 1 also watches other addons' NPCs and nextbots (they're
--- only ever removed, never moved).
-
 local TIF = TIF
 
 local cvOn = CreateConVar("tif_rescue", "1", FCVAR_ARCHIVE, "Rescue or remove soldiers that fell under the map (1/0)")
@@ -16,19 +6,18 @@ local cvAll = CreateConVar("tif_rescue_all", "0", FCVAR_ARCHIVE,
 
 local CHECKS = 3
 
--- Under the ground or in deep water? Returns lost, the nav area to go back to (if any).
 local function lost(ent)
 	local pos = ent:GetPos()
 	if ent:WaterLevel() >= 3 then
 		local a = navmesh.GetNearestNavArea(pos, false, 3000, false, true)
 		return true, IsValid(a) and a:GetCenter().z > pos.z + 40 and a or nil
 	end
-	-- Standing on the navmesh: fine.
+
 	if IsValid(navmesh.GetNavArea(pos + Vector(0, 0, 20), 120)) then return false end
-	-- Off the mesh: fine if a nav area at about his height is near (a ledge, a corner the mesh skips).
+
 	local near = navmesh.GetNearestNavArea(pos, false, 400, false, false)
 	if IsValid(near) and math.abs(near:GetClosestPointOnArea(pos).z - pos.z) < 120 then return false end
-	-- The nearest nav area is far above him: under the ground.
+
 	local up = navmesh.GetNearestNavArea(pos, false, 2500, false, false)
 	if IsValid(up) and up:GetClosestPointOnArea(pos).z > pos.z + 150 then return true, up end
 	return false

@@ -1,7 +1,3 @@
--- Client side of a soldier: composes GTA animation into the 8 server-made layer slots every
--- frame (right before rendering, after interpolation), retargets the faction model onto the
--- hidden GTA ped, bone-merges the gun, and dresses the server-made corpse on death.
-
 local TIF = TIF
 local G = TIF.GTG
 local A = TIF.Anim
@@ -32,12 +28,9 @@ local FLASH_GLOW_COL = Color(255, 200, 120, 160)
 local FLASH_TIME = 0.05
 local FLINCH_TIME = 0.35
 local LEG_RATE, UB_RATE, FIRE_RATE = 7, 4, 14
--- Zero-weight layers can be deactivated by the engine and cannot be revived client-side.
+
 local IDLE_WEIGHT = 0.002
 
--- Runs while the GTA ped's bones are being built, so it sees exactly what gets rendered.
--- Bone builds before this frame's write (other code asking for bones earlier in the frame) are
--- thrown away by our InvalidateBoneCache, so only builds after the write are judged.
 local function host_bone_check(e)
 	local st = States[e]
 	if not st or not st.want0 then return end
@@ -51,8 +44,7 @@ end
 
 function Bd.Add(ent)
 	if States[ent] then return end
-	-- idleVar: which idle variant this soldier keeps (MW19 has several calm / alert idles). From the entity
-	-- index, so every client shows the same one on the same soldier.
+
 	States[ent] = { legW = {}, ubW = {}, phase = 0, idleT = math.Rand(0, 10), pitch = 0, idleVar = (ent:EntIndex() * 7) % 60 }
 	if not ent.tifBoneCb then ent.tifBoneCb = ent:AddCallback("BuildBonePositions", host_bone_check) end
 end
@@ -66,7 +58,6 @@ local function remove_parts(st)
 	st.launcherGun, st.launcherClass = nil, nil
 end
 
--- For cl_gunhold.lua (left-hand IK runs inside the host's bone build and needs the soldier's state).
 function Bd.State(ent) return States[ent] end
 
 function Bd.Remove(ent)
@@ -76,12 +67,6 @@ function Bd.Remove(ent)
 	States[ent] = nil
 end
 
--- Faction model and gun ---------------------------------------------------------
-
--- The faction model's own pose under the retarget: its reference pose ("ragdoll" on ragdoll-only
--- models, which have no "reference"). Bones the retarget doesn't drive keep this pose, so it must
--- always be the rest pose (a leftover prone frame makes the body look frayed). Remembered in
--- f.tifRestSeq so it can be checked.
 local function rest_pose(f)
 	local seq = f:LookupSequence("reference")
 	if not seq or seq < 0 then seq = f:LookupSequence("ragdoll") end
@@ -102,15 +87,12 @@ local function solve_cb(fe)
 	Prof.Count("cl_solves", 1)
 end
 
--- Skin and bodygroups (gear, heads, headwear) from the soldier's networked look.
 local function apply_look(f, skin, bodygroups)
 	f:SetSkin(skin or 0)
 	local digits = string.Explode(" ", bodygroups or "")
 	for i = 0, f:GetNumBodyGroups() - 1 do f:SetBodygroup(i, tonumber(digits[i + 1]) or 0) end
 end
 
--- A faction model that wears the GTA ped (a living soldier or a corpse) through GTG's retargeter.
--- vb: the host is a ValveBiped skeleton (MW19): plain bone-merge, no retarget.
 local function make_follower(parent, model, skin, bodygroups, vb)
 	local map = not vb and G.MapFor(parent:GetModel(), model) or nil
 	if not vb and not map then return nil end
@@ -135,18 +117,15 @@ local function make_follower(parent, model, skin, bodygroups, vb)
 	return f
 end
 
--- vb: not bone-merged (the GTA gun's grip bone isn't on a ValveBiped host); placed every frame from the
--- hands instead (place_gun_vb).
 local function make_gun(ent, class, vb)
 	local stored = TIF.GTG.Stored(class)
 	local wm = stored and stored.WorldModel
 	if not wm or wm == "" then return nil end
 	local g = ClientsideModel(wm, RENDERGROUP_OPAQUE)
 	if not IsValid(g) then return nil end
-	-- A gun with no GTA hand bone (baked MW guns) can't be bone-merged to the GTA ped: it's placed every frame
-	-- from the faction model's right hand instead (update), like on the MW19 body.
+
 	if not g:LookupBone("PH_R_Hand") then g.tifFree = true end
-	-- Baked MW guns: their place on the MW body's gun bone and the left hand's finger pose (gun_holds.py).
+
 	g.tifHold = stored.TIFBaked and stored.TIFBaked.hold or nil
 	if vb or g.tifFree then return g end
 	g:SetParent(ent)
@@ -156,8 +135,6 @@ local function make_gun(ent, class, vb)
 end
 Bd.MakeGun = make_gun
 
--- MW19 host clips for a weapon by its kind (TIF.GTG.WeaponKind): the standing and crouched reloads, the
--- server's reload time, and the per-shot gestures (shotgun pump, RPG kick), standing and crouched.
 local function mw_weapon(hostId, class)
 	local def = G.WeaponDef(class)
 	local kind = G.WeaponKind(class)
@@ -178,13 +155,11 @@ end
 
 local function ensure_parts(ent, st)
 	local host = TIF.Factions[ent:GetTIFFaction()]
-	-- Which body this soldier is on, from its model (a soldier switches between the MW19 and GTA bodies for
-	-- GTA-only actions). Read from the model itself so it can't run ahead of the model change.
+
 	local byModel = TIFG and TIFG.ByModel and TIFG.ByModel[string.lower(ent:GetModel() or "")]
 	local hostId = byModel or (host and host.host) or G.DEFAULT_HOST
 	if st.hostId and st.hostId ~= hostId then
-		-- Switched bodies: everything tied to the old one is rebuilt. Bone manipulations are by bone index,
-		-- so they're cleared too (they'd land on unrelated bones of the new model).
+
 		remove_parts(st)
 		st.vis, st.wclass, st.legs, st.wset, st.mwReload = nil, nil, nil, nil, nil
 		st.legW, st.ubW, st.legCycle, st.ubCycle = {}, {}, {}, {}
@@ -199,12 +174,11 @@ local function ensure_parts(ent, st)
 	st.hostId = hostId
 	st.vb = G.IsVB(hostId)
 	local vis = cvRetarget:GetBool() and ent:GetTIFVisual() or ""
-	-- A model this client can't put on the GTA body (the soldier would show as the bare GTA ped):
-	-- after two failed tries, another model of the same faction that works here (looks only).
+
 	if st.visFrom and st.visFrom ~= vis then st.visFrom, st.visAlt, st.visFails = nil, nil, 0 end
 	if vis ~= "" and st.visFrom == vis and st.visAlt then vis = st.visAlt end
 	if IsValid(st.follower) then st.visFails = 0 end
-	-- A faction model or gun that couldn't be made (model not readable yet) is tried again every 2 s.
+
 	local now = CurTime()
 	if now >= (st.partRetry or 0) then
 		st.partRetry = now + 2
@@ -217,7 +191,7 @@ local function ensure_parts(ent, st)
 				if alt and alt ~= vis and TIF.VisualUsable(host.host, alt) then
 					st.visFrom, st.visAlt = vis, alt
 					Bd.VisAlt = Bd.VisAlt or {}
-					Bd.VisAlt[vis] = alt  -- his corpse wears the same
+					Bd.VisAlt[vis] = alt
 					vis = alt
 					Bd.Stats.visualFallbacks = (Bd.Stats.visualFallbacks or 0) + 1
 				end
@@ -227,18 +201,16 @@ local function ensure_parts(ent, st)
 	end
 	if vis ~= st.vis then
 		if IsValid(st.follower) then st.follower:Remove() end
-		-- (models on another rig's rest pose, e.g. codport CoD ports: retargeted even on the ValveBiped host;
-		-- config/sh_modular.lua)
+
 		local plain = st.vb and not (TIF.Modular and TIF.Modular.NeedsRetarget(vis))
 		st.follower = vis ~= "" and make_follower(ent, vis, ent:GetTIFSkin(), ent:GetTIFBodygroups(), plain) or nil
 		st.vis = vis
 		st.look = nil
 		st.proneOn = false
-		-- The faction model casts the shadow; the hidden GTA ped must not.
+
 		ent:DrawShadow(not IsValid(st.follower))
 	end
-	-- The look can reach this client after the model (joining, a network hiccup): applied whenever
-	-- it changes, not only when the faction model is made.
+
 	if IsValid(st.follower) then
 		local skin, groups = ent:GetTIFSkin(), ent:GetTIFBodygroups()
 		local look = tostring(skin) .. "|" .. groups
@@ -254,7 +226,7 @@ local function ensure_parts(ent, st)
 		st.wclass = class
 		st.gunDropped = nil
 		if st.vb then
-			-- MW19 locomotion already holds the gun up; only reloads are layered on top.
+
 			st.wset = nil
 			st.wkind, st.mwReload, st.mwReloadCr, st.mwReloadTime, st.mwFire, st.mwFireCr = mw_weapon(st.hostId, class)
 			st.pistol = st.wkind == "pistol"
@@ -269,14 +241,11 @@ local function ensure_parts(ent, st)
 	if not st.legs then st.legs = A.Legs(st.hostId) end
 end
 
--- Composition ------------------------------------------------------------------
-
 local function approach(w, target, rate, dt)
 	if w < target then return math.min(target, w + rate * dt) end
 	return math.max(target, w - rate * dt)
 end
 
--- Move every clip's weight toward its target, drop dead entries.
 local function settle(weights, targets, rate, dt)
 	for clip, w in pairs(weights) do
 		local t = targets[clip] or 0
@@ -320,17 +289,12 @@ local function add(t, clip, w)
 	if clip and w > 0.0005 then t[clip] = (t[clip] or 0) + w end
 end
 
--- Forward-only walks (calm, alert, flashlight, calm wading, stairs / slopes) moving off-axis: the hips turn toward
--- where he's going and the spine turns back (vb_pose), so the legs walk along the path while the torso and gun keep
--- his facing, instead of the forward walk sliding sideways. Up to Bd.HIP_MAX degrees, by how much he's moving.
 Bd.HIP_MAX, Bd.HIP_RATE = 70, 240
 local function hip_turn(st, relAng, moveK)
 	st.hipWant = math.Clamp(relAng, -Bd.HIP_MAX, Bd.HIP_MAX) * math.Clamp(moveK, 0, 1)
 end
 Bd.HipTurn = hip_turn
 
--- Whether a clip moves the gun out of the hand itself somewhere (its j_gun lets go: TIFG_JGUN_HOLD r > 0.5 at any
--- sample), cached per source clip.
 Bd.CARRY_R = 0.35
 local carryCache = {}
 function Bd.ClipCarriesGun(clip)
@@ -350,21 +314,17 @@ end
 local function leg_targets(st, legs, mode, stance, speed, relAng)
 	local T = {}
 	st.hipWant = 0
-	-- MW19 body holding a pistol: its own sets; an LMG / RPG: the rifle's with that weapon's own idles.
+
 	local PS = (st.pistol and legs.pistol) or (st.wkind and legs[st.wkind]) or nil
-	-- Calm soldiers only have a forward walk. The server turns them to face their path, but while they're still
-	-- moving well off-axis (turning) the directional set is used instead of sliding the forward walk sideways.
+
 	if mode ~= 1 and stance ~= 1 and speed > 25 and math.abs(relAng) > 75 then mode = 1 end
-	-- MW19 alert posture (weapon half-raised): aiming mode outside a fight (suspicious, searching, on edge),
-	-- standing or walking about forward at alert pace. Faster or sideways goes to the aimed strafes below.
-	-- Covering burst on a dash (NW2 tif_rungun, sv_move): MW19's run and gun, the gun to that side of the run.
+
 	local rg = st.runGun and legs.rungun and legs.rungun[st.runGun]
 	if rg and speed > 100 and not PS then
 		add(T, rg, 1)
 		return T, legs.relaxed
 	end
-	-- Stairs / slopes (st.grade: vertical over horizontal speed, smoothed): MW19's up / down clips for his posture and
-	-- pace, moving about forward. Steep (> 0.45) = stairs, gentler (> 0.22) = a slope.
+
 	local GR = legs.grade
 	local grade = st.grade or 0
 	if GR and speed > 30 and math.abs(grade) > 0.22 and math.abs(relAng) < 50 and stance ~= 1 and not PS then
@@ -387,11 +347,10 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 			return T, legs.relaxed
 		end
 	end
-	-- Wading (NW2 tif_wade, standing): MW22's wading sets, gun up (aimed) or lowered by depth (calm / alert).
+
 	local WD = st.wade and st.wade > 0 and stance ~= 1 and not st.pistol and legs.wade
 	if WD then
-		-- (Calm wading has only a forward walk: well off-axis it uses the gun-up 8-way wades, like the dry calm walk;
-		-- it slid sideways at any angle before 0.38.8.)
+
 		if mode == 1 or not (WD.knee or WD.chest) or (speed > 25 and math.abs(relAng) > 75) then
 			local set = WD.aim
 			local moveK = math.Clamp(speed / (set.walkSpeed * 0.6), 0, 1)
@@ -416,7 +375,7 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		hip_turn(st, relAng, moveK)
 		return T, set
 	end
-	-- Flashlight on (NW2 tif_light): MW19's flashlight patrol / alert sets (not with a pistol: its own sets).
+
 	local AL =(PS and PS.alert) or (st.light and legs.alertFlash) or legs.alert
 	if AL and st.alertPosture and mode == 1 and stance ~= 1
 		and (speed < 10 or (math.abs(relAng) < 70 and speed < AL.walkSpeed * 1.5)) then
@@ -429,12 +388,11 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 	end
 	if stance == 1 or mode == 1 then
 		local set = stance == 1 and ((PS and PS.crouch) or legs.crouch) or ((PS and PS.aim) or legs.aim)
-		-- MW19 body clearing rooms: the CQB set instead of the open-ground strafes (standing). A pistol's own
-		-- strafes are already the CQB pistol set.
+
 		if stance ~= 1 and st.cqbMode and legs.cqb and not st.pistol then set = legs.cqb end
 		local moveK = math.Clamp(speed / (set.walkSpeed * 0.6), 0, 1)
 		local rk = set.run and math.Clamp((speed - set.walkSpeed) / math.max(1, set.runSpeed - set.walkSpeed), 0, 1) or 0
-		-- Standing aimed (pistol set): now and then one of its fidgets, not while shooting.
+
 		local idle = set.idle
 		if set.twitches then
 			local now, tw = CurTime(), st.aimTw
@@ -481,18 +439,17 @@ end
 local function ub_targets(ent, st, mode, speed, now)
 	local W = st.wset
 	local T = clear_table(UB_TGT)
-	-- MW19 body: its locomotion clips already hold the gun up (aim pitch and recoil are bone tweaks, vb_pose).
-	-- Only a reload is layered, stretched to the server's reload time.
+
 	if st.vb then
 		local shot = ent:GetTIFShotTime()
 		local crouched = ent:GetTIFStance() == 1
 		if shot ~= st.lastShot then
 			st.lastShot, st.flashAt = shot, now
-			-- Shotgun pump / RPG kick: a gesture per shot (one of the variants).
+
 			local list = crouched and st.mwFireCr or st.mwFire
 			st.fireClip = list and list[math.random(#list)] or nil
 		end
-		-- Drawing the pistol / going back to the rifle: MW19's switch clip on the upper body.
+
 		local sw = ent:GetNW2String("tif_switch_clip", "")
 		if sw ~= "" and not st.fullBody then
 			local S = G.Clip(sw, st.hostId)
@@ -505,9 +462,9 @@ local function ub_targets(ent, st, mode, speed, now)
 			end
 		end
 		local rs = ent:GetTIFReloadStart()
-		-- Crouched: the crouched reload (it keeps the gun where the crouch pose holds it).
+
 		local R = crouched and st.mwReloadCr or st.mwReload
-		-- A full-body clip (MW19 cover reload, transitions) owns the arms: no layered reload on top.
+
 		if rs > 0 and R and not st.fullBody then
 			local u = (now - rs) / math.max(0.3, st.mwReloadTime or 2.2)
 			if u < 1 then
@@ -526,9 +483,7 @@ local function ub_targets(ent, st, mode, speed, now)
 				return T, UB_RATE * 4
 			end
 		end
-		-- Low ready (server NW2 tif_lowready): MW19's AI gun-down pose on the upper body over whatever the legs do,
-		-- so lowering the gun never swaps the legs (0.31.0 and before switched the whole soldier to the calm set:
-		-- walking soldiers flickered between the calm walk and the aimed strafes).
+
 		if mode == 1 and not st.fullBody and not st.pistol and st.wkind ~= "rpg" and ent:GetNW2Bool("tif_lowready", false) then
 			local LR = (st.cqbMode and G.Clip("lowready_cqb", st.hostId)) or G.Clip("lowready", st.hostId)
 			if LR then
@@ -539,15 +494,14 @@ local function ub_targets(ent, st, mode, speed, now)
 		end
 		return T, UB_RATE * 2
 	end
-	-- Upper-body action over a base leg clip (cover reload, peek).
+
 	if st.ubAct then
 		st.ubCycle[st.ubAct] = st.ubActCycle
 		add(T, st.ubAct, 1)
 		return T, UB_RATE * 2
 	end
 	if not W then return T, nil end
-	-- Full-body action (cover idle, enter, reload in cover...): its own arms, no weapon overlay.
-	-- Popped out of cover (tif_caim) uses the normal aim/fire overlay on top of the action.
+
 	if st.fullBody then
 		local shot = ent:GetTIFShotTime()
 		if shot ~= st.lastShot then st.lastShot, st.flashAt = shot, now end
@@ -581,7 +535,7 @@ local function ub_targets(ent, st, mode, speed, now)
 		add(T, W.aim, 1)
 		return T, UB_RATE
 	end
-	-- Relaxed carry: idle / walk / run hold clips by speed.
+
 	local legs = st.legs.relaxed
 	local moveK = math.Clamp(speed / (legs.walkSpeed * 0.6), 0, 1)
 	local rk = math.Clamp((speed - legs.walkSpeed) / math.max(1, legs.runSpeed - legs.walkSpeed), 0, 1)
@@ -658,13 +612,11 @@ local function clip_cycle(st, clip, moving)
 	local fixed = st.legCycle and st.legCycle[clip]
 	if fixed then return fixed end
 	local frames = math.max(1, clip.frames - 1)
-	-- Moving loops always run on the foot phase (it stops when he does): switching to the idle clock below 5 u/s
-	-- jumped the legs to another frame.
+
 	if clip.loop and (clip.speed or 0) > 1 then
 		return G.FrameForPhase(clip, st.phase) / frames
 	end
-	-- Standing loops start from their first frame when they come in (loopStart, set as their weight rises from
-	-- nothing), so after a turn or a walk the idle starts over instead of resuming halfway through a fidget.
+
 	if clip.loop then
 		local t0 = st.loopStart and st.loopStart[clip] or 0
 		return ((st.idleT - t0) % clip.dur) / clip.dur
@@ -672,26 +624,16 @@ local function clip_cycle(st, clip, moving)
 	return 0
 end
 
--- Recoil (0.36.0, user: the spine bend looked weird): each networked shot plays one shot of MW19's AI firing clips
--- (sh_anim L.kicks, additive delta sequences on the upper body) on its own layer, over whatever he's doing: walking,
--- crouched, in cover, aiming. Kicks rotate over KICK_SLOTS so automatic fire doesn't cut one off mid-recovery.
--- Launchers get none. Bd.KICK_W scales them.
--- (0.36.1: wherever he actually shoots, not only on his feet. Full-body actions used to skip it, and MW19 cover aiming
--- is one: firing from cover had no recoil. Now the pool by situation (kick_pool): lying -> the prone kicks (LMG on its
--- bipod at BIPOD_W); leaning round a corner (mwc_<t>[p]_aim, t ls / rs / lc / rc) -> that corner's lean-fire kicks;
--- over low / chest-high cover (cr / st) -> the crouched / standing ones; a pistol in cover -> the pistol's; the LMG on
--- a wall / ledge bipod (mwb_<set>_aim) -> standing / crouched at BIPOD_W. Other full-body actions (blindfire, which
--- has its own firing, transitions, reactions) none. Last stand never fires: no gun.)
 local KICK_SLOTS = { 5, 6, 7 }
 Bd.KICK_W = 1
 Bd.BIPOD_W = 0.4
-Bd.BIPOD_HOLD = 1.2   -- prone LMG: kept on the bipod this long after the aim mode drops (between bursts)
+Bd.BIPOD_HOLD = 1.2
 local cvKick = CreateClientConVar("tif_recoil_scale", "1", true, false, "MW19 body: strength of the recoil kicks (0 = off)")
 local function pool_of(K, kind, st)
 	local p = K[kind] and K[kind][st]
 	return p and #p > 0 and p or nil
 end
--- The kick pool and its weight for the shot he's firing now, or nil.
+
 local function kick_pool(ent, st, K)
 	if st.wkind == "rpg" then return nil end
 	local kind = st.pistol and "pistol" or (st.wkind == "shotgun" and "shotgun") or "rifle"
@@ -700,7 +642,7 @@ local function kick_pool(ent, st, K)
 		return pool_of(K, kind, cr and "cr" or "st") or pool_of(K, kind, "st") or pool_of(K, "rifle", cr and "cr" or "st")
 	end
 	if st.vbProne then
-		-- lying still and aiming (or on the prone bipod); not while getting down / up or crawling
+
 		if st.vbProne ~= 2 or not (st.aim9 or st.bipod == "set") then return nil end
 		return pool_of(K, "prone", "pr") or own(true), st.bipod == "set" and Bd.BIPOD_W or 1
 	end
@@ -734,7 +676,7 @@ local function recoil_kicks(ent, st, legs, now)
 			end
 		end
 	end
-	-- (0.38.6) A whizby flinch (sv_suppression, NW2 tif_whizby_t / _n): the same kind of layer, full strength.
+
 	local wt = ent:GetNW2Float("tif_whizby_t", 0)
 	if wt ~= st.whizT then
 		st.whizT = wt
@@ -745,13 +687,13 @@ local function recoil_kicks(ent, st, legs, now)
 		end
 	end
 	local w = Bd.KICK_W * cvKick:GetFloat()
-	-- (a kick keeps playing through the shooting it started in; a non-shooting full-body action cuts it)
+
 	local stop = st.fullBody and not (st.vbProne or string.match(st.actName or "", "^mw[cb]_.-_aim$"))
 	for _, slot in ipairs(KICK_SLOTS) do
 		local k = st.kicks[slot]
 		if k then
 			local u = (now - k.t0) / math.max(0.05, k.clip.dur)
-			-- (flinches aren't recoil: tif_recoil_scale doesn't touch them)
+
 			local kw = k.flinch and (k.w or 1) or w * (k.w or 1)
 			if u >= 1 or stop or kw <= 0 then
 				st.kicks[slot] = nil
@@ -762,7 +704,6 @@ local function recoil_kicks(ent, st, legs, now)
 	end
 end
 
--- Checked twice a second. Missing slots are reported to the server, which rebuilds them.
 local function check_slots(ent, st, now)
 	if now < (st.nextSlotCheck or 0) then return st.slotsOk end
 	st.nextSlotCheck = now + 0.5
@@ -807,7 +748,6 @@ local function flinch(ent, st, now)
 	end
 end
 
--- ValveBiped spine bones: local X up, Y forward, Z left, so yaw = forward/back bend (+ = aiming down).
 local cvTrim = CreateClientConVar("tif_aim_trim", "1.2", true, false, "MW19 body: degrees the aimed upper body is tipped down (gun level at ~1.2)")
 Bd.AIM_TRIM = 1.2
 Bd.KICK, Bd.KICK_T = 2.5, 0.09
@@ -849,7 +789,7 @@ local function vb_pose(ent, st, now, dt)
 		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = 0, b4y, 0
 		ent:ManipulateBoneAngles(b4, SCRATCH_ANG)
 	end
-	-- Pelvis turns about local Y (pitch, + = left) toward travel; Spine and Spine1 counter-rotate on local X (roll).
+
 	local bp = st.vbPelvis
 	if bp == nil then
 		bp = ent:LookupBone("ValveBiped.Bip01_Pelvis") or false
@@ -894,7 +834,7 @@ local function hold_pos(e, i, i2, k)
 	local x = o[a + 1] + (o[b + 1] - o[a + 1]) * k
 	local y = o[a + 2] + (o[b + 2] - o[a + 2]) * k
 	local z = o[a + 3] + (o[b + 3] - o[a + 3]) * k
-	-- studiomdl's turn: SMD -> model space
+
 	HOLD_POS.x, HOLD_POS.y, HOLD_POS.z = -y, x, z
 	return HOLD_POS
 end
@@ -937,8 +877,6 @@ local function compose(ent, st, dt, now)
 	st.idleT = st.idleT + dt
 	st.loopOffset = st.loopOffset or (ent:EntIndex() * 0.737) % 7
 
-	-- A server action (cover, transitions) replaces locomotion with one full-body clip,
-	-- timed from the server's start time.
 	st.legCycle = st.legCycle or {}
 	local actName = ent:GetNW2String("tif_act", "")
 	if actName ~= (st.footAct or "") then
@@ -950,65 +888,45 @@ local function compose(ent, st, dt, now)
 	local actClip = actName ~= "" and G.Clip(actName, st.hostId) or nil
 	if not (actClip and actClip.loop) then st.actLoopT0 = nil end
 	local caim = ent:GetNW2Bool("tif_caim", false)
-	-- Upper-body-only actions (cover reloads, peeks) come with a base clip for the legs.
+
 	local baseName = actClip and ent:GetNW2String("tif_act_base", "") or ""
 	local baseClip = baseName ~= "" and G.Clip(baseName, st.hostId) or nil
 	st.fullBody = actClip ~= nil and not caim and not baseClip
-	-- MW19 aim blends (cover lean / over-the-top aim): 3x3 blend sequences driven by two pose parameters.
+
 	st.aim9 = actClip and actClip.aim9 or nil
-	-- MW19 alert posture outside fights: unaware (on edge), suspicious, searching.
+
 	local aware = ent:GetTIFAware()
 	st.cqbMode = st.vb and ent:GetNW2Bool("tif_cqb", false)
-	-- Flashlight (sv_flashlight): its sets in leg_targets; handLight is set there when the handheld one plays.
+
 	st.light = st.vb and ent:GetNW2Bool("tif_light", false)
 	st.wade = st.vb and ent:GetNW2Int("tif_wade", 0) or 0
 	local rgs = st.vb and ent:GetNW2String("tif_rungun", "") or ""
 	st.runGun = rgs ~= "" and rgs or nil
 	st.handLight = false
 	st.alertPosture = st.vb and not st.cqbMode and (aware == 0 or aware == 1 or aware == 4)
-	-- Idle activities (smoke, phone, water) need both hands: no gun shown until the clips' own gun motion
-	-- (j_gun / sling) is decoded.
-	-- Also during grenade throws: both hands leave the gun (MW19 slings it; the sling isn't decoded yet).
-	-- Seated with a laptop / phone / asleep: hands busy too (the gun-maintenance seat keeps the gun).
-	-- (Since 0.18: these sling the gun (chest / back / holster, TIF.GunHold) instead of hiding it; medics sling it
-	-- for the revive too. Dying drops it as a prop.)
-	-- (Since 0.19: only where the clip doesn't carry the gun itself. Campaign clips drive the gun bone and put
-	-- the gun away / back with their own motion and timing (cl_body gun_pose, j_gun); a baked gun follows that.)
-	-- (Only MW19's own activities put the gun away: smoke / phone / water. MW22's humming, radio calls, looks,
-	-- scratching and stretching keep it in the right hand: its gun bone stays on the hand.)
+
 	local mwxAct = string.match(actName, "^mwx_(%a+)_")
 	local slingAct = st.vb and ((mwxAct == "smoke" or mwxAct == "phone" or mwxAct == "water") or string.find(actName, "_grenade", 1, true) ~= nil
 		or string.sub(actName, 1, 4) == "mwg_" or string.sub(actName, 1, 10) == "mwls_help_" or string.sub(actName, 1, 5) == "mwbr_"
 		or (string.sub(actName, 1, 8) == "mws_sit_" and string.sub(actName, 1, 11) ~= "mws_sit_gun"))
-	-- (0.38.9, user: on smoking / phone the gun followed the sling bone in the middle but "will start and end with
-	-- the gun phasing onto the defined chest area". carried was decided per frame (jgunW > 0.5): while the clip's
-	-- hand still held the gun (its first and last part) it counted as not carried, so the code sling pulled the
-	-- gun to the chest early and kept it there until the clip let go. Now per clip: a clip that lets go of the gun
-	-- anywhere (TIFG_JGUN_HOLD) carries it all through - in the hand, then on its own j_gun motion.)
+
 	local carried = IsValid(st.gun) and (st.gun.tifHold or st.gun.tifFree) and actClip ~= nil and Bd.ClipCarriesGun(actClip)
 	st.slung = (slingAct and not carried) or false
-	-- Dying: hidden; the server drops the real gun (ENT:TIFDropWeapon, a prop_physics kept tif_corpse_time).
-	-- (0.18.0 also dropped a client copy here: two guns on the ground.)
+
 	st.hideGun = st.vb and ent:GetNW2Bool("tif_dying", false)
-	-- Leaving a full-body action (out of cover, popping up to aim): the action fades out in about
-	-- 0.1 s but the weapon overlay used to take 0.25 s to come back, so for a moment nothing held
-	-- the arms up (rifle hanging low). The overlay comes back fast for a short while after.
+
 	if st.wasFullBody and not st.fullBody then st.ubFastUntil = now + 0.4 end
 	st.wasFullBody = st.fullBody
 	st.ubAct = nil
-	st.hipWant = 0 -- (set by leg_targets for forward-only walks; actions, prone etc. keep the hips straight)
+	st.hipWant = 0
 	local LT
-	-- (A prone frag throw is a full-body action of its own, over the prone set.)
-	-- (So is the prone flashbang reaction.)
-	-- (Written so PR is the prone clip table or nil: "a and b and not c" gave the boolean true, which broke every
-	-- prone soldier's composition from 0.15.0 to 0.16.3: no get-down / get-up, the gun left floating.)
-	-- (And MW22 / MP crawl starts and stops, mwp_cstart_* / mwp_cstop_*: they play over the prone set too.)
+
 	local proneAct = actClip and (string.sub(actName, 1, 4) == "mwg_" or actName == "mwp_flash" or string.sub(actName, 1, 8) == "mwp_csta"
 		or string.sub(actName, 1, 8) == "mwp_csto" or string.sub(actName, 1, 9) == "mwp_dive_" or string.sub(actName, 1, 9) == "mwp_turn_"
 		or string.sub(actName, 1, 12) == "mwz_fire_pr_")
 	local PR = (st.vbProne and not proneAct) and legs.prone or nil
 	if PR then
-		-- MW19 prone: get down / get up from the server's phase start, else idle or the 8-way crawl.
+
 		local t0 = ent:GetNW2Float("tif_prone_t", now)
 		local tr = st.vbProne == 1 and PR.down or (st.vbProne == 3 and PR.up or nil)
 		local PRp = st.pistol and PR.pistol or nil
@@ -1038,21 +956,16 @@ local function compose(ent, st, dt, now)
 		else
 			LT = {}
 			local moveK = PR.crawl and math.Clamp(speed / 12, 0, 1) or 0
-			-- Reloading lying down: MW19's prone reload, stretched to the server's reload time.
+
 			local rs = ent:GetTIFReloadStart()
 			local RL = st.pistol and PR.reloadPistol or PR.reload
 			local ru = rs > 0 and (now - rs) / math.max(0.3, st.mwReloadTime or 2.2) or 1
-			-- LMG: on its bipod while lying still with the weapon up (set up, aim blend, pack up before crawling).
+
 			local BP = st.wkind == "lmg" and PR.bipod
 			local still = PR.aim and ent:GetTIFMode() == 1 and moveK < 0.5
 			if BP then
 				local want = still and ru >= 1
-				-- (0.38.22, user: "sometimes ill see them do it correctly but other times ill see it cut to a firing
-				-- bipod") The aim mode drops for a moment between bursts: want flickered, and every flicker restarted
-				-- the pack-up from its first frame (the set pose) mid set-up, then set up again. Now he keeps the bipod
-				-- BIPOD_HOLD s after he last wanted it (a reload or crawling off still packs up at once), and a set-up
-				-- turned round mid-way packs up from the matching point of the pack-up (it's the set-up in reverse),
-				-- and the other way round.
+
 				if want then st.bipodWantT = now
 				elseif ru >= 1 and moveK < 0.5 and st.bipodWantT and now - st.bipodWantT < Bd.BIPOD_HOLD then want = true end
 				if st.bipodDown then
@@ -1073,12 +986,11 @@ local function compose(ent, st, dt, now)
 				st.aim9 = BP.aim.aim9
 				add(LT, BP.aim, 1)
 			else
-				-- Lying still with the weapon up: MW19's prone aim blend (pitch from TIF's aim pitch).
+
 				local AIMc = (PRp and PRp.aim) or PR.aim
 				local IDLEc = (PRp and PRp.idle) or PR.idle
 				st.aim9 = still and AIMc.aim9 or nil
-				-- Lying still, weapon down: now and then one of MW19's AI prone twitches (each client times its own;
-				-- cosmetic).
+
 				local tw = st.proneTw
 				if tw and (still or moveK > 0.05 or now - st.proneTwT >= tw.dur) then st.proneTw, tw = nil, nil end
 				if not tw and not still and moveK < 0.05 and PR.twitches and now >= (st.proneTwNext or 0) then
@@ -1105,25 +1017,23 @@ local function compose(ent, st, dt, now)
 				end
 			end
 		end
-		st.fullBody = true -- the prone clips hold the gun; no overlay, no spine aim bend
+		st.fullBody = true
 		actClip = nil
 	elseif actClip then
 		local rate = ent:GetNW2Float("tif_act_rate", 1)
 		local t = (now - ent:GetNW2Float("tif_act_t", now)) * math.abs(rate)
 		local u
 		if actClip.loop and (actClip.speed or 0) < 1 then
-			-- Standing loops (cover idle, peek) keep one clock while they swap straight into each other, so that
-			-- doesn't restart the legs; coming from anything else the loop starts at its first frame (it used to
-			-- come in halfway through, e.g. an idle activity after walking up to its spot).
+
 			if not st.actLoopT0 then st.actLoopT0 = ent:GetNW2Float("tif_act_t", now) end
 			u = ((now - st.actLoopT0) / actClip.dur) % 1
 		else
 			st.actLoopT0 = nil
 			u = actClip.loop and (t / actClip.dur) % 1 or math.Clamp(t / actClip.dur, 0, 1)
-			-- Played backwards (Act.Play opts.reverse).
+
 			if rate < 0 then u = 1 - u end
 		end
-		-- A fixed frame from the server (drive-by sweeps: the frame is the aim direction).
+
 		local fixed = ent:GetNW2Float("tif_act_cycle", -1)
 		if fixed >= 0 then
 			st.cycleSm = st.cycleSm and (st.cycleSm + (fixed - st.cycleSm) * math.min(1, dt * 12)) or fixed
@@ -1131,9 +1041,9 @@ local function compose(ent, st, dt, now)
 		else
 			st.cycleSm = nil
 		end
-		-- The playing action, for the left-hand IK's notetracks (cl_gunhold).
+
 		st.actClipCur, st.actU = actClip, u
-		-- Cover / transition reloads: the baked gun's mag follows this clip (cl_gunmag).
+
 		if string.find(actName, "reload", 1, true) then
 			st.magClip, st.magU, st.magKey = actClip, u, ent:GetNW2Float("tif_act_t", 0)
 		end
@@ -1147,20 +1057,17 @@ local function compose(ent, st, dt, now)
 		end
 		if caim then mode = 1 end
 	else
-		-- Without layer slots (they didn't reach this client) only the main sequence shows, so the
-		-- weapon overlay is lost: use the armed (aim) locomotion then, which holds the gun itself,
-		-- instead of the relaxed walk with the gun hanging from one hand.
+
 		local legMode = (st.slotsOk == false and st.wset) and 1 or mode
 		LT = leg_targets(st, legs, legMode, stance, speed, relAng)
 	end
-	-- Legs: up to 3 full-body clips, weights smoothed, foot phase shared.
-	-- (A standing loop coming in from nothing starts at its first frame: clip_cycle, loopStart.)
+
 	st.loopStart = st.loopStart or {}
 	for clip, t in pairs(LT) do
 		if t > 0 and not st.legW[clip] then st.loopStart[clip] = st.idleT end
 	end
 	settle(st.legW, LT, actClip and LEG_RATE * 1.3 or LEG_RATE, dt)
-	-- A finished action keeps its last pose while it fades out; forget it once it's gone.
+
 	for k in pairs(st.legCycle) do
 		if not st.legW[k] then st.legCycle[k] = nil end
 	end
@@ -1212,7 +1119,6 @@ local function compose(ent, st, dt, now)
 		end
 	end
 
-	-- Upper body: weapon clips (upper-body masked sequences), up to 2 for crossfades.
 	st.ubCycle = st.ubCycle or {}
 	local UT, rate = ub_targets(ent, st, mode, speed, now)
 	rate = rate or UB_RATE
@@ -1278,7 +1184,6 @@ local function compose(ent, st, dt, now)
 	end
 	st.rikW = 0
 
-	-- Aim pitch drives GTG's pitch-blend sequences.
 	if st.wset then
 		local want = mode == 1 and A.PitchPose(st.wset, ent:GetTIFAimPitch()) or 0
 		st.pitch = approach(st.pitch, want, 4, dt)
@@ -1286,8 +1191,7 @@ local function compose(ent, st, dt, now)
 	end
 	ent:SetPoseParameter("gtg_hold_gait", 0)
 	if st.vb then
-		-- Aim yaw from the server (NW2 tif_aim_yaw, + = left), pitch from TIF's aim pitch (+ = down), clamped to
-		-- what the blend covers and eased so the gun swings instead of snapping.
+
 		local a9 = st.aim9
 		local yaw = a9 and math.Clamp(ent:GetNW2Float("tif_aim_yaw", 0), -a9.yaw, a9.yaw) or 0
 		local pitch = a9 and math.Clamp(ent:GetTIFAimPitch(), -a9.pitch, a9.pitch) or 0
@@ -1299,9 +1203,6 @@ local function compose(ent, st, dt, now)
 	Bd.Stats.composed = Bd.Stats.composed + 1
 end
 
--- When a soldier leaves the client's PVS (dormant) and comes back, client-side models parented to
--- it lose the parent link and their bone-merge cache. Re-attach whenever the parent is wrong,
--- and rebuild from scratch on the frame the soldier wakes up.
 local function attach(part, ent, force)
 	if not IsValid(part) then return end
 	if force or part:GetParent() ~= ent then
@@ -1316,17 +1217,10 @@ local function attach(part, ent, force)
 	end
 end
 
--- Prone ------------------------------------------------------------------------
--- The GTA ped has no prone animations, so while prone the faction model leaves the retarget and
--- plays the Prone Mod's ValveBiped sequences itself. The gun follows its right hand.
-
 local PRONE_SEQ = { [1] = "pronedown_stand", [3] = "proneup_stand" }
 local PRONE_IDLE, PRONE_CRAWL = "prone_ar2", "prone_walktwohand"
 local R_HAND, PH_HAND = "ValveBiped.Bip01_R_Hand", "PH_R_Hand"
 
--- Where the gun's grip sits relative to the FACTION MODEL's right hand, measured while standing
--- (gun bone-merged to the GTA ped). The faction model's hand bone is oriented differently from the
--- GTA ped's, so the offset has to be taken in its own frame or the gun comes out rotated.
 local function measure_gun_offset(ent, st)
 	if st.gunOff or not IsValid(st.gun) or st.idleT < 0.5 then return end
 	local f = st.follower
@@ -1342,13 +1236,11 @@ local function measure_gun_offset(ent, st)
 	end
 	if not (hm and pm) then return end
 	local p, a = WorldToLocal(pm:GetTranslation(), pm:GetAngles(), hm:GetTranslation(), hm:GetAngles())
-	-- A grip far from the hand means the bones weren't built yet; try again next frame.
+
 	if p:Length() > 20 then return end
 	st.gunOff = { pos = p, ang = a }
 end
 
--- MW19 (ValveBiped) body: the GTA gun is held from the right hand only: grip in the palm, barrel and up fixed
--- in the hand's frame (place_gun_vb). Grip and barrel axis per gun model: its grip bone and muzzle.
 local GRIP_IN = 3.2
 local gunInfo = {}
 local function gun_info(model)
@@ -1369,9 +1261,7 @@ local function gun_info(model)
 			local i = e:LookupAttachment(n)
 			if i and i > 0 then at = e:GetAttachment(i) break end
 		end
-		-- Barrel: the model's longest axis, pointing at the muzzle. Up: the side the gun's body is on from the
-		-- grip (a gun always sits above the hand). GTA guns are +X barrel, +Y up, which is why a fixed +Z up
-		-- rolled them 90 degrees; this works for any gun model.
+
 		local mins, maxs = e:GetModelBounds()
 		local ext = maxs - mins
 		local barrel = (ext.x >= ext.y and ext.x >= ext.z) and Vector(1, 0, 0)
@@ -1380,8 +1270,7 @@ local function gun_info(model)
 		local c = (mins + maxs) * 0.5 - grip
 		local up = c - barrel * c:Dot(barrel)
 		if up:LengthSqr() < 0.25 then up = Vector(0, 0, 1) - barrel * barrel.z end
-		-- Baked MW guns (tif_guns) carry their own palm point and axes (from the gun's muzzle tag): no guessing
-		-- from the bounds, which canted them and sat them a palm too far forward.
+
 		local function att(name)
 			local i = e:LookupAttachment(name)
 			return i and i > 0 and e:GetAttachment(i) or nil
@@ -1402,7 +1291,7 @@ local function gun_info(model)
 		local gl, gv = att("grip_l"), att("grip_v")
 		local mn, mx = e:GetModelBounds()
 		gi = { grip = grip, inv = m:GetInverseTR(), gripL = gl and gl.Pos or nil, gripV = gv and gv.Pos or nil,
-			-- model-space barrel / up and length, for the sling (TIF.GunHold)
+
 			barrel = barrel, up = up, length = (mx - mn):Length() }
 		e:Remove()
 	end
@@ -1411,7 +1300,6 @@ local function gun_info(model)
 end
 Bd.GunInfo = gun_info
 
--- studiomdl's compile turn (+90 deg about Z), taken back off a baked gun's frame: Rz(-90).
 local UNTURN = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
 local KR = Matrix({ { 0.9966, -0.0653, 0.0500, 0 }, { -0.0672, -0.9970, 0.0374, 0 }, { 0.0474, -0.0406, -0.9981, 0 },
 	{ 0, 0, 0, 1 } })
@@ -1483,7 +1371,7 @@ local function place_gun_vb(st, src)
 	local gi = gun_info(g:GetModel())
 	local pos, ang = gun_pose(st, src, gi)
 	if not pos then return end
-	-- Slung (activities, grenades, revives...): blended onto the chest / back / holster (TIF.GunHold).
+
 	local GH = TIF.GunHold
 	if GH and (st.slingW or 0) > 0.001 then
 		local sp, sa = GH.SlingPose(src, st, gi)
@@ -1518,7 +1406,7 @@ local function prone_enter(ent, st)
 	if IsValid(g) then
 		g:RemoveEffects(EF_BONEMERGE)
 		g:SetParent(nil)
-		-- The gun's own grip bone relative to its origin, from its rest pose.
+
 		g:SetupBones()
 		local gb = g:LookupBone(PH_HAND) or g:LookupBone(R_HAND)
 		local gm = gb and g:GetBoneMatrix(gb)
@@ -1540,8 +1428,7 @@ local function prone_exit(ent, st)
 			f:ManipulateBoneAngles(m.b, m.angle)
 			f:ManipulateBonePosition(m.b, m.vector)
 		end
-		-- Back to the rest pose (with the "ragdoll" fallback: the frayed-body bug after prone), and
-		-- the prone aim pose parameters back to neutral.
+
 		f:SetPoseParameter("body_pitch", 0)
 		f:SetPoseParameter("body_yaw", 0)
 		rest_pose(f)
@@ -1568,8 +1455,7 @@ local function prone_update(ent, st, phase, now)
 	f:SetPoseParameter("body_yaw", 0)
 	f:InvalidateBoneCache()
 	local g = st.gun
-	-- The gun is unparented while prone on this path; without a measured grip (guns with no hand bone, e.g. some
-	-- MGs) it used to stay floating where it was. Placed from the faction model's own hands like on the MW19 body.
+
 	if st.vb or (IsValid(g) and not (st.gunOff and st.gunGripInv)) then
 		f:SetupBones()
 		place_gun_vb(st, f)
@@ -1586,11 +1472,6 @@ local function prone_update(ent, st, phase, now)
 	end
 end
 
--- Prone on slopes: the body is tilted to the ground under it (only how it's drawn; hitboxes stay). Ground
--- heights at the head and feet ends and both sides give pitch and roll; sampled a few times a second, eased,
--- at most 35 degrees. weight 0..1 fades it in while getting down and out while getting up.
--- MW19 body: the host is drawn rotated (the bone-merged faction model and the gun follow its bones).
--- GTA body: the Prone Mod faction model (parented, not bone-merged) is tilted directly.
 local TILT_MAX = 35
 local tiltStart, tiltEnd, tiltOut = Vector(), Vector(), {}
 local tiltTrace = { start = tiltStart, endpos = tiltEnd, mask = MASK_SOLID_BRUSHONLY, output = tiltOut }
@@ -1645,7 +1526,7 @@ local function update(ent, st, dt, now)
 	ensure_parts(ent, st)
 	Prof.End()
 	local dormant = ent:IsDormant()
-	-- Knocked down (sv_hits_mw H.Knockdown): his ragdoll is what shows; the soldier and his parts are hidden.
+
 	local knocked = ent:GetNW2Bool("tif_knocked", false)
 	if IsValid(st.follower) then st.follower:SetNoDraw(dormant or knocked) end
 	if IsValid(st.gun) then st.gun:SetNoDraw(dormant or knocked) end
@@ -1659,7 +1540,7 @@ local function update(ent, st, dt, now)
 	local woke = st.wasDormant == true
 	st.wasDormant = false
 	local prone = ent:GetNW2Int("tif_prone", 0)
-	-- MW19 body: prone is MW19 clips on the host (compose), not the Prone Mod on the faction model.
+
 	st.vbProne = st.vb and prone > 0 and st.legs and st.legs.prone and prone or nil
 	if prone > 0 and not st.vbProne then
 		prone_enter(ent, st)
@@ -1676,7 +1557,7 @@ local function update(ent, st, dt, now)
 			st.follower:SetLocalAngles(angle_zero)
 		end
 		prone_update(ent, st, prone, now)
-		-- Slope tilt of the Prone Mod faction model (fades in getting down, out getting up).
+
 		local pt = now - ent:GetNW2Float("tif_prone_t", now)
 		local w = prone == 2 and 1 or (prone == 1 and math.Clamp(pt / 1.4, 0, 1) or 1 - math.Clamp(pt / 1.6, 0, 1))
 		prone_tilt(ent, st, dt, now, w, st.follower)
@@ -1684,8 +1565,7 @@ local function update(ent, st, dt, now)
 		return
 	end
 	if st.proneOn then prone_exit(ent, st) end
-	-- Safety net: standing soldiers' faction models must sit in their rest pose (anything that
-	-- changes it shows as a frayed body). Checked twice a second.
+
 	local f = st.follower
 	if IsValid(f) and f.tifRestSeq and now >= (st.restCheck or 0) then
 		st.restCheck = now + 0.5
@@ -1702,7 +1582,7 @@ local function update(ent, st, dt, now)
 		measure_gun_offset(ent, st)
 	end
 	if woke then
-		-- Don't read the jump back into view as movement.
+
 		st.lastPos, st.vel = nil, nil
 		st.nextSlotCheck = 0
 	end
@@ -1726,13 +1606,13 @@ local function update(ent, st, dt, now)
 	Prof.Begin("cl_compose")
 	compose(ent, st, dt, now)
 	Prof.End()
-	-- MW19 foley off the clips' notetracks (footsteps, gear, landings, body falls: cl_foley)
+
 	Prof.Begin("cl_foley")
 	if st.vb and TIF.FoleyCL then TIF.FoleyCL.Update(ent, st, now) end
 	Prof.End()
 	Prof.Begin("cl_pose")
 	if not check_slots(ent, st, now) then
-		-- Layer slots didn't reach this client: show the dominant leg clip as the main sequence.
+
 		Bd.Stats.missingSlots = Bd.Stats.missingSlots + 1
 		if st.mainSeq and st.mainSeq >= 0 then
 			ent:SetSequence(st.mainSeq)
@@ -1740,7 +1620,7 @@ local function update(ent, st, dt, now)
 		end
 	end
 	if st.vb then vb_pose(ent, st, now, dt) else flinch(ent, st, now) end
-	-- MW19 body prone on a slope: the host is drawn tilted to the ground (fades with the get-down / get-up clips).
+
 	if st.vb and (st.vbProne or st.tiltOn) then
 		local w = 0
 		local PR = st.vbProne and st.legs and st.legs.prone
@@ -1761,26 +1641,26 @@ local function update(ent, st, dt, now)
 		return
 	end
 	Prof.Begin("cl_bones")
-	-- GTA body (vehicles, GTA-only actions) with a baked MW gun: held from the faction model's right hand.
+
 	if not st.vb and freeGun and IsValid(st.follower) then
 		st.follower:SetupBones()
 		place_gun_vb(st, st.follower)
 	end
 	if st.vb and IsValid(st.gun) then
 		st.gun:SetNoDraw(st.hideGun == true)
-		-- Onto the sling and back over ~0.3 s.
+
 		st.slingW = math.Approach(st.slingW or 0, st.slung and 1 or 0, dt * 3.5)
 		if TIF.Feet then TIF.Feet.Prepare(ent, st, now, dt) end
 		if TIF.GunHold then TIF.GunHold.Prepare(ent, st, now) end
 		ent:SetupBones()
 		place_gun_vb(st, ent)
 		if TIF.Eyes then TIF.Eyes.Update(ent, st) end
-		-- Baked MW guns: the mag out / in the left hand / back during reloads.
+
 		if TIF.GunMag and not st.hideGun then TIF.GunMag.Update(ent, st) end
-		-- The primary on the sling while the sidearm is out.
+
 		if TIF.GunHold then TIF.GunHold.Post(ent, st) end
 	end
-	-- (0.38.19) a clip's prop (the breach sledgehammer): in the hand, or stowed (cl_props)
+
 	if st.vb and TIF.Props then
 		if not (IsValid(st.gun)) then ent:SetupBones() end
 		TIF.Props.Update(ent, st, now)
@@ -1843,7 +1723,6 @@ function L.OnScreen(ent, st)
 	return now - st.lodOutT < L.OFF_AFTER
 end
 
--- Every frame, after interpolation and right before the scene is drawn.
 hook.Add("PreRender", "tif_body", function()
 	if next(States) == nil then return end
 	Prof.Begin("cl_anim")
@@ -1855,7 +1734,7 @@ hook.Add("PreRender", "tif_body", function()
 			n = n + 1
 			local ok, err = xpcall(update, debug.traceback, ent, st, dt, now)
 			if not ok then
-				-- (0.38.5) kept per soldier for tif_stickwhy / tif_stickwatch; printed once
+
 				st.lastErr, st.lastErrAt = tostring(err), now
 				if not st.errored then
 					st.errored = true
@@ -1870,18 +1749,14 @@ hook.Add("PreRender", "tif_body", function()
 	Prof.End()
 end)
 
--- The GTA ped itself is only drawn when there's no faction model to show.
 function Bd.DrawHost(ent, flags)
 	local st = States[ent]
-	-- Lost after a full update (see tif_soldier.lua): start again; the parts come next frame.
+
 	if not st then Bd.Add(ent) end
 	if st and IsValid(st.follower) then return end
 	ent:DrawModel(flags)
 end
 
--- Where the muzzle is relative to the gun's grip bone, per gun model. GetAttachment on the
--- bone-merged gun gives the muzzle as if the gun stood at the soldier's origin (his feet), so the
--- offset is measured once on an unmerged copy at rest and applied to the merged grip bone.
 local muzzleOf = {}
 local function muzzle_local(model)
 	local m = muzzleOf[model]
@@ -1926,7 +1801,6 @@ function Bd.MuzzleWorld(ent)
 	return p and { Pos = p, Ang = a } or nil
 end
 
--- Muzzle flash sprites.
 hook.Add("PostDrawTranslucentRenderables", "tif_body_flash", function(depth, sky)
 	if sky or next(States) == nil then return end
 	local now = CurTime()
@@ -1952,8 +1826,6 @@ hook.Add("PostDrawTranslucentRenderables", "tif_body_flash", function(depth, sky
 	end
 end)
 
--- Corpses: the server makes a real ragdoll of the GTA ped and tags it with the faction model
--- (NW2 "tif_vis"). Every client dresses it here, including clients that join later.
 local pending = {}
 local function hide(self) end
 
@@ -1965,8 +1837,7 @@ local function dress_corpse(rag)
 	local vis = rag:GetNW2String("tif_vis", "")
 	if vis == "" then return false end
 	vis = (Bd.VisAlt and Bd.VisAlt[vis]) or vis
-	-- (0.38.4) a stand-in ValveBiped ragdoll (faction model without ragdoll physics): bone-merged straight on, unless
-	-- the model is on another rig's rest pose (codport ports: through the retarget map like the living soldier).
+
 	local vb = rag:GetNW2Bool("tif_vb_dress", false) and not (TIF.Modular and TIF.Modular.NeedsRetarget(vis))
 	if not vb and not cvRetarget:GetBool() then return true end
 	local f = make_follower(rag, vis, rag:GetNW2Int("tif_skin", 0), rag:GetNW2String("tif_bg", ""), vb)
@@ -1986,7 +1857,6 @@ hook.Add("Think", "tif_body_corpse", function()
 	end
 end)
 
--- Corpse models: re-attach after dormancy (same issue as living soldiers), remove with the ragdoll.
 timer.Create("tif_body_rags", 0.25, 0, function()
 	for i = #Bd.Rags, 1, -1 do
 		local r = Bd.Rags[i]
@@ -2002,7 +1872,6 @@ timer.Create("tif_body_rags", 0.25, 0, function()
 	end
 end)
 
--- Kill feed icons (borrows the AR2 icon).
 for _, class in ipairs({ "tif_soldier", "tif_soldier_militia", "tif_soldier_pmc" }) do
 	killicon.AddAlias(class, "weapon_ar2")
 end

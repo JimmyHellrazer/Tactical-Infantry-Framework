@@ -1,5 +1,3 @@
--- Shared helpers: logging, admin checks, report files.
-
 local TIF = TIF
 
 local COLOR_TAG = Color(120, 200, 255)
@@ -18,15 +16,12 @@ function TIF.Error(...)
 	MsgC(COLOR_TAG, "[TIF] ", COLOR_ERR, table.concat({ ... }, ""), "\n")
 end
 
--- Dev commands run for the server console, the listen-server host and superadmins.
 function TIF.CanUseDev(ply)
 	if not IsValid(ply) then return true end
 	if game.SinglePlayer() or ply:IsListenServerHost() then return true end
 	return ply:IsSuperAdmin()
 end
 
--- A report is a list of lines written to data/tif/reports/<name>.txt and echoed to console.
--- Client-side reports get a "cl_" prefix so they don't overwrite server ones on a listen server.
 local Report = {}
 Report.__index = Report
 
@@ -88,7 +83,6 @@ function Report:Save()
 	return fname
 end
 
--- Format a number with fixed decimals.
 function TIF.Fmt(n, dec)
 	return string.format("%." .. (dec or 2) .. "f", n or 0)
 end
@@ -99,7 +93,6 @@ local VMATRIX = FindMetaTable and FindMetaTable("VMatrix")
 local SetField = VMATRIX and VMATRIX.SetField
 local GetField = VMATRIX and VMATRIX.GetField
 
--- Zero-alloc bone matrix read using Entity:CopyBoneMatrix when available.
 function TIF.CopyBone(ent, bone, out)
 	if not bone then return nil end
 	if CopyBoneMatrix then
@@ -111,7 +104,6 @@ function TIF.CopyBone(ent, bone, out)
 	return ent:GetBoneMatrix(bone)
 end
 
--- Trace from a player's eyes to find a spawn spot on the ground in front of them.
 function TIF.SpotInFront(ply, dist)
 	local start = ply:EyePos()
 	local fwd = ply:GetAimVector()

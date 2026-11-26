@@ -1,19 +1,9 @@
--- Spawn menu entries (NPCs tab) for every faction TIF knows: built-in, content packs (TIF Faction
--- Pack...) and the faction editor's. Each faction gets its own category ("TIF - <name>") with every
--- role (rifleman, squad leader, assault, support gunner, marksman, AT gunner, breacher, security) and
--- a fireteam (4) and a squad (8) spawned together as one squad.
---
--- Soldiers are all the tif_soldier class: the faction and role come in as key-values
--- (tif_faction, tif_arch) that the spawn menu sets before the soldier spawns. Groups use tif_spawner.
--- Rebuilt whenever the faction list changes (TIF.RefreshSpawnList); the client reloads its spawn
--- menu if it was already built.
-
 local TIF = TIF
 
 TIF.SPAWN_ROLES = { "rifleman", "leader", "assault", "support", "marksman", "rpg", "breacher", "guard" }
 TIF.SPAWN_GROUPS = { { key = "fireteam", name = "Fireteam (4)", count = 4 }, { key = "squad", name = "Squad (8)", count = 8 } }
 
-local added = {}  -- list keys this file added (so removed factions can be taken out)
+local added = {}
 
 local function category(def, id)
 	return "TIF - " .. (def.name or id)
@@ -23,7 +13,7 @@ function TIF.RefreshSpawnList()
 	local npcs = list.GetForEdit("NPC")
 	local now = {}
 	for id, def in pairs(TIF.Factions or {}) do
-		-- (hidden: the old ids kept as aliases)
+
 		if istable(def) and not def.hidden and (def.models or def.variants) then
 			local cat = category(def, id)
 			local side = def.side == "ally" and " (ally)" or (def.side == "enemy" and " (enemy)" or "")
@@ -44,7 +34,7 @@ function TIF.RefreshSpawnList()
 			end
 		end
 	end
-	-- Civilians (entities/tif_civilian.lua): one, one that never scatters away, and a crowd to watch scatter.
+
 	local CIV = "TIF - Civilians"
 	for key, e in pairs({
 		tif_civ_one = { Name = "Civilian", KeyValues = {} },
@@ -60,7 +50,7 @@ function TIF.RefreshSpawnList()
 	end
 	for key in pairs(now) do if not added[key] then changed = true end end
 	added = now
-	-- An already built spawn menu doesn't see list changes: rebuild it (once, a moment later).
+
 	if CLIENT and changed and IsValid(g_SpawnMenu) then
 		timer.Create("tif_spawnmenu_reload", 1, 1, function() RunConsoleCommand("spawnmenu_reload") end)
 	end

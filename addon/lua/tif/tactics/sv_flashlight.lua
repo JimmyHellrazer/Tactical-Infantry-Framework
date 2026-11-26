@@ -1,10 +1,3 @@
--- Flashlights on dark maps: some soldiers carry a weapon light, on while patrolling, searching and fighting
--- (as in CoD). The server only decides who (NW2 bool "tif_light"); clients draw it (npc/cl_flashlight.lua:
--- projected lights for the nearest few, a glow for the rest).
---   tif_flashlights 0 off, 1 always, 2 auto (dark maps: map or sky name, or a mode's TIF.Flashlight.Set).
---   Who: the squad leader and about LIGHT_SHARE of the others (decided once per soldier). Not in vehicles,
---   downed or surrendered.
-
 local TIF = TIF
 
 TIF.Flashlight = TIF.Flashlight or {}
@@ -16,7 +9,6 @@ FL.SKY_WORDS = { "night", "dark", "dusk", "borealis", "black", "_09", "moon" }
 
 local cv = CreateConVar("tif_flashlights", "2", FCVAR_ARCHIVE, "Soldier flashlights: 0 off, 1 always, 2 dark maps only")
 
--- A mode can say it's night (true), day (false) or leave it to the map (nil).
 function FL.Set(state) FL.Override = state end
 
 local function has_word(s, words)

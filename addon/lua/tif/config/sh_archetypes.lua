@@ -1,7 +1,4 @@
-﻿-- Archetypes: one soldier implementation, different tuning.
--- In Phase 1 every archetype uses the same behaviour; the numbers below already change how
--- they detect, shoot and hold distance. Role-specific behaviour (flanking, suppression,
--- overwatch, breaching) arrives with Phases 2-5.
+﻿
 
 local TIF = TIF
 
@@ -13,35 +10,34 @@ TIF.Archetypes = TIF.Archetypes or {}
 local BASE = {
 	label = "Rifleman",
 	health = 100,
-	fov = 120,             -- degrees, when alerted or fighting
-	fovUnaware = 95,       -- degrees, while on routine duty
-	viewDist = 4500,       -- units
-	detectTime = 1.4,      -- seconds to fully spot a standing, still target at 1000 units
-	hearing = 1.0,         -- multiplier on every sound radius
-	reaction = { 0.35, 0.7 }, -- seconds between spotting and the first shot
-	spread = 2.2,          -- degrees of aim error at rest
-	spreadMoving = 1.6,    -- multiplier while the shooter moves
-	firstShots = 1.8,      -- multiplier right after acquiring a target, fades over 1.5 s
-	burst = { 3, 7 },      -- rounds per burst
+	fov = 120,
+	fovUnaware = 95,
+	viewDist = 4500,
+	detectTime = 1.4,
+	hearing = 1.0,
+	reaction = { 0.35, 0.7 },
+	spread = 2.2,
+	spreadMoving = 1.6,
+	firstShots = 1.8,
+	burst = { 3, 7 },
 	burstPause = { 0.3, 0.8 },
-	coverFire = 0.35,      -- chance of a few covering rounds as a dash to cover / a flank starts
-	prefRange = { 350, 1800 }, -- keeps this distance from the target
-	crouchChance = 0.45,   -- chance to crouch when holding still in a fight
-	aggression = 0.5,      -- 0 holds back .. 1 pushes in
-	loseContact = 6,       -- seconds without sight before switching to searching
-	searchTime = 40,       -- seconds spent searching before returning to duty
-	turnRate = 320,        -- degrees per second
+	coverFire = 0.35,
+	prefRange = { 350, 1800 },
+	crouchChance = 0.45,
+	aggression = 0.5,
+	loseContact = 6,
+	searchTime = 40,
+	turnRate = 320,
 	headshotChance = 0.08,
-	speeds = { walk = 1, tactical = 1, run = 1 }, -- multipliers on clip speeds
-	-- Phase 2
-	coverUse = 0.85,       -- chance to take cover when a fight starts (re-rolled every few seconds)
-	coverPause = { 0.8, 2.2 }, -- seconds hidden between pop-outs
-	coverBurst = { 1.4, 3.2 }, -- seconds exposed per pop-out
-	suppressResist = 0.3,  -- 0 panics easily .. 1 ignores incoming fire
-	proneChance = 0.25,    -- chance to go prone when pinned with no cover nearby
-	longRangeProne = false, -- lies down to fight at long range
-	-- Secondary weapon: switch to it when the enemy is closer than this (nil = only when the
-	-- primary runs dry up close). Long guns (marksman rifles, launchers) set it.
+	speeds = { walk = 1, tactical = 1, run = 1 },
+
+	coverUse = 0.85,
+	coverPause = { 0.8, 2.2 },
+	coverBurst = { 1.4, 3.2 },
+	suppressResist = 0.3,
+	proneChance = 0.25,
+	longRangeProne = false,
+
 	secondaryBelow = nil,
 }
 TIF.Archetypes.base = BASE

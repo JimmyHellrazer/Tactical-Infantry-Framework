@@ -1,10 +1,3 @@
--- MW22 reactions on the MW19 body (tif_mw_anims mw22react family):
---   grenades    a live grenade close by: a jump or sidestep away from it, or (very close) a dive and getting up
---   shock       a heavy hit in the open: stunned for a moment, then recovering
---   assess      hit while unaware: turning toward where it came from
--- Clips are picked by their own measured travel / turn (clip.move), not by what their numbers are meant to mean.
--- While one plays, npc.tifReact holds the soldier (TIF.ReactMW.Think, before any behaviour).
-
 local TIF = TIF
 local Act = TIF.Action
 local Move = TIF.Move
@@ -13,34 +6,30 @@ local A = TIF.Anim
 TIF.React22 = TIF.React22 or {}
 local R = TIF.React22
 
-R.GRENADE_R = 300        -- soldiers this close to a live grenade get away from it
-R.DIVE_R = 140           -- this close: a dive (else a jump / sidestep)
+R.GRENADE_R = 300
+R.DIVE_R = 140
 R.SCAN_EVERY = 0.2
 R.GRENADES = { npc_grenade_frag = true, grenade_ar2 = true, npc_contactgrenade = true, cw_grenade_thrown = true,
-	m9k_thrown_m61 = true, tfa_mwb_frag = true, tif_grenade = true }  -- (tif_grenade: frags only, tifDodgeable)
+	m9k_thrown_m61 = true, tfa_mwb_frag = true, tif_grenade = true }
 R.SHOCK_MIN, R.SHOCK_CHANCE = 45, 0.35
 R.ASSESS_CHANCE = 0.8
 
--- (No knockdowns: MW22's "raginit" falls are 7-frame hand-offs to a live ragdoll and its get-ups start from
--- ragdoll-blend poses. A knockdown needs a living-ragdoll system first.)
 local cvOn = CreateConVar("tif_react22", "1", FCVAR_ARCHIVE, "MW22 reactions: grenade dodges, pain shock, hit while unaware")
 
 local function clip(npc, name) return npc.tifHomeHost and TIF.GTG.Clip(name, npc.tifHomeHost) or nil end
 
--- Can this soldier take a full-body reaction right now?
 local function free(npc)
 	if not cvOn:GetBool() or npc.tifDead or npc.tifDying or npc.tifVeh or npc.tifDowned or npc.tifProne
 		or npc.tifSurrendered or npc.tifCov or npc.tifReact or npc.tifBoard or npc.tifLeaving then return false end
 	if not (TIF.HitsMW and TIF.HitsMW.Use(npc)) then return false end
 	if npc.tifHostId ~= npc.tifHomeHost then return false end
 	local a = npc.tifAct
-	-- Traversals, throws, revives, deaths keep going; low-priority clips (turns, looks, idles) are cut.
+
 	if a and not string.find(a.name or "", "^mw[tlxsrika]_") then return false end
 	return true
 end
 R.Free = free
 
--- The clip (from names) whose travel heads closest to a local angle (0 = forward, + = left), or nil.
 local function by_travel(npc, names, ang)
 	local best, be
 	for _, n in ipairs(names) do
@@ -66,7 +55,6 @@ local function play(npc, name, opts)
 	return Act.Play(npc, name, opts or { root = true, clear = true })
 end
 
--- Grenades ------------------------------------------------------------------------------------------------------
 local JUMPS = { "mwe_jump_2", "mwe_jump_4", "mwe_jump_6", "mwe_jump_8", "mwe_dodge_4", "mwe_dodge_6" }
 
 function R.Dodge(npc, gpos, now)
@@ -77,7 +65,7 @@ function R.Dodge(npc, gpos, now)
 	if dist < 1 then away = -npc:GetForward() end
 	local awayYaw = away:Angle().y
 	if dist < R.DIVE_R and clip(npc, "mwe_dive_8") then
-		-- A dive away (it goes forward): turned away from the grenade first, then up again.
+
 		npc:SetAngles(Angle(0, awayYaw, 0))
 		local d1 = play(npc, "mwe_dive_8")
 		if not d1 then return false end
@@ -102,7 +90,7 @@ hook.Add("Think", "tif_react22_grenades", function()
 	nextScan = now + R.SCAN_EVERY
 	for cls in pairs(R.GRENADES) do
 		for _, g in ipairs(ents.FindByClass(cls)) do
-			-- Once it has landed (slow: rolling or still), not while it flies out of the thrower's hand.
+
 			if IsValid(g) and not g.tifDodged and g.tifDodgeable ~= false and g:GetVelocity():LengthSqr() < 250 * 250 then
 				local gp = g:GetPos()
 				local owner = g:GetOwner()
@@ -114,16 +102,13 @@ hook.Add("Think", "tif_react22_grenades", function()
 						if R.Dodge(s, gp, now) then TIF.Say(s, "grenade_incoming", 0.7) end
 					end
 				end
-				-- One reaction per grenade: it was seen landing; the rest are in cover / busy.
+
 				if any then g.tifDodged = true end
 			end
 		end
 	end
 end)
 
--- Vehicles ------------------------------------------------------------------------------------------------------
--- A vehicle bearing down on a soldier on foot (heading at him, under VEH_TIME s away, fast): MW19's AI vehicle dodge
--- (mwz_vdodge_<4|6|2|8>), out of its path to the side he's already on, short one when it's close.
 R.VEH_SPEED, R.VEH_TIME, R.VEH_LANE = 220, 1.3, 70
 local function is_vehicle(e)
 	if e:IsVehicle() then return true end
@@ -141,7 +126,7 @@ function R.VehicleDodge(npc, veh, now)
 	local along = rel:Dot(dir)
 	local lateral = rel:Dot(Vector(-dir.y, dir.x, 0))
 	if along < 0 or along / speed > R.VEH_TIME or math.abs(lateral) > R.VEH_LANE then return false end
-	-- Away from its path, on his side of it (world direction), as a local angle for the clip pick.
+
 	local awayW = Vector(-dir.y, dir.x, 0) * (lateral >= 0 and 1 or -1)
 	local ang = math.AngleDifference(awayW:Angle().y, npc:GetAngles().y)
 	local close = along / speed < 0.6
@@ -163,7 +148,7 @@ hook.Add("Think", "tif_react22_vehicles", function()
 	local now = CurTime()
 	if now < nextVeh or TIF.AIDisabled() or not cvOn:GetBool() then return end
 	nextVeh = now + R.SCAN_EVERY
-	-- (the vehicle list is rebuilt every 2 s, not every scan)
+
 	if now >= nextList then
 		nextList = now + 2
 		vehList = {}
@@ -181,7 +166,6 @@ hook.Add("Think", "tif_react22_vehicles", function()
 	end
 end)
 
--- Shock / assess ------------------------------------------------------------------------------------------------
 function R.Shock(npc, dmg, now)
 	if not free(npc) or dmg:GetDamage() < R.SHOCK_MIN or math.random() > R.SHOCK_CHANCE then return false end
 	local st = npc:GetTIFStance() == A.STANCE_CROUCH and "crouch" or "stand"
@@ -193,7 +177,6 @@ function R.Shock(npc, dmg, now)
 	return true
 end
 
--- Hit while unaware: the assess clip whose turn faces the attacker.
 function R.Assess(npc, dmg, now)
 	if not free(npc) or npc.tifAware ~= TIF.AWARE.UNAWARE or math.random() > R.ASSESS_CHANCE then return false end
 	local att = dmg:GetAttacker()
@@ -213,7 +196,6 @@ function R.Assess(npc, dmg, now)
 	return true
 end
 
--- Every think, before behaviours (from TIF.ReactMW.Think): chained second clips.
 function R.Think(npc, now)
 	local ch = npc.tifReactChain
 	if ch and now >= ch.at then

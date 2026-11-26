@@ -1,12 +1,3 @@
--- Squad search after losing contact (Phase 4).
--- Instead of every member wandering to the same spots around the last known position (LKP),
--- the squad splits the work:
---   overwatch  one member (marksman / support / leader first) takes a spot with a view of the
---              LKP, 350-700 units out on the squad's side, and watches it
---   searchers  the rest get separate nav points around the LKP, favouring the direction the
---              enemy was heading; the first searcher also checks the LKP itself
--- Points are stored in each soldier's tifSearch; the brain's search behaviour walks them.
-
 local TIF = TIF
 
 TIF.Search = TIF.Search or {}
@@ -28,7 +19,6 @@ local function sees(a, b)
 	return not util.TraceLine(trace).Hit
 end
 
--- A spot with a view of the LKP, on the squad's side of it.
 local function watch_point(lkp, from)
 	local back = flat(from - lkp)
 	local best, bestD
@@ -44,10 +34,9 @@ local function watch_point(lkp, from)
 	return best
 end
 
--- searchers: soldiers to give search work to. lkp/dir: last known position and heading.
 function S.Plan(sq, searchers, lkp, dir, now)
 	if #searchers == 0 then return end
-	-- The enemy was last seen inside a building: clear it room by room instead (squads of 3+).
+
 	if #searchers >= 3 and TIF.Building and TIF.CQB and not sq.cqb and TIF.Building.Indoor(lkp) then
 		if TIF.CQB.Start(sq, lkp, true) then
 			for _, m in ipairs(searchers) do
@@ -61,7 +50,6 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	for _, m in ipairs(searchers) do centre:Add(m:GetPos()) end
 	centre = centre / #searchers
 
-	-- Overwatch from groups of 3+.
 	local watcher, watchAt
 	if #searchers >= 3 then
 		local bestRank
@@ -76,7 +64,6 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	local movers = {}
 	for _, m in ipairs(searchers) do if m ~= watcher then movers[#movers + 1] = m end end
 
-	-- Candidate points round the LKP.
 	local cands = {}
 	for _, a in ipairs(navmesh.Find(lkp, S.RADIUS, 150, 150)) do
 		local p = a:GetCenter()
@@ -89,7 +76,6 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	end
 	table.sort(cands, function(a, b) return a.score > b.score end)
 
-	-- Spread points so two searchers don't pick spots next to each other.
 	local picked = {}
 	for _, c in ipairs(cands) do
 		if #picked >= #movers * S.POINTS_EACH then break end
@@ -107,7 +93,7 @@ function S.Plan(sq, searchers, lkp, dir, now)
 		if list then list[#list + 1] = p end
 	end
 	for i, m in ipairs(movers) do
-		-- Visit this soldier's points nearest-first.
+
 		local mp = m:GetPos()
 		local list = lists[i]
 		table.sort(list, function(a, b) return a:DistToSqr(mp) < b:DistToSqr(mp) end)

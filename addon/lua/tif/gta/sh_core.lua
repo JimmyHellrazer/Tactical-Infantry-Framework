@@ -1,13 +1,9 @@
--- TIF's clip / character / weapon-definition registry (global TIFG). Originally trimmed from GrandTheftGMod 0.98's
--- sh_core.lua; since TIF 0.38.0 no GTA content is loaded with it (the GTA data, clips, ped, weapons, vehicles and
--- sounds are gone): it registers the MW19 body (mw_male), its clips and the MW guns. Edit by hand now
--- (tools/build_gta_bundle.py no longer builds it).
 jit.off(true, true)
 TIFG = TIFG or {}
 local TIFG = TIFG
 
 TIFG.Version = "0.98.0-tif"
--- (the GTA data table, sh_data.lua, is gone: the few helpers below that read it get empty tables)
+
 TIFG.Data = TIFG.Data or { U = 39.3701, heels = {}, guns = { hands = {}, weapons = {} }, melee = { unarmed = {}, weapons = {} } }
 
 local math_floor, math_sqrt, math_min, math_max = math.floor, math.sqrt, math.min, math.max
@@ -581,14 +577,12 @@ end
 
 for id, char in pairs(TIFG.Characters) do TIFG.RegisterCharacter(id, char) end
 
--- GTG's player systems aren't part of this copy. What the kept code still reads from them:
 TIFG.Config = TIFG.Config or { enabled = 1, vehicles = 1, vehicle_doors = 1, vehicle_jacking = 1, vehicle_driveby = 1, loco = 1 }
 TIFG.Ragdoll = TIFG.Ragdoll or { Active = {}, Owner = {}, Push = function() end, Start = function() end, Stun = function() return false end }
 TIFG.Motion = TIFG.Motion or { CHUTE = -1, COVER = -2, STRAFE = -3, State = function() return nil end,
 	Heading = function(ent) return IsValid(ent) and ent:EyeAngles().y or 0 end, ActionTrigger = function() end }
 TIFG.IN_BLOCK, TIFG.IN_DETONATE = IN_BULLRUSH, IN_GRENADE2
 
--- Weapon definitions without SWEPs: TIF reads the same fields a SWEP would have.
 TIFG.Weapons = TIFG.Weapons or {}
 function TIFG.RegisterWeaponDef(swep)
 	TIFG.Weapons[swep.ClassName] = swep

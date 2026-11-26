@@ -1,18 +1,3 @@
--- Morale (Phase 7). Each soldier has morale 0..1, starting from its archetype's nerve
--- (0.65 + 0.4 x suppressResist, so 0.67 for guards .. 0.91 for support gunners).
---
--- Goes down:  a squadmate killed nearby (-0.18; another ally -0.10), the squad leader killed
---             (-0.20 to the squad), being hurt (by damage), sustained heavy suppression, the squad
---             being outnumbered.
--- Goes up:    killing an enemy (+0.08, squad +0.03), quiet time (not under fire, back toward
---             the starting value), the leader nearby.
--- States:     steady > 0.45; shaken 0.2 .. 0.45 (less accurate, doesn't push forward);
---             broken < 0.2 (lasts 12 s at least, ends above 0.35): runs ~1200 units away from the
---             enemy, gun down, and hides there. A broken soldier with an enemy close (500) and
---             nobody to help, or hurt, may surrender instead: drops the gun, kneels, and is out of
---             the fight for good (enemies stop shooting at him; players still can).
--- A squad whose average morale drops below 0.3 withdraws (see sv_squad_tactics).
-
 local TIF = TIF
 local AW = TIF.AWARE
 local A = TIF.Anim
@@ -62,7 +47,6 @@ end
 function MO.State(npc) return npc.tifMoraleState or "steady" end
 function MO.Shaken(npc) return MO.Enabled() and npc.tifMoraleState ~= nil and npc.tifMoraleState ~= "steady" end
 
--- A soldier died: everyone nearby on the same side feels it.
 function MO.OnDeath(npc, attacker)
 	if not MO.Enabled() then return end
 	local pos, fac, sq = npc:GetPos(), npc:GetTIFFaction(), npc.tifSquad
@@ -77,7 +61,7 @@ function MO.OnDeath(npc, attacker)
 			end
 		end
 	end
-	-- The killer's side gets a lift.
+
 	if IsValid(attacker) and attacker.TIFSoldier then
 		MO.Add(attacker, 0.08)
 		local asq = attacker.tifSquad
@@ -90,7 +74,6 @@ function MO.OnHurt(npc, dmg)
 	MO.Add(npc, -math.min(0.25, dmg / 120))
 end
 
--- Players killed by soldiers count as kills too.
 hook.Add("PlayerDeath", "tif_morale_kills", function(ply, inflictor, attacker)
 	if IsValid(attacker) and attacker.TIFSoldier then
 		MO.Add(attacker, 0.08)
@@ -99,7 +82,6 @@ hook.Add("PlayerDeath", "tif_morale_kills", function(ply, inflictor, attacker)
 	end
 end)
 
--- Once a second per soldier: drift and state.
 local function drift(npc, now)
 	local supp = npc.tifSupp or 0
 	local resist = npc.tifArch.suppressResist or 0.3
@@ -107,7 +89,7 @@ local function drift(npc, now)
 	if supp > 0.4 then
 		m = m - (supp - 0.4) * 0.06 * (1 - resist)
 	end
-	-- Outnumbered squad.
+
 	local sq = npc.tifSquad
 	if sq and sq.knowledge then
 		local enemies = 0
@@ -117,7 +99,7 @@ local function drift(npc, now)
 		local mine = #TIF.Squad.Members(sq)
 		if enemies > mine * 1.5 then m = m - 0.012 end
 	end
-	-- Quiet: back toward the starting value; faster with the leader close by.
+
 	local quiet = supp < 0.1 and now - (npc:GetTIFHitTime() or 0) > 5
 	if quiet then
 		local base = base_of(npc)
@@ -149,10 +131,6 @@ timer.Create("tif_morale_tick", 1, 0, function()
 	end
 end)
 
--- Surrender ----------------------------------------------------------------------------------
-
--- Kneeling with the hands up (0.38.0: MW22's stash surrender, mwsu_down then the mwsu_idle loop; it was the last
--- frame of a GTA get-up-to-knees clip). quick: straight into the kneeling loop (captives put there by a mission).
 function MO.Kneel(npc, quick)
 	local down = not quick and Act.Clip(npc, "mwsu_down") and Act.Play(npc, "mwsu_down", { root = true, clear = true })
 	if down then
@@ -164,7 +142,6 @@ function MO.Kneel(npc, quick)
 	npc.tifHitboxPose = "crouch"
 end
 
--- The kneeling loop once going down is over (SurrenderThink).
 local function kneel_think(npc, now)
 	if npc.tifKneelLoopAt and now >= npc.tifKneelLoopAt then
 		npc.tifKneelLoopAt = nil
@@ -190,7 +167,6 @@ function MO.Surrender(npc, now)
 	TIF.Say(npc, "negative", 0.8)
 end
 
--- Every think of a surrendered soldier.
 function MO.SurrenderThink(npc, now)
 	npc.tifFire.want = false
 	npc.tifFace = nil
@@ -201,9 +177,6 @@ function MO.SurrenderThink(npc, now)
 	kneel_think(npc, now or CurTime())
 end
 
--- Broken -----------------------------------------------------------------------------------------
-
--- Returns true while a broken soldier's fear is in charge.
 MO.PANIC_HIDE, MO.PANIC_RUN = 1000, 400
 MO.PANIC_RUN_GAP = { 1.0, 2.0 }
 
@@ -224,7 +197,7 @@ function MO.BrokenThink(npc, c, now)
 	local f = npc.tifFire
 	f.want = false
 	local threat = c and c.pos
-	-- Surrender: an enemy close, and nobody near to help (or badly hurt).
+
 	if MO.SURRENDER and c and c.visible and npc:GetPos():DistToSqr(c.pos) < 500 * 500 then
 		local helpers = 0
 		for _, o in ipairs(TIF.Soldiers) do
@@ -237,7 +210,7 @@ function MO.BrokenThink(npc, c, now)
 			if math.random() < 0.65 then MO.Surrender(npc, now) return true end
 		end
 	end
-	-- Run: away from the enemy, then hide.
+
 	local fl = npc.tifFlee
 	if not fl or (threat and fl.from:DistToSqr(threat) > 400 * 400) then
 		local away = threat and (npc:GetPos() - threat) or npc:GetForward() * -1
@@ -279,7 +252,6 @@ function MO.BrokenThink(npc, c, now)
 	return true
 end
 
--- Squad average (for withdrawing).
 function MO.SquadAverage(sq)
 	local sum, n = 0, 0
 	for _, m in ipairs(TIF.Squad.Members(sq)) do

@@ -1,10 +1,5 @@
--- tif_selftest: checks every dependency, clip, model and voice set TIF relies on.
--- Writes data/tif/reports/selftest.txt.
-
 local TIF = TIF
 
--- MW19 body clips the core systems use. Grouped so the report says what breaks if one is missing.
--- (GTA clips until 0.38.0; the GTA body is gone.)
 local REQUIRED_CLIPS = {
 	move = { "idle", "walk", "run", "sprint", "mstg_idle", "mstg_walk_fwd_0_loop", "crouch_mstg_idle", "crouch_mstg_walk_fwd_0_loop" },
 	cover = { "mwc_ls_hide", "mwc_rs_hide", "mwc_cr_hide", "mwc_ls_aim", "mwc_cr_aim", "mwc_ls_exit_8", "mwc_cr_lean_in" },
@@ -15,7 +10,6 @@ local REQUIRED_CLIPS = {
 	vehicle = { "mwck_s0_idle", "mwck_s1_idle", "mwck_s2_idle", "mwck_s3_idle" },
 }
 
--- Throwaway entity to query a model's sequences and bodygroups without spawning anything visible.
 local function probe(model)
 	local e = ents.Create("prop_dynamic")
 	if not IsValid(e) then return nil end
@@ -119,7 +113,7 @@ local function check_weapons(r)
 	if #noModel == 0 then r:Pass("Every MW gun has its model") else r:Warn("Guns without a model", table.concat(noModel, ", ")) end
 	for _, f in SortedPairs(TIF.Factions) do
 		for _, class in ipairs(f.weapons or {}) do
-			-- (GTA gun names from older configs resolve to their MW gun: TIF.WeaponAlias)
+
 			local c = TIF.WeaponAlias and TIF.WeaponAlias(class) or class
 			r:Check(G.WeaponDef(c) ~= nil, "Faction " .. f.id .. " weapon " .. class .. (c ~= class and (" -> " .. c) or ""))
 		end

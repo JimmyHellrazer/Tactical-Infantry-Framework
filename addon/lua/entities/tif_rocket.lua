@@ -1,7 +1,3 @@
--- TIF's own launcher rocket (TIF 0.38.0, replacing the GTA projectile with the GTG removal). Fired by TIF.GTG.Launch
--- for a weapon whose definition has a projectile (the MW RPG-7: TIFG.WeaponBases.launcher). Flies straight,
--- accelerating (projectile.rocket = { start, accel, max }), a little gravity, smoke trail; bursts on impact or after
--- projectile.life seconds: blast damage (tif_rocket_damage / tif_rocket_radius), explosion, scorch, shake.
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -16,7 +12,6 @@ if SERVER then
 	local cvDamage = CreateConVar("tif_rocket_damage", "200", FCVAR_ARCHIVE, "TIF launcher rocket damage at the centre")
 	local cvRadius = CreateConVar("tif_rocket_radius", "250", FCVAR_ARCHIVE, "TIF launcher rocket blast radius")
 
-	-- p: the weapon's projectile table; dir: unit direction; owner: the soldier (no collision with him).
 	function ENT:Setup(p, dir, owner)
 		self.tifP = p or {}
 		self.tifDir = dir
@@ -51,12 +46,12 @@ if SERVER then
 		local dt = math.max(0, now - (self.tifLast or now))
 		self.tifLast = now
 		if now >= self.tifDie then self:Burst(self:GetPos()) return end
-		-- accelerate along the flight, a little gravity
+
 		local v = self.tifVel or self:GetVelocity()
 		local speed = math.min(self.tifMax or v:Length(), v:Length() + (self.tifAccel or 0) * dt)
 		local d = v:GetNormalized()
 		v = d * speed - Vector(0, 0, (self.tifGrav or 0) * dt)
-		-- hit anything between here and the next step
+
 		local pos = self:GetPos()
 		local tr = util.TraceHull({ start = pos, endpos = pos + v * math.max(dt, FrameTime()),
 			mins = Vector(-3, -3, -3), maxs = Vector(3, 3, 3), mask = MASK_SHOT, filter = { self, self:GetOwner() } })
@@ -122,7 +117,7 @@ else
 
 	function ENT:Draw()
 		self:DrawModel()
-		-- the motor's glow
+
 		local dl = DynamicLight(self:EntIndex())
 		if dl then
 			dl.pos = self:GetPos() - self:GetForward() * 12

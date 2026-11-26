@@ -1,10 +1,3 @@
--- TIF log file (0.38.30, user: "are errors like that readable or only noticed when i report them" -> a log file to read
--- after a session). garrysmod/data/tif/log_sv.txt (server) and log_cl.txt (client; on a listen server both are on the
--- host's disk), the previous session's kept as *_prev.txt. Every TIF.Log / TIF.Warn / TIF.Error line goes in (still
--- printed to the console as before), plus TIF.Event(tag, ...) lines that only go to the file (CQB steps, human shield
--- scenes, melee fights, watchdog findings: core/sv_watchdog.lua) and tif_mark notes (a player marking a moment:
--- what the soldiers / civilians around him were doing). Capped at MAX_BYTES a session. tif_logfile 0: off.
-
 local TIF = TIF
 TIF.LogFile = TIF.LogFile or {}
 local L = TIF.LogFile
@@ -24,7 +17,7 @@ local function start()
 	started = true
 	file.CreateDir("tif")
 	if file.Exists(L.NAME, "DATA") then
-		-- (keep the last session's: rename, else copy)
+
 		if file.Exists(L.PREV, "DATA") then file.Delete(L.PREV) end
 		local ok = file.Rename and pcall(file.Rename, L.NAME, L.PREV)
 		if not ok then file.Write(L.PREV, file.Read(L.NAME, "DATA") or "") end
@@ -34,7 +27,6 @@ local function start()
 		os.date("%Y-%m-%d %H:%M:%S"), map))
 end
 
--- One line: time of day, CurTime, a short kind / tag, the text.
 function L.Line(kind, text)
 	if not cv:GetBool() or full then return end
 	if not started then start() end
@@ -63,11 +55,9 @@ local function join(...)
 	return table.concat(t, "")
 end
 
--- Console lines go to the file too.
 local log0, warn0, err0 = TIF.Log, TIF.Warn, TIF.Error
 function TIF.Log(...) log0(...) L.Line("log", join(...)) end
 function TIF.Warn(...) warn0(...) L.Line("WARN", join(...)) end
 function TIF.Error(...) err0(...) L.Line("ERROR", join(...)) end
 
--- File only: what happened, for reading after a session.
 function TIF.Event(tag, ...) L.Line(tag, join(...)) end

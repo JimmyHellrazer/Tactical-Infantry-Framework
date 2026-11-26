@@ -1,7 +1,3 @@
--- Settings panel (Phase 7): spawn menu > Utilities > Tactical Infantry, or `tif_settings` for a
--- window. Sliders and boxes are bound to the TIF console variables (server settings: works for
--- the listen-server host; on a dedicated server use the console / rcon).
-
 local SECTIONS = {
 	{ "AI", {
 		{ "check", "tif_ai_disabled", "Freeze all TIF soldiers" },
@@ -55,7 +51,7 @@ local SECTIONS = {
 		{ "slider", "tif_anim_lod_every", "Out-of-view soldiers update every N frames", 1, 8, 0 },
 	} },
 }
--- (The debug overlay's settings only with the local dev addon, which has them: TIF.Dev, 0.38.11.)
+
 if TIF and TIF.Dev then
 	SECTIONS[#SECTIONS + 1] = { "Debug (dev tools)", {
 		{ "check", "tif_debug", "Debug overlay and console log" },

@@ -1,9 +1,3 @@
--- TIF's own thrown grenades (2026-11-18, user: "not the unimmersive Half-Life 2 ones"). Kinds:
---   frag   fuse, then blast damage (tif_grenade_damage / _radius) with an explosion
---   flash  fuse, then a bang that stuns TIF soldiers in sight (TIF.FlashAt) and whites out / deafens players in sight
--- Models: SandSWEP Throwables' M67 / M84 when that addon is installed, else HL2's grenade. Thrown by
--- TIF.GrenadeMW.Throw (cover, open ground, CQB flashes). Factions with grenades = "hl2" (a future Combine faction)
--- keep GMod's npc_grenade_frag instead.
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -43,11 +37,10 @@ if SERVER then
 		local ph = self:GetPhysicsObject()
 		if IsValid(ph) then ph:Wake() ph:SetDamping(0.2, 1.5) end
 		self.tifFuseAt = self.tifFuseAt or (CurTime() + 3)
-		-- The grenade dodge (sv_react_mw22) only runs from frags.
+
 		self.tifDodgeable = kind == "frag"
 	end
 
-	-- Fuse in seconds from now.
 	function ENT:SetFuse(t) self.tifFuseAt = CurTime() + t end
 
 	function ENT:PhysicsCollide(data)
@@ -58,10 +51,6 @@ if SERVER then
 		end
 	end
 
-	-- (0.38.4) A grenade meant for a room (CQB flashes): self.tifForce = { pos = target, door = doorway centre,
-	-- inward = into the room }. Bouncing back out through the doorway it's sent back in; if it isn't in the room when
-	-- the fuse runs out (stopped on the frame, rolled back out), it goes off at the target instead (user: "force it in
-	-- the target building, it bounces against something and lands outside").
 	local IN_ROOM = 24
 	local function depth(f, pos) return (pos - f.door):Dot(f.inward) end
 
@@ -73,7 +62,7 @@ if SERVER then
 		if d > IN_ROOM then
 			f.wasIn = true
 		elseif f.wasIn and IsValid(ph) then
-			-- crossed back out: turned round, back in
+
 			local v = ph:GetVelocity()
 			local out = v:Dot(f.inward)
 			if out < 0 then ph:SetVelocity(v - f.inward * (2 * out)) end
@@ -127,10 +116,9 @@ if SERVER then
 			dl:Fire("TurnOn")
 			SafeRemoveEntityDelayed(dl, 0.15)
 		end
-		-- TIF soldiers in sight: stunned (blind, shaken; the MW body plays its flash reaction).
+
 		if TIF and TIF.FlashAt then TIF.FlashAt(pos, FLASH_R, self, IsValid(self:GetOwner()) and self:GetOwner() or nil) end
-		-- Players in sight: a white-out and ringing, stronger close up and facing it. (0.38.21) Thrown by their own
-		-- side: tif_flash_friendly of the range and duration (TIF.FlashScale), none at 0.
+
 		local thrower = IsValid(self:GetOwner()) and self:GetOwner() or nil
 		for _, ply in player.Iterator() do
 			if ply:Alive() then

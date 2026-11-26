@@ -1,14 +1,3 @@
--- Searching looks with MW19's smart-object clips (MW19 body): at a search point or where a noise came from,
--- the soldier looks at what's actually there instead of turning on the spot:
---   under      something table-high with space beneath (table, desk, bench)
---   under_low  something low with a gap under it (a car)
---   over       a low wall / ledge / sandbags with open space beyond
---   down       a drop ahead (a balcony edge, a ledge)
---   high       open sky above and a tall structure ahead (looking up at windows / a roof line)
---   around     nothing particular
--- Each is enter / loop / exit (mwl_<kind>_*). TIF.SearchMW.Look starts one; Busy (called by the brain before
--- any behaviour, like TIF.PassiveMW.Busy) runs it and drops it the moment a fight starts.
-
 local TIF = TIF
 local Act = TIF.Action
 local AW = TIF.AWARE
@@ -17,7 +6,7 @@ TIF.SearchMW = TIF.SearchMW or {}
 local S = TIF.SearchMW
 
 S.LOOP_FOR = { 2.5, 4.5 }
-S.PREFER = { under = 3, under_low = 3, over = 2.5, down = 2.5, high = 1.5 }   -- weights over plain "around"
+S.PREFER = { under = 3, under_low = 3, over = 2.5, down = 2.5, high = 1.5 }
 
 local function yaw_dir(y)
 	local r = math.rad(y)
@@ -37,7 +26,6 @@ end
 
 local function has(npc, kind) return TIF.GTG.Clip("mwl_" .. kind .. "_loop", npc.tifHomeHost) ~= nil end
 
--- What's around: a list of { kind, yaw }. hint: a yaw to favour (toward the last known position).
 function S.Find(npc, hint)
 	local out = {}
 	local base = npc:GetPos()
@@ -51,20 +39,20 @@ function S.Find(npc, hint)
 			local low = trace(base + Vector(0, 0, 12), base + Vector(0, 0, 12) + d * (dist + 25), npc)
 			local gap = trace(base + Vector(0, 0, 4), base + Vector(0, 0, 4) + d * (dist + 30), npc)
 			if not low.Hit and not high.Hit then
-				out[#out + 1] = { kind = "under", yaw = yaw }        -- a table: open at shin height
+				out[#out + 1] = { kind = "under", yaw = yaw }
 			elseif low.Hit and not gap.Hit then
-				out[#out + 1] = { kind = "under_low", yaw = yaw }    -- a car: body down to the knees, a gap under it
+				out[#out + 1] = { kind = "under_low", yaw = yaw }
 			elseif not high.Hit then
-				out[#out + 1] = { kind = "over", yaw = yaw }         -- a low wall: solid to the ground, open above
+				out[#out + 1] = { kind = "over", yaw = yaw }
 			end
 		else
-			-- A drop: no floor a little way ahead.
+
 			local p = base + d * 50
 			local g = trace(p + Vector(0, 0, 20), p - Vector(0, 0, 120), npc)
 			if not g.Hit then out[#out + 1] = { kind = "down", yaw = yaw } end
 		end
 	end
-	-- Up: open sky and something tall ahead.
+
 	local up = trace(base + Vector(0, 0, 64), base + Vector(0, 0, 400), npc)
 	if not up.Hit or up.HitSky then
 		local y = hint or npc:GetAngles().y
@@ -76,7 +64,6 @@ function S.Find(npc, hint)
 	return ok
 end
 
--- Pick one: weighted by kind, favouring the hint direction.
 local function choose(npc, list, hint)
 	local total, w = 1, {}
 	for i, f in ipairs(list) do
@@ -93,7 +80,6 @@ local function choose(npc, list, hint)
 	return { kind = "around", yaw = hint or npc:GetAngles().y }
 end
 
--- Start a look. hint: a yaw to favour. Returns true if one started.
 function S.Look(npc, now, hint)
 	if not S.Use(npc) or npc.tifLook or npc.tifAct or npc.tifCov or npc.tifProne or npc.tifVeh then return false end
 	local f = choose(npc, S.Find(npc, hint), hint)
@@ -111,11 +97,10 @@ local function stop(npc)
 end
 S.Stop = stop
 
--- Called by the brain before any behaviour. True while a look is in charge.
 function S.Busy(npc, now)
 	local l = npc.tifLook
 	if not l then return false end
-	-- A fight, or something else took the body over (a reaction, a hit): drop the look.
+
 	local a = npc.tifAct
 	if npc.tifAware == AW.ENGAGED or not a or string.sub(a.name or "", 1, 4) ~= "mwl_" then
 		stop(npc)

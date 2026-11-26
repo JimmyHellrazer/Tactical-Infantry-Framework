@@ -1,10 +1,3 @@
--- Cover finding.
--- Candidates come from navmesh areas around a centre. Each is tested against the threat with
--- traces: is there a wall between it and the threat at waist height, is it high or low, is there
--- room to stand, is there an edge to lean around, is the soldier hidden from the threat, and can
--- it shoot from the pop-out position. Results are cached per grid cell and threat direction so
--- soldiers share the work. Points are reserved so two soldiers never take the same spot.
-
 local TIF = TIF
 local Budget = TIF.Budget
 local Prof = TIF.Prof
@@ -12,23 +5,22 @@ local Prof = TIF.Prof
 TIF.Cover = TIF.Cover or {}
 local C = TIF.Cover
 
-C.HUG = 20             -- distance from wall to the soldier's origin
+C.HUG = 20
 C.WAIST = 30
-C.CHEST = 44           -- second detection height, for obstacles that are open underneath
+C.CHEST = 44
 C.HEAD = 60
-C.EDGE_STEP = 36       -- how far along the wall an edge is looked for
-C.EXCLUSION = 56       -- min distance between two soldiers' cover points
+C.EDGE_STEP = 36
+C.EXCLUSION = 56
 C.CACHE_TIME = 20
-C.MAX_TRACES = 110     -- per search: ~40 to find obstacles, the rest to judge them
+C.MAX_TRACES = 110
 C.MAX_CANDIDATES = 16
 
--- World and props block; players and NPCs don't count as cover.
 C.MASK = bit.bor(CONTENTS_SOLID, CONTENTS_MOVEABLE, CONTENTS_WINDOW, CONTENTS_GRATE)
 
 C.Cache = C.Cache or {}
-C.Reserved = C.Reserved or {}   -- key -> { npc, pos }
-C.Recent = C.Recent or {}       -- evaluated points, for the debug overlay
-C.RecentRays = C.RecentRays or {} -- obstacle-finding rays: kind 1 counts, 2 faces the threat, 0 missed
+C.Reserved = C.Reserved or {}
+C.Recent = C.Recent or {}
+C.RecentRays = C.RecentRays or {}
 
 local tr, hullOut = {}, {}
 local trace = { output = tr, mask = C.MASK }
@@ -172,7 +164,6 @@ end
 
 local COVER_CLASSES = { prop_physics = true, prop_physics_multiplayer = true, prop_dynamic = true, prop_dynamic_override = true }
 
--- Could this entity shield a soldier? Props between knee and above-head height, wide enough, and vehicles.
 function C.IsCoverEntity(ent)
 	if not IsValid(ent) then return false end
 	if ent.IsGlideVehicle or ent.tifCover then return true end
@@ -204,9 +195,9 @@ local function score(pt, npc, threat)
 	why[#why + 1] = string.format("%du away", travel)
 	if pt.high and pt.canShoot then s = s + 0.4 end
 	if pt.material == "vehicle" then s = s - 0.3 why[#why + 1] = "vehicle" end
-	-- Placed fortifications (sandbags, HESCO; TIF.API.MarkCover) are built for this: taken first.
+
 	if pt.ent and pt.ent.tifCover then s = s + 1.5 why[#why + 1] = "fortification" end
-	-- Moving toward the threat to reach it is riskier for cautious soldiers.
+
 	local to = flat(pt.pos - npc:GetPos())
 	if travel > 120 and to:Dot(flat(threat - npc:GetPos())) > 0.6 then
 		s = s - (1 - arch.aggression) * 1.2
@@ -222,8 +213,6 @@ local function score(pt, npc, threat)
 	return s, table.concat(why, ", ")
 end
 
--- Best cover against threat near center. Returns the point or nil.
--- opts: center, radius, maxTravel
 function C.Find(npc, threat, opts)
 	opts = opts or {}
 	Prof.Begin("cover")
@@ -234,10 +223,6 @@ function C.Find(npc, threat, opts)
 	local traces = { n = 0 }
 	local stats = {}
 
-	-- Candidates: cast waist-height rays toward the threat side and keep whatever they hit
-	-- (walls, low walls, crates, vehicles). Each spot is placed BEHIND the obstacle as seen from
-	-- the threat, so the obstacle is between them. (Placing it in front of the face the ray hit
-	-- only works for long walls; a narrow crate hit at an angle would miss the line to the threat.)
 	local probes = {}
 	local seen = {}
 	local function add_probe(p, z)
@@ -250,13 +235,13 @@ function C.Find(npc, threat, opts)
 	end
 	local function fan(origin, yawCenter, spread, count, len)
 		local low, high = origin + Vector(0, 0, C.WAIST), origin + Vector(0, 0, C.CHEST)
-		-- Never look past the threat: walls behind it can't shield us from it.
+
 		len = math.min(len, math.max(80, origin:Distance(threat) - 40))
 		for i = 0, count - 1 do
 			if traces.n >= C.MAX_TRACES * 0.45 then return end
 			local yaw = yawCenter + (count == 1 and 0 or (i / (count - 1) - 0.5) * spread)
 			local dir = Vector(math.cos(math.rad(yaw)), math.sin(math.rad(yaw)), 0)
-			-- Alternate heights so both solid low walls and raised desks/tables are found.
+
 			local start = (i % 2 == 0) and low or high
 			traces.n = traces.n + 1
 			if not Budget.Take("cover_trace", 1) then return end
@@ -277,8 +262,7 @@ function C.Find(npc, threat, opts)
 		end
 	end
 	local toThreat = (threat - center):Angle().y
-	-- Wide fan from the soldier, then narrower fans from points to each side and halfway forward,
-	-- to find cover the soldier itself can't "see" from where it stands.
+
 	fan(center, toThreat, 200, 18, radius)
 	local fwd, side = yaw_dir(toThreat), yaw_dir(toThreat + 90)
 	for _, off in ipairs({ side * radius * 0.45, -side * radius * 0.45, fwd * radius * 0.35 }) do
@@ -286,20 +270,15 @@ function C.Find(npc, threat, opts)
 		local g = line(o + Vector(0, 0, 40), o - Vector(0, 0, 120))
 		if g.Hit and not g.StartSolid then fan(Vector(g.HitPos), toThreat, 110, 6, radius * 0.6) end
 	end
-	-- Props and vehicles nearby are looked up directly (no traces), so a narrow crate between
-	-- two rays isn't missed: one probe behind each, as seen from the threat.
-	-- Nearest first.
+
 	table.sort(probes, function(a, b) return a:DistToSqr(center) < b:DistToSqr(center) end)
 
-	-- Props and vehicles nearby are looked up directly (no traces), so a narrow crate between
-	-- two rays isn't missed: one probe behind each, as seen from the threat. They go first in the
-	-- list so the candidate limit can't crowd them out.
 	local toT = flat(threat - center)
 	local propProbes = {}
 	for _, ent in ipairs(ents.FindInSphere(center, radius)) do
 		if C.IsCoverEntity(ent) then
 			local c = ent:WorldSpaceCenter()
-			-- Skip what's behind the soldier or right next to the threat.
+
 			if flat(c - center):Dot(toT) > -0.3 and c:DistToSqr(threat) > 120 * 120 then
 				local mins, maxs = ent:OBBMins(), ent:OBBMaxs()
 				local half = math.max(maxs.x - mins.x, maxs.y - mins.y) * 0.5
@@ -326,8 +305,7 @@ function C.Find(npc, threat, opts)
 		local key = cell_key(p, threat)
 		local cached = C.Cache[key]
 		local pt
-		-- The key only holds the rough direction to the threat; far away one slice is ~1000 units
-		-- wide. Reuse a judged spot only if the threat is still near where it was judged from.
+
 		local fresh = cached and now - cached.time < C.CACHE_TIME and cached.threat
 			and cached.threat:DistToSqr(threat) < math.max(100, 0.04 * p:Distance(threat)) ^ 2
 		if fresh then
@@ -370,7 +348,6 @@ function C.Find(npc, threat, opts)
 	return best, stats
 end
 
--- Re-check one point against a (moved) threat. Cheap: 1-2 traces.
 function C.StillGood(pt, threat)
 	if not Budget.Take("trace", 1) then return true end
 	if not blocked_before(threat + VEC_60, pt.pos + (pt.high and VEC_56 or VEC_34), 6) then
@@ -393,7 +370,6 @@ function C.Release(npc)
 	npc.tifCoverKey = nil
 end
 
--- Drop stale cache entries and dead reservations.
 timer.Create("tif_cover_gc", 5, 0, function()
 	local now = CurTime()
 	for k, pt in pairs(C.Cache) do

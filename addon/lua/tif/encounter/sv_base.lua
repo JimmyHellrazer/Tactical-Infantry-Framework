@@ -1,25 +1,3 @@
--- Bases (Phase 4): a defended area with a garrison and an alert level.
---
--- Garrison jobs:
---   post     a guard at a fixed spot (gate, tower, door), facing a set direction. Fights from
---            there: leashed to the post. All posts form one "static" squad sharing what they see.
---   reserve  a quick-reaction force waiting at its spots (barracks). Static until the alarm, then
---            sent out: bounds toward the enemy like any squad.
---   patrol   a squad walking a route loop, pausing at each point; fights when it meets anything,
---            then picks the route up again.
---   (reinforcements) one squad spawned off-site during a big alarm, out of the players' sight.
---
--- Alert levels:
---   calm   routine
---   alert  something wrong: a guard is suspicious, shots heard, a man lost. Everyone heightened
---          (rifles up). Back to calm after 90 s of quiet.
---   alarm  a guard is fighting. After a short radio delay every squad in the base learns where
---          the enemy is, the reserve goes out, reinforcements may be called. When contact has been
---          lost for a while: back to alert, and the reserve sweeps the last known position.
---
--- Base definitions come from map presets (tif/encounter/presets/<map>.lua) or files saved with the
--- tif_base_* commands (data/tif/bases/<map>_<name>.json).
-
 local TIF = TIF
 local AW = TIF.AWARE
 local SQ = TIF.Squad
@@ -34,11 +12,11 @@ B.LEVEL_NAMES = { [0] = "calm", [1] = "alert", [2] = "alarm" }
 
 B.POST_LEASH = 420
 B.RESERVE_LEASH = 260
-B.ALARM_DELAY = { 1.5, 3 }      -- radio delay between a guard's contact and the base alarm
-B.ALARM_QUIET = 25              -- s without anyone fighting before the alarm stands down
-B.ALERT_QUIET = 90              -- s of quiet before alert drops to calm
+B.ALARM_DELAY = { 1.5, 3 }
+B.ALARM_QUIET = 25
+B.ALERT_QUIET = 90
 B.REINFORCE_DELAY = { 12, 20 }
-B.REINFORCE_LOSSES = 0.6        -- call reinforcements when the garrison is down to this share
+B.REINFORCE_LOSSES = 0.6
 
 local REINFORCE_MIX = { "leader", "rifleman", "support", "rpg", "assault", "marksman", "rifleman", "assault" }
 local RESERVE_MIX = { "leader", "rifleman", "assault", "rifleman", "support", "rifleman", "assault", "marksman" }
@@ -48,10 +26,8 @@ function B.Log(base, ...)
 	if cv and cv:GetBool() then TIF.Log("[base ", base.name, "] ", table.concat({ ... }, "")) end
 end
 
--- Spawning ------------------------------------------------------------------------
-
 local function spawn_one(faction, arch, pos, yaw)
-	-- Never inside someone already standing there (two soldiers given the same post, a player).
+
 	local p = TIF.FreeSpot(TIF.Move.Snap(pos) or pos)
 	local ent = ents.Create("tif_soldier_" .. faction)
 	if not IsValid(ent) then
@@ -83,11 +59,8 @@ local function squads(base)
 end
 B.Squads = squads
 
--- A garrison is built a few soldiers per tick rather than all at once: a 20-30 man base appearing
--- as a player walks up to it froze the game for a moment. Until it's done, base.pending counts the
--- soldiers still to come (API.GarrisonPending), so nobody reads the base as weakened meanwhile.
 B.SPAWN_PER_TICK = 2
-B.Building = B.Building or {}  -- base -> coroutine; one base is built at a time
+B.Building = B.Building or {}
 
 local function planned(def)
 	local n = 0
@@ -109,7 +82,6 @@ end
 
 local build
 
--- Build a base from a definition and spawn its garrison (over the next few ticks).
 function B.Garrison(def)
 	local base = {
 		id = B.NextId, name = def.name or ("base" .. B.NextId), faction = def.faction or "insurgents",
@@ -147,7 +119,7 @@ build = function(base, def)
 	local f = base.faction
 	local made = 0
 	local raw = spawn_one
-	-- Same as spawn_one, but waits for the next tick after every SPAWN_PER_TICK soldiers.
+
 	local function spawn_one(fac, arch, pos, yaw)
 		if made >= B.SPAWN_PER_TICK then
 			coroutine.yield()
@@ -158,7 +130,6 @@ build = function(base, def)
 		return raw(fac, arch, pos, yaw)
 	end
 
-	-- Posts: one static squad.
 	local guards = {}
 	for _, p in ipairs(def.posts or {}) do
 		if (p.job or "post") == "post" then
@@ -177,7 +148,6 @@ build = function(base, def)
 		base.squads.guard = sq
 	end
 
-	-- Reserve: one static squad until the alarm.
 	local reserve = {}
 	for _, p in ipairs(def.posts or {}) do
 		if p.job == "reserve" then
@@ -198,7 +168,6 @@ build = function(base, def)
 		base.squads.reserve = sq
 	end
 
-	-- Patrols: a squad per route, in file.
 	for ri, r in ipairs(def.routes or {}) do
 		if r.pts and #r.pts >= 2 then
 			local list = {}
@@ -223,7 +192,6 @@ build = function(base, def)
 		end
 	end
 
-	-- Vehicle patrols: a vehicle at the first point, its crew beside it, then mount and drive the loop.
 	for vi, vp in ipairs(def.vpatrols or {}) do
 		if TIF.Mounted and vp.pts and #vp.pts >= 2 then
 			local p1, p2 = vp.pts[1], vp.pts[2]
@@ -248,7 +216,7 @@ build = function(base, def)
 					base.vehicles[#base.vehicles + 1] = veh
 					local route = {}
 					for i, p in ipairs(vp.pts) do route[i] = TIF.Move.Snap(p) or p end
-					-- Mount once everyone has spawned in.
+
 					timer.Simple(0.5, function()
 						if SQ.List[sq.id] and IsValid(veh) then
 							TIF.Mounted.Mount(sq, veh)
@@ -262,8 +230,6 @@ build = function(base, def)
 		end
 	end
 
-	-- Convoys: `count` vehicles in a column behind the first route point, a crew each, then mount,
-	-- form up and patrol the loop.
 	for ci, cd in ipairs(def.convoys or {}) do
 		if TIF.Convoy and cd.pts and #cd.pts >= 2 then
 			local p1, p2 = cd.pts[1], cd.pts[2]
@@ -317,7 +283,7 @@ build = function(base, def)
 end
 
 function B.Remove(base)
-	-- Still being built: stop there.
+
 	B.Building[base] = nil
 	base.pending = 0
 	for _, m in ipairs(base.members) do if IsValid(m) then m:Remove() end end
@@ -325,18 +291,15 @@ function B.Remove(base)
 	B.List[base.id] = nil
 end
 
--- Alert levels -----------------------------------------------------------------------
-
 local function set_level(base, level, now, why)
 	if base.level == level then return end
 	B.Log(base, string.upper(B.LEVEL_NAMES[level]), " (", why or "", ")")
 	base.level, base.levelSince, base.quietSince = level, now, now
-	-- For outside addons (TIF.API): hook "TIF_BaseLevel" (base, levelName, why).
+
 	hook.Run("TIF_BaseLevel", base, B.LEVEL_NAMES[level], why)
 end
 B.SetLevel = set_level
 
--- Copy the base's knowledge into every squad (the base radio net).
 local function share(base, now)
 	for _, sq in ipairs(squads(base)) do
 		for ent, bk in pairs(base.knowledge) do
@@ -373,9 +336,6 @@ local function raise_alarm(base, now)
 	dispatch_reserve(base, now)
 end
 
--- Take an outside squad into the base (reinforcements that walked or drove in): its soldiers become
--- base members with `job`, the squad joins the base radio net, and goes with the base when it's
--- removed. The squad keeps whatever order it has.
 function B.Adopt(base, sq, job)
 	if not (base and sq and SQ.List[sq.id]) then return 0 end
 	local n = 0
@@ -392,7 +352,6 @@ function B.Adopt(base, sq, job)
 	return n
 end
 
--- Can any player see this spot, or is one close to it?
 local function watched(pos)
 	local tr = { mask = MASK_SOLID_BRUSHONLY }
 	for _, ply in player.Iterator() do
@@ -421,7 +380,7 @@ local function maybe_reinforce(base, now)
 	end
 	if now < base.reinforceAt then return end
 	if watched(r.pos) then
-		base.reinforceAt = now + 3 -- wait until nobody is looking
+		base.reinforceAt = now + 3
 		return
 	end
 	local size = math.Clamp(r.size or 6, 2, 8)
@@ -435,7 +394,6 @@ local function maybe_reinforce(base, now)
 	B.Log(base, "reinforcements arrived (", #out, ")")
 end
 
--- Contact lost: the reserve (or the reinforcements) sweep the last known position.
 local function sweep(base, now)
 	local k = newest(base)
 	if not k then return end
@@ -449,7 +407,6 @@ local function sweep(base, now)
 	B.Log(base, "sweep of the last known position by squad ", sq.id)
 end
 
--- All quiet: everyone back to their job.
 local function stand_down(base, now)
 	local sq = base.squads.reserve
 	if sq and SQ.List[sq.id] then
@@ -460,7 +417,7 @@ local function stand_down(base, now)
 	end
 	for _, s in ipairs(squads(base)) do
 		if s.order.kind == "patrol" then s.order.i = nil end
-		-- Vehicle patrols that got out to fight climb back in and carry on.
+
 		local mt = s.mount
 		if mt and mt.phase == "dismounted" and mt.patrol and TIF.Mounted then TIF.Mounted.Remount(s) end
 	end
@@ -469,7 +426,7 @@ local function stand_down(base, now)
 end
 
 local function tick(base, now)
-	-- Who's left, and who's busy.
+
 	local alive = {}
 	for _, m in ipairs(base.members) do
 		if IsValid(m) and not m.tifDead then alive[#alive + 1] = m end
@@ -489,7 +446,6 @@ local function tick(base, now)
 		if a == AW.SUSPICIOUS then suspicious = true end
 	end
 
-	-- Gather what the squads know.
 	for _, sq in ipairs(squads(base)) do
 		for ent, k in pairs(sq.knowledge) do
 			local bk = base.knowledge[ent]
@@ -504,7 +460,6 @@ local function tick(base, now)
 
 	if busy or suspicious then base.quietSince = now end
 
-	-- Going up.
 	if base.level < B.ALERT and (suspicious or busy or lost > 0) then
 		set_level(base, B.ALERT, now, lost > 0 and "lost a man" or (busy and "contact" or "suspicious"))
 	end
@@ -517,7 +472,6 @@ local function tick(base, now)
 		raise_alarm(base, now)
 	end
 
-	-- During the alarm.
 	if base.level == B.ALARM then
 		share(base, now)
 		maybe_reinforce(base, now)
@@ -532,7 +486,6 @@ local function tick(base, now)
 		stand_down(base, now)
 	end
 
-	-- Rifles up while anything is going on.
 	if base.level >= B.ALERT then
 		for _, m in ipairs(alive) do m.tifHeightenedUntil = math.max(m.tifHeightenedUntil or 0, now + 10) end
 	end
@@ -546,8 +499,6 @@ timer.Create("tif_base_tick", 0.5, 0, function()
 		if not ok then TIF.Error("Base tick error: ", tostring(err)) end
 	end
 end)
-
--- Definitions: presets and saved files ------------------------------------------------
 
 local function vec_out(v) return { math.Round(v.x, 1), math.Round(v.y, 1), math.Round(v.z, 1) } end
 local function vec_in(t) return Vector(t[1], t[2], t[3]) end
@@ -584,7 +535,6 @@ function B.SavedPath(name)
 	return "tif/bases/" .. game.GetMap() .. "_" .. name .. ".json"
 end
 
--- Map presets shipped with the addon: name -> def.
 function B.Presets()
 	local path = "tif/encounter/presets/" .. game.GetMap() .. ".lua"
 	if not file.Exists(path, "LUA") then return {} end
@@ -592,7 +542,6 @@ function B.Presets()
 	return ok and istable(t) and t or {}
 end
 
--- A definition by name: a saved file first, then a preset. No name: the map's first preset.
 function B.FindDef(name)
 	if name then
 		local raw = file.Read(B.SavedPath(name), "DATA")
@@ -605,8 +554,6 @@ function B.FindDef(name)
 	for _, def in pairs(B.Presets()) do return def end
 	return nil
 end
-
--- Debug overlay data --------------------------------------------------------------------
 
 util.AddNetworkString("tif_debug_bases")
 

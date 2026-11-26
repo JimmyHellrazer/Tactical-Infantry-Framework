@@ -1,9 +1,5 @@
--- Spawning soldiers (the spawn menu, TIF.API, game modes, tif_spawn / tif_spawn_squad): room checks, spread
--- points over the navmesh, the spawn itself and the squad mixes. (Until 0.38.11 in debug/sv_commands.lua.)
-
 local TIF = TIF
 
--- Is there room for a soldier standing at pos (no soldier, player, prop or vehicle in the way)?
 local roomHull = { mins = Vector(-17, -17, 4), maxs = Vector(17, 17, 70), mask = MASK_NPCSOLID }
 function TIF.Room(pos, ignore)
 	roomHull.start, roomHull.endpos, roomHull.filter = pos, pos, ignore
@@ -11,8 +7,6 @@ function TIF.Room(pos, ignore)
 	return not t.Hit and not t.StartSolid
 end
 
--- The nearest spot to pos with room for a soldier: pos itself, else rings of 40 units out to 160
--- (on the ground, not more than 40 units up or down). Falls back to pos.
 function TIF.FreeSpot(pos, ignore)
 	if TIF.Room(pos, ignore) then return pos end
 	local down = { mask = MASK_SOLID_BRUSHONLY }
@@ -31,13 +25,6 @@ function TIF.FreeSpot(pos, ignore)
 	return pos
 end
 
--- Spread n spawn points over the navmesh around center, at least 48 units apart and with room
--- for a soldier (not inside anyone or anything already there).
--- Two spreads:
---   tight (spawn menu groups, tif_spawn commands): random spots inside a circle that grows with the group (a
---     fireteam of 4 within ~220 units, a squad of 8 within ~320), snapped to the navmesh and kept inside it.
---   loose (game modes through TIF.API.SpawnSquad, e.g. a DTW FOB): any point of the navmesh areas touching the
---     circle, which on big open-ground areas spreads a squad far out (wanted there).
 function TIF.SpawnPoints(center, n, radius, loose)
 	local areas = loose and navmesh.Find(center, radius or 350, 64, 64) or nil
 	radius = radius or (120 + 25 * n)
@@ -53,7 +40,7 @@ function TIF.SpawnPoints(center, n, radius, loose)
 				p = center + Vector(math.Rand(-1, 1), math.Rand(-1, 1), 0) * radius
 			end
 		else
-			-- A random spot in the circle (denser near the middle, like a group standing around), on the navmesh.
+
 			local a, r = math.Rand(0, math.pi * 2), radius * math.sqrt(math.random()) * (tries < n * 15 and 1 or 0.6)
 			p = center + Vector(math.cos(a) * r, math.sin(a) * r, 0)
 			local area = navmesh.GetNearestNavArea(p, false, 200, false, true)
@@ -91,7 +78,7 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 		arch = "rifleman"
 	end
 	local out = {}
-	-- opts.points: exact spots, no spread / room check (helicopter passengers spawn in their seats, 0.30.1).
+
 	local pts = opts.points or TIF.SpawnPoints(center, count, opts.radius, opts.loose)
 	if IsValid(ply) then undo.Create("TIF Soldiers") end
 	for _, p in ipairs(pts) do
@@ -122,7 +109,7 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 		undo.SetPlayer(ply)
 		undo.Finish()
 	end
-	-- A group spawned together is one squad; its leader is the "leader" archetype if there is one.
+
 	if #out > 1 and not opts.noSquad then
 		local leader = out[1]
 		for _, e in ipairs(out) do if e.tifArchId == "leader" then leader = e break end end
@@ -132,9 +119,8 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 	return out
 end
 
--- Typical fire-team mixes by size.
 local SQUAD_MIX = {
 	"leader", "rifleman", "support", "rifleman", "assault", "marksman", "rpg", "assault",
 	"support", "rifleman", "breacher", "rifleman",
 }
-TIF.SquadMix = SQUAD_MIX -- also used by the spawn menu's group entries (entities/tif_spawner.lua)
+TIF.SquadMix = SQUAD_MIX

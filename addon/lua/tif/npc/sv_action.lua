@@ -1,9 +1,3 @@
--- Actions: one GTA clip played as a full-body animation, with the server moving the soldier
--- along the clip's root motion (GTG stores it as curves: x forward, y left, yaw CCW, all in
--- the clip's starting frame). Clients play the same clip from the same start time.
---
--- Networked as NW2 "tif_act" (clip name, "" = none) and "tif_act_t" (start CurTime).
-
 local TIF = TIF
 local G = TIF.GTG
 
@@ -15,12 +9,10 @@ local function curve(clip, u, axis)
 	return G.ClipCurve(clip, u * math.max(1, clip.frames - 1), axis)
 end
 
--- Root offset at progress u (0..1): local x, y, yaw.
 function Act.RootAt(clip, u)
 	return curve(clip, u, 1), curve(clip, u, 2), curve(clip, u, 3)
 end
 
--- Root height offset at progress u (0..1), from the clip's zcurve (every 3 frames), or 0.
 function Act.ZAt(clip, u)
 	local zc = clip.zcurve
 	if not zc or #zc == 0 then return 0 end
@@ -32,32 +24,20 @@ function Act.ZAt(clip, u)
 	return zc[i] + (zc[i + 1] - zc[i]) * k
 end
 
--- (Until 0.38.0 a clip the MW19 body lacked was played on the faction's GTA body, switching the soldier to it for
--- the action. The GTA body is gone: the MW19 body is the only one.)
 local function host_of(npc)
 	return npc.tifHostId or npc.tifHomeHost or G.MW_HOST
 end
 
--- A clip by name on the soldier's body, or nil.
 function Act.Clip(npc, name)
 	return G.Clip(name, host_of(npc)) or (npc.tifHomeHost and G.Clip(name, npc.tifHomeHost))
 end
 
--- Play a clip.
--- opts.root = true:   move along the clip's own root motion from the current position and yaw.
--- opts.to = { pos, yaw }: instead, blend from the current position/yaw to this target over the clip.
--- Both: follow the clip's own root path, warped so it ends exactly on `to` (the difference between where
--- the clip would end and the target is spread smoothly over the clip: MW19 cover arrivals).
--- opts.rate = playback speed multiplier.
--- Returns the clip's duration, or nil if the clip doesn't exist.
 function Act.Play(npc, name, opts)
-	-- (0.38.29, user: "the animation of the human shield can be interrupted by them noticing u") A scene that owns his
-	-- body (npc.tifActLock: a human shield) takes no other clip: reactions, flinches, turns... are refused (nil, as for
-	-- a missing clip). The scene's own calls pass opts.lockOK.
+
 	if npc.tifActLock and not (opts and opts.lockOK) then return nil end
 	local clip = G.Clip(name, host_of(npc))
 	if not clip and npc.tifHomeHost and npc.tifHomeHost ~= host_of(npc) then
-		-- (an older save on another body: back to the home body for this)
+
 		clip = G.Clip(name, npc.tifHomeHost)
 		if clip and npc.TIFSetHost then npc:TIFSetHost(npc.tifHomeHost) end
 	end
@@ -65,7 +45,7 @@ function Act.Play(npc, name, opts)
 		TIF.Warn("Action clip missing: ", tostring(name))
 		return nil
 	end
-	-- An upper-body action's base clip must exist on the same body.
+
 	if opts and opts.base and not G.Clip(opts.base, host_of(npc)) then opts.base = nil end
 	opts = opts or {}
 	local now = CurTime()
@@ -73,18 +53,15 @@ function Act.Play(npc, name, opts)
 	npc.tifAct = {
 		name = name, clip = clip, t0 = now, dur = clip.dur / rate, rate = rate,
 		startPos = npc:GetPos(), startYaw = npc:GetAngles().y,
-		-- once: a looping clip played as a single cycle, with its root motion (a shuffle step along cover).
+
 		root = opts.root == true, to = opts.to, loop = clip.loop and not opts.once,
-		-- lift = { z0, z1 }: height goes from z0 to z1 over the clip (getting into a seat).
-		-- noTrace: root motion may pass through things (through a car door).
+
 		lift = opts.lift, noTrace = opts.noTrace,
-		-- clear: drop the action as soon as the clip ends (one-shots nobody follows up: reactions, pains...).
-		-- Without it a finished one-shot holds its last frame until something replaces or clears it.
+
 		autoClear = opts.clear == true,
-		-- rootz: follow the clip's own height curve too (mantles, vaults, drops).
+
 		rootz = opts.rootz == true and clip.zcurve ~= nil,
-		-- warpU: the root+to warp lands on `to` at this point of the clip (a traversal hands back to
-		-- locomotion before its run-out ends), not at its end.
+
 		warpU = opts.warpU or 1,
 	}
 	if opts.root and opts.to then
@@ -136,7 +113,6 @@ function Act.Current(npc)
 	return npc.tifAct
 end
 
--- 0..1 progress of a one-shot action, or nil.
 function Act.Progress(npc, now)
 	local a = npc.tifAct
 	if not a then return nil end
@@ -158,7 +134,6 @@ local actOut1, actOut2 = {}, {}
 local actHull1 = { mins = ACT_MIN, maxs = ACT_MAX, mask = MASK_NPCSOLID_BRUSHONLY, output = actOut1 }
 local actHull2 = { mins = ACT_MIN, maxs = ACT_MAX, mask = MASK_NPCSOLID_BRUSHONLY, output = actOut2 }
 
--- Every tick: apply root motion / blending.
 function Act.Tick(npc, now)
 	local a = npc.tifAct
 	if not a or a.loop or a.finished then return end

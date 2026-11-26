@@ -1,4 +1,3 @@
--- From GrandTheftGMod 0.98 (playermodel/cl_bones.lua), trimmed for TIF: parts TIF uses. Built by tools/build_gta_bundle.py.
 local PMS = TIFG.PMS
 local M = PMS.Math
 local MERGE, ENGINE, QUAT = PMS.MERGE, PMS.ENGINE, PMS.QUAT

@@ -1,6 +1,3 @@
--- Sound events that soldiers can hear: gunfire, footsteps, explosions.
--- Listeners get a position and the source's faction, never a live target to track.
-
 local TIF = TIF
 local Prof = TIF.Prof
 TIF.Events = TIF.Events or {}
@@ -8,7 +5,7 @@ local E = TIF.Events
 
 local cvGunfire = CreateConVar("tif_gunfire_radius", "3500", FCVAR_ARCHIVE, "How far unsuppressed gunfire carries (units)")
 
-E.Recent = E.Recent or {} -- last events, for the debug overlay
+E.Recent = E.Recent or {}
 local RECENT_MAX = 24
 
 function E.Emit(kind, pos, radius, src, faction)
@@ -37,7 +34,7 @@ end
 local lastShotEvent = setmetatable({}, { __mode = "k" })
 hook.Add("EntityFireBullets", "tif_events", function(ent, data)
 	if not IsValid(ent) then return end
-	-- Full-auto fire from one shooter is reported at most 8 times a second.
+
 	local now = CurTime()
 	if (lastShotEvent[ent] or 0) > now - 0.12 then return end
 	lastShotEvent[ent] = now

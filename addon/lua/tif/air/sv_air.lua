@@ -1,21 +1,3 @@
--- Reinforcement helicopters, server side: landing-zone checks, routes in and out, spawning, the API for game
--- modes, and test commands. The flight itself is entities/tif_heli.lua.
---
--- Game modes:
---   local heli, why = TIF.API.CallHeli({ pos = Vector, mode = "auto" | "land" | "rope" | "flyby",
---       type = "blackhawk", fromYaw = number, hold = seconds (nil = until heli:Release()),
---       onArrive = fn(heli), onDestroyed = fn(heli, attacker) })
---   TIF.API.HeliRelease(heli)          leave now
---   TIF.API.CheckLZ(pos, type)         { mode = "land" | "rope", ground, hubZ } or nil, reason
--- Passengers (opts.passengers): { faction = "pmc", count = 6, archetypes = { ... } } spawns a squad on board,
---   or { soldiers = { npc, ... } } flies existing ones; order = { kind = "advance", pos = Vector, opts = {...} }
---   is the squad's order once everyone is out (default: hold the LZ). Landed: 6 seats, rope (rappel): 8.
---   The helicopter leaves by itself once they're all out (holdUntilRelease = true to keep it).
---   Hooks: TIF_HeliRiderOut(npc, heli), TIF_HeliEmpty(heli).
--- Hooks: TIF_HeliArrived(heli), TIF_HeliLeaving(heli), TIF_HeliDestroyed(heli, attacker)
---
--- Test commands (tif_heli, tif_heli_drop, tif_heli_lz, ...): the local dev addon tif_devtools since 0.38.11.
-
 local TIF = TIF
 local Air = TIF.Air
 
@@ -43,16 +25,11 @@ local function hull(start, endpos, half, zlo, zhi, mask)
 		mask = mask or MASK_SOLID })
 end
 
--- Sky above a point (the highest a helicopter may fly there).
 local function ceiling(pos)
 	local tr = trace(pos + Vector(0, 0, 32), pos + Vector(0, 0, 30000), MASK_SOLID_BRUSHONLY)
 	return tr.HitPos.z
 end
 
--- Can a helicopter land here, or only hover for a fast-rope, or neither?
--- Returns { mode, ground (Vector), hubZ, normal } or nil, reason. want: "land" | "rope" | "auto".
--- ropeHub: the hover the drop's rope set is made for (0.29.0: a type can have rope sets at different heights, e.g.
--- the Black Hawk's rappel at 920 and campaign fast-rope at ~575); default the type's ropeHub.
 function Air.CheckLZ(pos, typeId, want, ropeHub)
 	local def = Air.Type(typeId)
 	if not def then return nil, "unknown helicopter type" end
@@ -63,7 +40,7 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 	local ground = g.HitPos
 	local ceil = ceiling(ground)
 	local R = def.rotorRadius
-	-- Landing: flat ground, the fuselage's footprint clear to the ground, the rotor disc clear at rotor height.
+
 	local function can_land()
 		if g.HitNormal.z < 0.93 then return false, "slope" end
 		for _, o in ipairs({ Vector(170, 0, 0), Vector(-170, 0, 0), Vector(0, 110, 0), Vector(0, -110, 0),
@@ -71,7 +48,7 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 			local t = trace(ground + o + Vector(0, 0, 60), ground + o - Vector(0, 0, 80))
 			if not t.Hit or math.abs(t.HitPos.z - ground.z) > 24 then return false, "uneven ground" end
 		end
-		-- (room to come down into it, not just to sit there)
+
 		if ceil < ground.z + def.groundZ + 400 then return false, "no room above" end
 		local top = math.min(ceil - 20, ground.z + def.groundZ + 500)
 		local body = hull(Vector(ground.x, ground.y, top), ground + Vector(0, 0, 30), 260, 0, 8)
@@ -87,11 +64,11 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 		if want == "land" then return nil, why end
 		landWhy = why
 	end
-	-- (no ropes on this type: the Little Bird only lands)
+
 	if not def.ropeHub then return nil, (landWhy and (landWhy .. "; ") or "") .. "the " .. def.name .. " can't rope down" end
 	local rh = ropeHub or def.ropeHub
 	local maxRh = rh + ((def.maxRopeHub or def.ropeHub) - def.ropeHub)
-	-- Fast-rope hover: high enough over everything under the rotor disc, low enough for the ropes.
+
 	local top = ceil - 60
 	if top < ground.z + rh then return nil, "no room above for a hover" end
 	local col = hull(Vector(ground.x, ground.y, top), ground + Vector(0, 0, 8), R, 0, 8)
@@ -102,10 +79,9 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 	return { mode = "rope", ground = ground, hubZ = hubZ, normal = g.HitNormal }
 end
 
--- Where it comes from and where it leaves to: the longest clear straight lines at cruise height from the LZ.
 local DIRS = 16
-local MAX_DIST = 12000   -- how far out it comes in from (spawn)
-local EXIT_DIST = 40000  -- out: all the way to the edge of the map (user, 0.24.0: "towards the skybox")
+local MAX_DIST = 12000
+local EXIT_DIST = 40000
 local MIN_DIST = 1800
 
 local function clear_run(from, yaw, def, maxDist)
@@ -117,11 +93,8 @@ local function clear_run(from, yaw, def, maxDist)
 	return tr.Fraction * maxDist
 end
 
--- Approach slope: it comes down gradually along the way in, from cruise height to just over the spot, then settles
--- the last bit (user, 0.24.0: no more "fly over, then straight down"). The shallowest slope whose path is clear
--- (rotor-wide hull traces along it); nil = nothing clear, straight down as before.
 local GLIDE_ANGLES = { 12, 20, 35 }
-Air.SETTLE = { land = 70, rope = 40 } -- height over the hover / landing spot where the slope ends
+Air.SETTLE = { land = 70, rope = 40 }
 
 local function glide(lz, def, inDir, cruiseZ, settle)
 	local H = cruiseZ - (lz.hubZ + settle)
@@ -150,7 +123,7 @@ function Air.PlanRoute(lz, def, opts)
 	local cruiseZ = math.min(lz.ground.z + def.cruiseClearance, ceilZ - 160)
 	if cruiseZ < lz.hubZ + 150 then return nil, "no room to fly in" end
 	local top = Vector(lz.ground.x, lz.ground.y, cruiseZ)
-	-- The column down to the LZ must be clear for the descent.
+
 	if hull(top, Vector(lz.ground.x, lz.ground.y, lz.hubZ + 10), def.rotorRadius, -20, 20, MASK_SOLID).Hit then
 		return nil, "the way down is blocked"
 	end
@@ -160,7 +133,7 @@ function Air.PlanRoute(lz, def, opts)
 		local yaw = base + k * 360 / DIRS
 		runs[#runs + 1] = { yaw = yaw, dist = clear_run(top, yaw, def), k = k }
 	end
-	-- In: from fromYaw if it's clear enough, else the longest run (ties to the first: near fromYaw).
+
 	local best
 	for _, r in ipairs(runs) do
 		if r.dist >= MIN_DIST and (not best or (opts.fromYaw and r.k == 0) or r.dist > best.dist + 500) then
@@ -172,8 +145,7 @@ function Air.PlanRoute(lz, def, opts)
 	local inDir = Angle(0, best.yaw, 0):Forward()
 	local entry = top + inDir * math.max(MIN_DIST - 300, best.dist - 400)
 	local heading = (-inDir):Angle().y
-	-- Out: the longest clear way to the edge of the map (user, 0.24.0), measured all the way out; straight on wins
-	-- a near tie (within 10%), so it doesn't turn round for nothing.
+
 	local out, outD
 	for _, r in ipairs(runs) do
 		local d = clear_run(top, r.yaw, def, EXIT_DIST)
@@ -201,7 +173,6 @@ function Air.PlanRoute(lz, def, opts)
 	}
 end
 
--- Send a helicopter. Returns the entity, or nil and why not.
 function Air.Call(opts)
 	local typeId = opts.type or "blackhawk"
 	local def = Air.Type(typeId)
@@ -209,8 +180,7 @@ function Air.Call(opts)
 	if not Air.Available(typeId) then return nil, "model not installed (tif_air addon)" end
 	local mode = opts.mode or "auto"
 	local P = opts.passengers
-	-- With passengers: the rope set is picked first (its hover height decides the LZ), and a type with seats of only
-	-- one kind only does that kind of drop (the heavy helicopter's).
+
 	local ropeSet, ropeId
 	if P and mode ~= "flyby" and TIF.AirRide then
 		ropeSet, ropeId = TIF.AirRide.SetFor(typeId, "rope", P.set)
@@ -230,7 +200,7 @@ function Air.Call(opts)
 	local route
 	route, why = Air.PlanRoute(lz, def, opts)
 	if not route then return nil, why end
-	-- Passengers: a seat set for this kind of drop (landed / rappel), filled with given soldiers or a new squad.
+
 	local set, setId
 	if P and lz.mode ~= "flyby" then
 		if lz.mode == "rope" and ropeSet then set, setId = ropeSet, ropeId
@@ -240,7 +210,7 @@ function Air.Call(opts)
 	route.hold = opts.hold
 	if route.hold == nil and not opts.holdUntilRelease and not set then route.hold = lz.mode == "land" and 8 or 10 end
 	route.onArrive, route.onDestroyed, route.onEmpty = opts.onArrive, opts.onDestroyed, opts.onEmpty
-	-- Sets whose men sit in the doorways (Black Hawk landed: legs out) fly the whole way with the doors open (user, 0.22.1).
+
 	route.doorsOpen = (setId and def.doorsOpenSets and def.doorsOpenSets[setId]) or nil
 	route.setId = setId
 	if lz.mode == "flyby" then route.app = route.hub end
@@ -253,25 +223,22 @@ function Air.Call(opts)
 	heli:Activate()
 	if not IsValid(heli) then return nil, "spawn failed" end
 	heli:SetRoute(route)
-	-- Arrives at cruise speed, not from a standstill.
+
 	heli.v = (route.app - route.entry):GetNormalized() * def.cruiseSpeed * 0.8
 	heli.v.z = 0
 	heli.tifFaction = opts.faction or (P and P.faction)
-	-- Crew dummies on the clients (entities/tif_heli.lua): their faction's looks, and the seat set (crew chiefs only
-	-- where it leaves room).
+
 	heli:SetNW2String("tif_crew_set", setId or "")
 	heli:SetNW2String("tif_crew_fac", heli.tifFaction or "usmc")
 	table.insert(Air.Active, heli)
 	if set then
 		local riders, sq = P.soldiers, nil
 		if not riders then
-			-- (the Mi-8's 13th seat is the juggernaut's: only when asked for 13)
+
 			local n = math.min(P.count or math.min(#set.men, 12), #set.men)
 			local arch = P.archetypes or {}
 			if #arch == 0 then for i = 1, n do arch[i] = TIF.SquadMix[i] or "rifleman" end end
-			-- Spawned on board, not at the LZ (0.30.1): made on the ground they showed up under the player's
-			-- crosshair before being moved into the helicopter, and a crowded LZ (the last wave holding it) left
-			-- no room for them, so fewer or none came.
+
 			local pts = {}
 			for i = 1, #arch do pts[i] = heli:GetPos() end
 			sq, riders = TIF.API.SpawnSquad(P.faction or "usmc", heli:GetPos(), arch, { tight = true, points = pts })
@@ -279,16 +246,15 @@ function Air.Call(opts)
 			sq = riders[1] and riders[1].tifSquad
 		end
 		local boarded = TIF.AirRide.Board(heli, riders, set, setId, P.style)
-		-- Anyone without a seat (more soldiers than seats) isn't flown in.
+
 		for i = boarded + 1, #riders do if IsValid(riders[i]) and not riders[i].tifHeli and not P.soldiers then riders[i]:Remove() end end
 		heli.tifSquad = sq
 		heli.tifAutoLeave = not opts.holdUntilRelease
-		heli.tifOrder = P.order -- { kind, pos, yaw, opts }: given to the squad once everyone is out
+		heli.tifOrder = P.order
 	end
 	return heli, lz.mode
 end
 
--- Once everyone is out: the squad's order (game mode's, else hold the LZ facing out the way the helicopter came).
 hook.Add("TIF_HeliEmpty", "tif_air_squad_order", function(heli)
 	local sq = heli.tifSquad
 	if not sq or not TIF.Squad.Members or #TIF.Squad.Members(sq) == 0 then return end
@@ -301,8 +267,6 @@ hook.Add("TIF_HeliEmpty", "tif_air_squad_order", function(heli)
 	end
 end)
 
--- API for game modes -------------------------------------------------------------------
-
 TIF.API = TIF.API or {}
 local API = TIF.API
 
@@ -310,6 +274,3 @@ function API.CallHeli(opts) return Air.Call(opts or {}) end
 function API.HeliRelease(heli) if IsValid(heli) and heli.Release then heli:Release() end end
 function API.CheckLZ(pos, typeId, want) return Air.CheckLZ(pos, typeId, want) end
 function API.Helis() return Air.List() end
-
--- (Test commands tif_heli, tif_heli_drop, tif_heli_lz, tif_heli_release, tif_heli_kill, tif_heli_clear: the local dev
--- addon since 0.38.11.)

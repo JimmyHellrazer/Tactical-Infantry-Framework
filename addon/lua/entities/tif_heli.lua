@@ -1,8 +1,3 @@
--- TIF helicopter: flies a route planned by TIF.Air (tif/air/sv_air.lua): in at cruise height, slows over the LZ,
--- lands or hovers, holds, climbs out and leaves. Kinematic (a physics shadow follows the flight model), so it
--- collides and takes bullets but nothing knocks it off its path. Shot down: it falls as a real physics object,
--- spinning, and becomes a burning wreck where it hits.
-
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -16,10 +11,10 @@ ENT.TIFHeli = true
 
 function ENT:SetupDataTables()
 	self:NetworkVar("String", 0, "HeliType")
-	self:NetworkVar("Float", 0, "Rotor")      -- rotor speed 0..1
+	self:NetworkVar("Float", 0, "Rotor")
 	self:NetworkVar("Bool", 0, "DoorsOpen")
 	self:NetworkVar("Bool", 1, "Dying")
-	self:NetworkVar("Bool", 2, "Ropes")      -- rappel ropes hanging from tag_fastrope_le / _ri
+	self:NetworkVar("Bool", 2, "Ropes")
 end
 
 local function def_of(ent)
@@ -27,14 +22,13 @@ local function def_of(ent)
 end
 
 if CLIENT then
-	local ROTOR_DPS = 1300 -- main rotor, degrees per second at full speed (with the blurred blades)
+	local ROTOR_DPS = 1300
 
 	function ENT:Initialize()
 		self.rotA, self.tailA, self.doorT = 0, 0, 0
 		self.nextWash, self.nextSmoke = 0, 0
 	end
 
-	-- (not "SetupBones": that's an engine Entity method and is found first, so ours never ran)
 	function ENT:TIFInitBones(def)
 		self.tifBones = {
 			rotor = self:LookupBone(def.rotorBone or ""),
@@ -49,9 +43,6 @@ if CLIENT then
 		self.engines = { self:LookupAttachment("tag_engine_left"), self:LookupAttachment("tag_engine_right") }
 	end
 
-	-- Crew dummies (pilots, crew chiefs): client-side only, no AI. Each is the MW19 host body (invisible, for its
-	-- bones) parented to the helicopter at its tag, playing its seat loop, with a faction model bone-merged on it.
-	-- Seats: TIF_AIR_INFIL[type].crew (heli_infil_data.py). Crew chiefs only where the drop's set leaves them room.
 	local CREW_HOST = "models/tif_mw/mw_male.mdl"
 
 	function ENT:TIFMakeCrew(def)
@@ -77,11 +68,10 @@ if CLIENT then
 				o:Rotate(Angle(0, ta.y, 0))
 				local host = ClientsideModel(CREW_HOST, RENDERGROUP_TRANSLUCENT)
 				if IsValid(host) then
-					-- (drawn invisible rather than not drawn: a no-draw parent may skip building the bones the
-					-- bone-merged model sits on)
+
 					host:SetRenderMode(RENDERMODE_TRANSCOLOR)
 					host:SetColor(Color(255, 255, 255, 0))
-					host:DrawShadow(false) -- (crew shadows from inside the cabin were stretched huge)
+					host:DrawShadow(false)
 					host:SetParent(self)
 					host:SetLocalPos(tp + o)
 					host:SetLocalAngles(Angle(0, ta.y + m.yaw, 0))
@@ -95,7 +85,7 @@ if CLIENT then
 						vis:DrawShadow(false)
 						vis:SetSkin((self:EntIndex() + k) % math.max(1, vis:SkinCount()))
 					else
-						host:SetColor(Color(255, 255, 255, 255)) -- no faction model: the host's own body shows
+						host:SetColor(Color(255, 255, 255, 255))
 					end
 					table.insert(self.tifCrew, { host = host, vis = vis, dur = math.max(0.1, clip.dur), phase = math.Rand(0, 1) })
 				end
@@ -125,14 +115,14 @@ if CLIENT then
 		local def = def_of(self)
 		if not def then return end
 		if not self.tifBones then self:TIFInitBones(def) end
-		-- (built once the seat set and faction have arrived from the server: the set picks the crew chiefs)
+
 		if not self.tifCrew and self:GetNW2String("tif_crew_fac", "") ~= "" then self:TIFMakeCrew(def) end
 		self:TIFCrewThink()
 		self:TIFRopesThink()
 		local dt = FrameTime()
 		local rpm = self:GetRotor()
 		local B = self.tifBones
-		-- Rotors.
+
 		self.rotA = (self.rotA + ROTOR_DPS * rpm * dt) % 360
 		self.tailA = (self.tailA + ROTOR_DPS * 4.6 * rpm * dt) % 360
 		if B.rotor then self:ManipulateBoneAngles(B.rotor, Angle(0, self.rotA, 0)) end
@@ -143,7 +133,7 @@ if CLIENT then
 			local want = rpm > 0.55 and 1 or 0
 			if self:GetBodygroup(self.rotorBG) ~= want then self:SetBodygroup(self.rotorBG, want) end
 		end
-		-- Sliding doors.
+
 		local d = def.doors
 		if d then
 			local goal = self:GetDoorsOpen() and 1 or 0
@@ -168,7 +158,6 @@ if CLIENT then
 		if self.loop then self.loop:ChangeVolume(math.min(1, rpm * 1.4), 0.2) self.loop:ChangePitch(70 + 30 * rpm, 0.2) end
 	end
 
-	-- Rotor wash: dust thrown out along the ground under the rotor when low.
 	function ENT:Wash(rpm)
 		local now = CurTime()
 		if rpm < 0.6 or now < self.nextWash then return end
@@ -198,7 +187,6 @@ if CLIENT then
 		end
 	end
 
-	-- Shot down: black smoke from the engines.
 	function ENT:Smoke()
 		local now = CurTime()
 		if now < self.nextSmoke then return end
@@ -222,10 +210,6 @@ if CLIENT then
 		end
 	end
 
-	-- Ropes (0.29.0): the MWII fast-rope rope (tif_air/rope.mdl, 200 joints, 3 apart; K:/jimmyproject/tif_air/rope_build.py)
-	-- hung from each rope tag and posed here every frame: thrown out, the end falling (gravity), then hanging to the
-	-- ground and swaying, the rest lying on the ground; stretched (joint scale) when the drop is longer than the rope.
-	-- When the ropes are cut (men down) they fall away and lie there a few seconds. No model: the old drawn lines.
 	local ROPE_MDL = "models/tif_air/rope.mdl"
 	local ROPE_N, ROPE_STEP, ROPE_G = 200, 3, 900
 	local ropeWarned = false
@@ -241,7 +225,7 @@ if CLIENT then
 		local A, G, now = r.A, r.G, CurTime()
 		if not (A and G) then return end
 		local drop = math.max(8, A.z - G.z)
-		-- rope length: its own 600, stretched if the drop needs more (+ some lying on the ground)
+
 		local L = math.max(ROPE_N * ROPE_STEP, drop + 60)
 		local ds = L / ROPE_N
 		local k = ds / ROPE_STEP
@@ -258,7 +242,7 @@ if CLIENT then
 				local sw = w * w * 9
 				p = Vector(A.x + math.sin(now * 1.3 + r.ph + w * 3) * sw, A.y + math.cos(now * 1.1 + r.ph * 2 + w * 2) * sw, A.z - s)
 			else
-				-- on the ground, laid out away from the helicopter
+
 				local g = s - drop
 				p = Vector(G.x + r.dir.x * g, G.y + r.dir.y * g, G.z + 1)
 			end
@@ -273,13 +257,10 @@ if CLIENT then
 		end
 	end
 
-	-- Ropes on (server NW "Ropes"): one model per rope tag. Off: they fall from the helicopter and are removed later.
 	function ENT:TIFRopesThink()
 		local on = self:GetRopes()
 		self.tifRopes = self.tifRopes or {}
-		-- (0.29.0, user: every rope is the rope model; the old drawn HL2 lines are gone. Without the model (tif_air
-		-- missing, or added while the game ran: new model files are only mounted at start) there are no ropes, and a
-		-- console note says why.)
+
 		if on and #self.tifRopes == 0 and not util.IsValidModel(ROPE_MDL) and not ropeWarned then
 			ropeWarned = true
 			MsgN("[TIF] Helicopter ropes need ", ROPE_MDL, " (tif_air addon); restart the game if it was just installed")
@@ -313,7 +294,7 @@ if CLIENT then
 						r.G = tr.HitPos
 					end
 				else
-					-- cut: the top falls to the ground, then the rope lies there 8 s
+
 					r.cut = r.cut or CurTime()
 					if r.A and r.G then r.A = Vector(r.A.x, r.A.y, math.max(r.G.z + 2, r.A.z - 600 * FrameTime() * 1.5)) end
 					if CurTime() - r.cut > 8 then r.ent:Remove() end
@@ -347,9 +328,7 @@ if CLIENT then
 	return
 end
 
--- Server ------------------------------------------------------------------------
-
-local HELI_THINK = 0 -- every tick
+local HELI_THINK = 0
 
 function ENT:Initialize()
 	local def = def_of(self)
@@ -381,8 +360,6 @@ function ENT:Initialize()
 	self:NextThink(CurTime())
 end
 
--- route: { entry, app (where the approach starts), hub (hover / landed hub position over the LZ), exit,
---          heading (yaw over the LZ), cruiseZ, ceilZ, mode ("land" | "rope" | "flyby"), hold (s, nil = until Release) }
 function ENT:SetRoute(route)
 	self.route = route
 	self.phase = "inbound"
@@ -393,7 +370,6 @@ end
 function ENT:Phase() return self.phase end
 function ENT:Arrived() return self.phase == "hold" end
 
--- Leave now (hold over): the gamemode / dismount logic calls this when everyone is out.
 function ENT:Release()
 	if self.phase == "hold" or self.phase == "descend" or self.phase == "approach" then self:SetPhase("climb") end
 end
@@ -414,8 +390,6 @@ function ENT:SetPhase(ph)
 	end
 end
 
--- Flight model ----------------------------------------------------------------------
-
 local function flat(v) return Vector(v.x, v.y, 0) end
 
 local function clamp_len(v, max)
@@ -424,7 +398,6 @@ local function clamp_len(v, max)
 	return v
 end
 
--- Highest ground under the path ahead (sampled a few times a second), for terrain following at cruise.
 function ENT:GroundAhead(now)
 	if now < self.nextGround and self.groundAhead then return self.groundAhead end
 	self.nextGround = now + 0.25
@@ -440,7 +413,6 @@ function ENT:GroundAhead(now)
 	return self.groundAhead
 end
 
--- Desired velocity toward a point, slowing to arrive (horizontal) and holding a height (vertical).
 local function arrive(self, target, maxSpeed, decel)
 	local to = flat(target - self.p)
 	local dist = to:Length()
@@ -470,7 +442,7 @@ function ENT:Fly(dt, now)
 		want = dist > 1 and to * (def.cruiseSpeed / dist) or Vector()
 		want.z = math.Clamp((self:CruiseZ(now) - self.p.z) * 0.8, -def.sinkRate, def.climbRate)
 		if ph == "inbound" then
-			-- Start slowing early enough to stop over the LZ (approach takes over).
+
 			local speed = flat(self.v):Length()
 			if r.mode == "flyby" then
 				if dist < 300 then self:SetPhase("depart") end
@@ -485,24 +457,21 @@ function ENT:Fly(dt, now)
 		local hdist
 		local D = r.glideD
 		if D then
-			-- Down the slope: slowing evenly from cruise speed to a stop over the spot (deceleration so the speed
-			-- profile starts at cruise where the slope starts), height following the slope by the distance left.
+
 			local decel = math.max(def.accel * 0.25, def.cruiseSpeed * def.cruiseSpeed / (2 * D))
 			want, hdist = arrive(self, r.hub, def.cruiseSpeed, decel)
 			local top = r.hub.z + (r.settle or 0)
-			-- (eased: pushes over gently at the top, flattens out low over the spot; a straight line asked for a sink
-			-- rate the instant the slope began)
+
 			local u = math.Clamp(hdist / D, 0, 1)
 			local zt = top + (r.cruiseZ - top) * (u * u * (3 - 2 * u))
-			-- Sink at the slope's own rate for the ground speed (feed-forward), plus a correction for what's off the
-			-- line: correcting alone trailed the line by ~220.
+
 			local grad = (r.cruiseZ - top) * 6 * u * (1 - u) / D
 			local ff = -grad * flat(self.v):Length()
 			want.z = math.Clamp(ff + (zt - self.p.z) * 1.5, -def.sinkRate * 1.8, def.climbRate)
 			face = r.heading
 			if hdist < 1500 and not self:GetDoorsOpen() then self:SetDoorsOpen(true) end
 		else
-			-- No clear slope: over the spot at height, then straight down (descend).
+
 			local hz = math.max(r.hub.z + 250, math.min(self.p.z, self:CruiseZ(now)))
 			want, hdist = arrive(self, r.hub, def.approachSpeed + (def.cruiseSpeed - def.approachSpeed) * 0.5, def.accel * 0.7)
 			want.z = math.Clamp((hz - self.p.z) * 0.6, -def.sinkRate, def.climbRate)
@@ -520,7 +489,7 @@ function ENT:Fly(dt, now)
 	elseif ph == "hold" then
 		local target = r.hub
 		if r.mode == "rope" and not self.tifRiders then
-			-- A hover isn't perfectly still (held still while men are on the ropes: their clips are placed in the world).
+
 			local t = now - self.phaseAt
 			target = r.hub + Vector(math.sin(t * 0.7) * 10, math.cos(t * 0.53) * 8, math.sin(t * 0.9) * 6)
 		end
@@ -536,7 +505,6 @@ function ENT:Fly(dt, now)
 		if self.p.z > math.min(up - 100, r.hub.z + 700) then self:SetPhase("depart") end
 	end
 
-	-- Velocity follows the wanted one at limited acceleration (vertical separately).
 	local dv = want - self.v
 	local dvh = clamp_len(flat(dv), def.accel * dt)
 	local dvz = math.Clamp(dv.z, -def.accel * 0.6 * dt, def.accel * 0.6 * dt)
@@ -545,14 +513,13 @@ function ENT:Fly(dt, now)
 	self.p = self.p + self.v * dt
 	self.a = LerpVector(math.min(1, dt * 4), self.a, acc)
 
-	-- Heading: along the flight path when moving, else the wanted one.
 	local hv = flat(self.v)
 	if not face and hv:Length() > 250 then face = hv:Angle().y end
 	if face then
 		local diff = math.AngleDifference(face, self.yaw)
 		self.yaw = self.yaw + math.Clamp(diff, -45 * dt, 45 * dt)
 	end
-	-- Attitude from acceleration and speed: nose down to speed up / cruise, up to slow; bank into turns.
+
 	local f = Angle(0, self.yaw, 0):Forward()
 	local rgt = Angle(0, self.yaw, 0):Right()
 	local wantPitch = math.Clamp(self.a:Dot(f) * 0.03 + hv:Dot(f) * 0.005, -16, 14)
@@ -577,8 +544,6 @@ function ENT:Think()
 	return true
 end
 
--- Damage and crash ----------------------------------------------------------------------
-
 function ENT:OnTakeDamage(dmg)
 	if self.crashing or self.exploded then return end
 	local n = dmg:GetDamage()
@@ -593,7 +558,6 @@ function ENT:OnTakeDamage(dmg)
 	if self:Health() <= 0 then self:Crash(dmg:GetAttacker()) end
 end
 
--- Goes down: a real physics object from here (falls, spins, hits things), engines smoking.
 function ENT:Crash(attacker)
 	self.crashing = true
 	self.attacker = attacker
@@ -621,7 +585,7 @@ function ENT:CrashThink(now, dt)
 	local t = now - self.crashAt
 	self:SetRotor(math.max(0.35, self:GetRotor() - dt * 0.15))
 	if IsValid(phys) then
-		-- Spinning harder as it goes, a little lift left from the rotor.
+
 		local av = phys:GetAngleVelocity()
 		phys:AddAngleVelocity(Vector(0, 0, (av.z >= 0 and 1 or -1) * 60 * dt))
 		phys:ApplyForceCenter(Vector(0, 0, phys:GetMass() * 260 * dt))
@@ -650,7 +614,7 @@ function ENT:Explode()
 	util.Effect("Explosion", e)
 	util.Effect("HelicopterMegaBomb", e)
 	self:EmitSound("ambient/explosions/explode_4.wav", 140)
-	-- The wreck, on the ground below, facing the way the helicopter did.
+
 	local def = self.def
 	if def.wreck and util.IsValidModel(def.wreck) then
 		local tr = util.TraceLine({ start = pos + Vector(0, 0, 50), endpos = pos - Vector(0, 0, 2000), filter = self, mask = MASK_SOLID_BRUSHONLY })

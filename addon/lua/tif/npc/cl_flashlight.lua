@@ -1,7 +1,3 @@
--- Soldier weapon lights (server: tactics/sv_flashlight.lua sets NW2 "tif_light"). The nearest few lit soldiers
--- get a real projected light (no shadows, to keep it cheap); every lit soldier in range gets a glow at the
--- lens. The beam follows the soldier's facing, aim yaw and aim pitch; lowered when the weapon is down.
-
 local TIF = TIF
 local IsValid, Vector, Angle, Color = IsValid, Vector, Angle, Color
 local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end

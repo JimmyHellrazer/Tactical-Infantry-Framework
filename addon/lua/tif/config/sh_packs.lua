@@ -1,18 +1,3 @@
--- Content packs and faction variants (shared).
---
--- Content packs: other addons add factions and voice packs without touching TIF (e.g. the
--- "TIF Faction Pack"). An addon's autorun may load before or after TIF, so it either calls
--- TIF.RegisterContent(name, fn) or, if TIF isn't there yet, queues { name, fn } in the global
--- TIF_CONTENT. Either way fn runs once TIF's factions and voices exist, before saved faction
--- edits are applied. Inside fn use TIF.RegisterFaction and TIF.Voice.RegisterPack.
--- Pack factions count as built-in: the faction editor can override and reset them.
---
--- Variants (camo sets): a faction may list
---   variants = { { id = "woodland", name = "Woodland", models = { ... } }, ... }
---   variantMode = "squad" (default: soldiers spawned together wear one variant),
---                 "mixed" (any variant per soldier) or a variant id (always that one)
--- and its models list is then all variants' models together (menus, self-test, precache).
-
 local TIF = TIF
 
 TIF.ContentPacks = TIF.ContentPacks or {}
@@ -42,9 +27,6 @@ function TIF.RegisterContent(name, fn)
 	run(name, fn)
 end
 
--- Variants -----------------------------------------------------------------------------------
-
--- All models of a variant faction, for menus and checks.
 function TIF.FlattenVariants(def)
 	local out, seen = {}, {}
 	for _, v in ipairs(def.variants or {}) do
@@ -62,9 +44,6 @@ local function variant_by_id(def, id)
 	return nil
 end
 
--- Camo picked by a mode for as long as it runs (Global Operations, DTW), over the faction's own
--- setting: TIF.VariantOverrides[owner][faction id] = "squad" | "mixed" | a variant id.
--- TIF.SetVariantOverride(owner, faction, mode): mode nil or "" clears it; faction nil clears the owner.
 TIF.VariantOverrides = TIF.VariantOverrides or {}
 function TIF.SetVariantOverride(owner, faction, mode)
 	if faction == nil then TIF.VariantOverrides[owner] = nil return end
@@ -79,8 +58,6 @@ local function override_for(id)
 	end
 end
 
--- Choices for a camo menu: { { value, label } }, the first ("") meaning "the faction's own setting".
--- Empty for a faction without variants.
 function TIF.CamoChoices(id)
 	local def = TIF.Factions and TIF.Factions[id]
 	if not (def and istable(def.variants) and #def.variants > 0) then return {} end
@@ -89,14 +66,11 @@ function TIF.CamoChoices(id)
 	return out
 end
 
--- Can this model wear the GTA body (does its bone map build)? A model that can't is drawn as the bare
--- GTA ped (the bald freemode man) on every client. -> ok, reason. Cached per host and model; a failure
--- is checked again after a minute (the file may not have been readable yet).
 local usable, usableRetry, warnedModel = {}, {}, {}
 function TIF.VisualUsable(hostId, model)
 	local G = TIF.GTG
 	if not (G and G.MapFor and G.HostModel) then return true end
-	-- A ValveBiped host (MW19) needs no bone map: faction models bone-merge straight on.
+
 	if G.IsVB and G.IsVB(hostId) then return true end
 	local host = G.HostModel(hostId or G.DEFAULT_HOST)
 	if not host then return true end
@@ -114,8 +88,6 @@ function TIF.VisualUsable(hostId, model)
 	return false, why
 end
 
--- Only the models of `list` that can wear the GTA body (all of them if none can, so the soldier
--- still gets something). Each bad model is reported once.
 local function usable_of(def, list)
 	local out = {}
 	for _, m in ipairs(list) do
@@ -131,8 +103,6 @@ local function usable_of(def, list)
 end
 TIF.UsableVisuals = usable_of
 
--- Every faction's models that can't go on the soldier body (they'd fail to dress it).
--- The server checks once after the map loads.
 local function check_all(print_ok)
 	local bad = 0
 	for id, def in SortedPairs(TIF.Factions or {}) do
@@ -155,12 +125,9 @@ if SERVER then
 		end)
 	end)
 end
--- (tif_visual_check: the local dev addon since 0.38.11)
+
 TIF.VisualCheck = check_all
 
--- A visual model for a new soldier of `def`. ent.tifVariant (set by a spawner) wins over a mode's
--- override, which wins over the faction's mode. "squad": one variant for everyone of this faction
--- spawned within 4 s of the first (a squad or a garrison comes out together).
 TIF.VARIETY_WINDOW = 8
 TIF.VarietyBags = TIF.VarietyBags or {}
 function TIF.VarietyPick(facId, key, options)
@@ -214,7 +181,6 @@ function TIF.PickVisual(def, ent)
 	return TIF.VarietyPick(fid, "model", models) or models[math.random(#models)]
 end
 
--- Packs that loaded before TIF (queued in TIF_CONTENT): last, so the helpers above exist.
 for _, e in ipairs(TIF_CONTENT or {}) do
 	if istable(e) and isfunction(e[2]) then run(e[1], e[2]) end
 end

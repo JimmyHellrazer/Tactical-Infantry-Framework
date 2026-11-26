@@ -1,16 +1,3 @@
--- Calm posture and graded reactions with MW19's stealth AI animations (soldiers on the MW19 body).
--- The calm walk / idle themselves are the body's relaxed locomotion (patrol, weapon lowered) and the alert
--- walk / idle are picked by the client from the awareness state (cl_body). This module adds:
---   activities  standing at a post or a squad hold spot: smoke / phone / water bottle (start, loop, end)
---   off guard   awareness rising during an activity: it's put away first (end clip, hurried in a fight), and the
---               soldier can't shoot until that's done
---   reactions   unaware -> suspicious / alerted / engaged: a small / medium / large react clip turning toward
---               what set it off (front / left / right / back), patrol or alert version, standing or walking
---   investigate MW19's investigation idles where something was heard; a downed ally: check the body, then the
---               alarm goes to nearby allies
---   calm down   back to unaware: alert -> patrol clip
--- Roles (tif_mw_anims manifest, passive family): mwa_*, mwr_*, mwx_*, mwi_*, mwk_*.
-
 local TIF = TIF
 local Act = TIF.Action
 local Move = TIF.Move
@@ -20,22 +7,22 @@ TIF.PassiveMW = TIF.PassiveMW or {}
 local P = TIF.PassiveMW
 
 P.ACTIVITIES = { "smoke", "phone", "water" }
--- MW22 idle activities, grouped so each kind is as likely as smoking or a phone call (one variant picked).
+
 P.ACTIVITY_GROUPS = {
 	{ "smoke" }, { "phone" }, { "water" },
-	-- (All clean from MW22 export 2; the raised feet seen before were export 1's junk first keys.)
+
 	{ "hum1", "hum2" }, { "radio1", "radio2", "radio3", "radio4" }, { "look1", "look2", "look3" },
 	{ "scratch1", "scratch2", "scratch3", "scratch4", "scratch5", "scratch6", "scratch7", "scratch8" },
 	{ "stretch1", "stretch2", "stretch3", "stretch4" },
 }
-P.START_AFTER = { 8, 35 }    -- seconds standing still at a post before an activity (wide, so a squad that
-                             -- settles together doesn't all light up at once)
-P.TAKE_CHANCE = 0.65         -- share of those moments actually used (the rest just stand there)
-P.SMART_CHANCE = 0.75        -- with a wall / surface / seat nearby, how often that's used over smoke / phone / water
-P.REACT_DELAY = { 0.05, 0.5 } -- each soldier reacts a little after the others (shared knowledge arrives at once)
+P.START_AFTER = { 8, 35 }
+
+P.TAKE_CHANCE = 0.65
+P.SMART_CHANCE = 0.75
+P.REACT_DELAY = { 0.05, 0.5 }
 P.CALM_DELAY = { 0.4, 2.5 }
-P.LOOP_FOR = { 15, 45 }      -- how long an activity lasts
-P.COOLDOWN = { 25, 70 }      -- between activities
+P.LOOP_FOR = { 15, 45 }
+P.COOLDOWN = { 25, 70 }
 P.ALARM_RADIUS = 1500
 
 local function has(npc, name)
@@ -53,14 +40,10 @@ local function moving(npc)
 	return npc.loco and npc.loco:GetVelocity():Length2D() > 20
 end
 
--- Something that blocks the brain while it plays (a reaction, putting an activity away, checking a body).
--- kind "react" can be cut short by a fight; "away" and "body" can't.
 local function busy(npc, now, d, kind, after)
 	npc.tifPassiveBusy = { untilT = now + (d or 0), kind = kind, after = after }
 end
 
--- Activities -------------------------------------------------------------------------------------------------
--- startled: awareness rose (a smart spot plays its startle reaction toward threatPos); else a calm exit.
 local function put_away(npc, now, hurry, startled, threatPos)
 	local a = npc.tifActivity
 	if not a then return false end
@@ -78,7 +61,7 @@ local function put_away(npc, now, hurry, startled, threatPos)
 	end
 	if d and d > 0 then
 		busy(npc, now, d, "away")
-		-- In a fight: no shot before the hands are free.
+
 		if hurry then npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d) end
 		return true
 	end
@@ -87,7 +70,6 @@ local function put_away(npc, now, hurry, startled, threatPos)
 end
 P.PutAway = put_away
 
--- Called by duty. still = standing at the post / hold spot (not walking). Returns true while it's in charge.
 function P.Duty(npc, now, still)
 	if not P.Use(npc) then return false end
 	local a = npc.tifActivity
@@ -97,8 +79,7 @@ function P.Duty(npc, now, still)
 	end
 	npc.tifStillSince = npc.tifStillSince or now
 	local SM = TIF.SmartMW
-	-- Just spawned next to a seat (a garrison post by a chair or bench): start the game seated, like MW19's
-	-- own stealth AI (there's no usable sit-down clip; later re-seating plays the stand-up reversed).
+
 	if not a and SM and not npc.tifSmartChecked then
 		npc.tifSmartChecked = true
 		if now - (npc.GetCreationTime and npc:GetCreationTime() or now) < 6 and math.random() < 0.7 then
@@ -121,7 +102,7 @@ function P.Duty(npc, now, still)
 			npc.tifNextActivity = now + math.Rand(P.COOLDOWN[1], P.COOLDOWN[2]) * 0.5
 			return false
 		end
-		-- Something around to lean on or sit at: usually that (Stage 5b, TIF.SmartMW).
+
 		if SM and math.random() < P.SMART_CHANCE then
 			local spots = SM.Find(npc, npc.tifPost or npc:GetPos(), npc.tifPostYaw)
 			if #spots > 0 then
@@ -161,7 +142,7 @@ function P.Duty(npc, now, still)
 		return false
 	end
 	if a.phase == "start" and now >= a.untilT then
-		-- MW22 idles that don't close as loops are built as one-shots: played once, then the end clip.
+
 		local lc = TIF.GTG.Clip("mwx_" .. a.name .. "_loop", npc.tifHomeHost)
 		if lc and not lc.loop then
 			local d = Act.Play(npc, "mwx_" .. a.name .. "_loop") or 0
@@ -182,24 +163,22 @@ function P.Duty(npc, now, still)
 	return true
 end
 
--- On a room clear (TIF.CQB: his squad's clear, or a clear step of his own).
 local function in_cqb(npc)
 	return npc.tifCQB ~= nil or (npc.tifSquad ~= nil and npc.tifSquad.cqb ~= nil)
 end
 P.InCQB = in_cqb
 
--- Busy: called by the brain before any behaviour. True while a reaction / put-away / body check plays.
 function P.Busy(npc, now)
-	-- A reaction waiting for this soldier's own small delay.
+
 	local pend = npc.tifPendingReact
 	if pend and now >= pend.at then
 		npc.tifPendingReact = nil
-		-- Already fighting by then: no late reaction.
+
 		if not npc.tifPassiveBusy and not npc.tifAct and npc.tifAware ~= AW.ENGAGED and not in_cqb(npc) then pend.fn(now) end
 	end
 	local r = npc.tifPassiveBusy
 	if r then
-		-- A fight cuts a reaction short (not putting things away or a body check).
+
 		if r.kind == "react" and npc.tifAware == AW.ENGAGED and r.engagedOk ~= true then
 			npc.tifPassiveBusy = nil
 			Act.Clear(npc)
@@ -210,7 +189,7 @@ function P.Busy(npc, now)
 		if r.after then r.after(npc, now) end
 		return false
 	end
-	-- Caught off guard: anything above unaware ends an activity first (a lean or seat: startled toward it).
+
 	if npc.tifActivity and npc.tifAware ~= AW.UNAWARE then
 		local c, stim = npc.tifPrimaryC, npc.tifStim
 		local threat = (c and c.pos) or (stim and stim.pos)
@@ -219,8 +198,6 @@ function P.Busy(npc, now)
 	return false
 end
 
--- Reactions --------------------------------------------------------------------------------------------------
--- Numpad direction of a point relative to the soldier's facing: 8 front, 4 left, 6 right, 2 back.
 local function dir_to(npc, pos)
 	if not pos then return 8 end
 	local d = math.AngleDifference((pos - npc:GetPos()):Angle().y, npc:GetAngles().y)
@@ -229,10 +206,8 @@ local function dir_to(npc, pos)
 	return d > 0 and 4 or 6
 end
 
--- Numpad direction with diagonals (8 front, 9 front-right, 6 right, 3 back-right, 2l / 2r back, 1 back-left,
--- 4 left, 7 front-left), for MW22's 8-way reactions.
 P.NEWENEMY_R = 600
-P.POINT_R = 900                 -- contact further than this: one man points it out (MW19 AI reaction_point)
+P.POINT_R = 900
 P.POINT_SQUAD_COOLDOWN = 25
 local function dir8(npc, pos)
 	local d = math.AngleDifference((pos - npc:GetPos()):Angle().y, npc:GetAngles().y)
@@ -244,13 +219,10 @@ local function dir8(npc, pos)
 	return d > 0 and "1" or "3"
 end
 
--- dir8 with behind as plain 2 (the point / look-around sets have no 2l / 2r)
 local function dir_num(npc, pos) return (string.gsub(dir8(npc, pos), "^2[lr]$", "2")) end
 
 local GRADE = { footstep = "sm", gunfire = "smed", explosion = "smed", man_down = "smed", alarm = "smed" }
 
--- MW22 variants (mwr2_*): curious reactions for the small / medium grades, threat reactions for the large one;
--- their back turns come as 2l / 2r.
 P.MW22_SHARE = 0.5
 local function mw22_variant(npc, grade, posture, mv, pos)
 	local kind = (grade == "lg") and "threat" or "cur"
@@ -282,21 +254,16 @@ local function react(npc, now, grade, pos, posture, opts)
 	return true, d
 end
 
--- Called by the brain whenever awareness changes.
--- (2026-11-21, user: "spotting an enemy thru the door can throw off cqb behavior and do a notice anim. this shouldnt
--- occur as cqb is an activity where your actively ready for an enemy") No awareness reactions (startle, new enemy
--- close, pointing out, look-arounds) while his squad clears a building: he's ready for it.
 function P.OnAware(npc, old, new, now)
 	if not P.Use(npc) or npc.tifCov or npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifSurrendered then return end
 	if in_cqb(npc) then npc.tifPendingReact = nil return end
-	if npc.tifActivity then return end -- putting the activity away is the reaction (P.Busy)
+	if npc.tifActivity then return end
 	if npc.tifPassiveBusy then return end
 	local calm = old == AW.UNAWARE and (npc.tifHeightenedUntil or 0) <= now
 	local posture = calm and "patrol" or "alert"
 	local stim = npc.tifStim
 	local c = npc.tifPrimaryC
-	-- Each soldier reacts after his own small delay (a squad shares knowledge, so its awareness changes on the
-	-- same tick); spotting an enemy stays immediate (the first shot's timing depends on it).
+
 	local function later(delay, fn)
 		npc.tifPendingReact = { at = now + math.Rand(delay[1], delay[2]), fn = fn }
 	end
@@ -309,7 +276,7 @@ function P.OnAware(npc, old, new, now)
 		later(P.REACT_DELAY, function(t) react(npc, t, "lg", pos, posture) end)
 	elseif new == AW.ENGAGED and old == AW.UNAWARE and calm then
 		npc.tifPendingReact = nil
-		-- Spotted an enemy while calm: the large reaction, quick, and the first shot waits for it.
+
 		local wait = math.max(0.3, (npc.tifReactUntil or now) - now)
 		local name = "mwr_patrol_" .. (moving(npc) and "walk" or "idle") .. "_lg_" .. dir_to(npc, c and c.pos)
 		local clip = has(npc, name) and TIF.GTG.Clip(name, npc.tifHomeHost)
@@ -318,7 +285,7 @@ function P.OnAware(npc, old, new, now)
 		if ok then npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d) end
 	elseif new == AW.ENGAGED and (old == AW.SUSPICIOUS or old == AW.ALERTED) and c and not moving(npc)
 		and npc:GetPos():DistToSqr(c.pos) < P.NEWENEMY_R * P.NEWENEMY_R and npc:GetTIFStance() ~= TIF.Anim.STANCE_CROUCH then
-		-- Already on edge and an enemy turns up close: MW22's "new enemy close" snap toward him (quick, then fight).
+
 		npc.tifPendingReact = nil
 		local name = "mwe_newenemy_" .. dir8(npc, c.pos)
 		if has(npc, name) then
@@ -333,8 +300,7 @@ function P.OnAware(npc, old, new, now)
 	elseif new == AW.ENGAGED and (old == AW.SUSPICIOUS or old == AW.ALERTED) and c and not moving(npc)
 		and npc:GetPos():DistToSqr(c.pos) > P.POINT_R * P.POINT_R and (npc.tifSupp or 0) < 0.2
 		and npc:GetTIFStance() ~= TIF.Anim.STANCE_CROUCH then
-		-- Contact at a distance, nobody shooting at him: MW19's AI points it out to the squad (one man per squad,
-		-- now and then), sped up; his first shot waits for most of it, the rest of the squad fights on.
+
 		local sq = npc.tifSquad
 		if sq and now < (sq.nextPointOut or 0) then return end
 		local name = "mwe_point" .. (math.random() < 0.5 and "2" or "") .. "_" .. dir_num(npc, c.pos)
@@ -352,7 +318,7 @@ function P.OnAware(npc, old, new, now)
 			end
 		end
 	elseif new == AW.SEARCHING and old == AW.ENGAGED and c and not moving(npc) and npc:GetTIFStance() ~= TIF.Anim.STANCE_CROUCH then
-		-- Lost him: MW19's AI look around, toward where he was last seen.
+
 		later(P.REACT_DELAY, function(t)
 			if moving(npc) or npc.tifAware ~= AW.SEARCHING then return end
 			local name = "mwe_look" .. (math.random() < 0.5 and "2" or "") .. "_" .. dir_num(npc, c.pos)
@@ -373,10 +339,8 @@ function P.OnAware(npc, old, new, now)
 	end
 end
 
--- Investigating (called from the brain's investigate when the soldier has arrived and stands still).
--- Returns true while it's in charge.
 local INVESTIGATE = { "mwi_around", "mwi_middle", "mwi_up", "mwi_radio",
-	-- MW22: area checks and looking around for a threat
+
 	"mwi_area1", "mwi_area2", "mwi_area3", "mwi_area4", "mwi_threat1", "mwi_threat2", "mwi_threat3" }
 function P.Investigate(npc, now)
 	if not P.Use(npc) then return false end

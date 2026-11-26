@@ -21,7 +21,7 @@ end
 
 -- recoil_kicks() from cl_body, with stubs.
 local src = io.open(ROOT .. "tif/npc/cl_body.lua"):read("*a")
-local block = src:match("(local KICK_SLOTS = .-\n)%-%- Checked twice a second")
+local block = src:match("(local KICK_SLOTS = .-\n)local function check_slots")
 check(block ~= nil, "recoil_kicks block")
 local written = {}
 local env = setmetatable({

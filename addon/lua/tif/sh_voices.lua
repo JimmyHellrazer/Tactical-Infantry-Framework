@@ -1,12 +1,7 @@
--- Voice packs. Built straight from the sound folders: file names minus their trailing
--- number give the line category (e.g. "fragout3.mp3" -> "fragout").
--- The TFA VOX pack scripts aren't used, so the TFA VOX base isn't needed.
-
 local TIF = TIF
 TIF.Voice = TIF.Voice or {}
 local V = TIF.Voice
 
--- TIF event -> categories in each pack, in order of preference.
 V.PACKS = {
 	mercenary = {
 		folder = "vo/mercenary",
@@ -60,8 +55,7 @@ V.PACKS = {
 			swear = { "swear" },
 		},
 	},
-	-- Insurgency security force (TFA VOX Insurgency Security Force Improved, Workshop 3144830145).
-	-- Optional: only used by factions that list it. "subdown" is "subject down" (a kill).
+
 	securityforce = {
 		folder = "vo/securityforce",
 		events = {
@@ -113,23 +107,17 @@ V.PACKS = {
 	},
 }
 
--- Insurgency: Sandstorm packs all share the mercenary pack's line names: reuse its event map.
 V.SANDSTORM_EVENTS = V.PACKS.mercenary.events
 
--- (2026-11-25) Shipped with the base for the starter factions' variety (until now only in TIF Faction Pack, which
--- registers them too): a US special operations pack and two Arabic insurgent packs, all Sandstorm line names.
 V.PACKS.specops = V.PACKS.specops or { folder = "vo/specops", events = V.SANDSTORM_EVENTS }
 V.PACKS.tif_arab_rebel = V.PACKS.tif_arab_rebel or { folder = "vo/tif_arab_rebel", events = V.SANDSTORM_EVENTS }
 V.PACKS.tif_arab_operative = V.PACKS.tif_arab_operative or { folder = "vo/tif_arab_operative", events = V.SANDSTORM_EVENTS }
 
--- Add a voice pack (content packs: config/sh_packs.lua). def = { folder = "vo/x", events = {...} }.
 function V.RegisterPack(id, def)
 	V.PACKS[id] = def
 	V.Sets[id] = nil
 end
 
--- A faction's voice packs: def.voices (a list; each soldier gets one of them for life) or the
--- single def.voice. Unknown packs are skipped.
 function V.FactionPacks(def)
 	local out = {}
 	for _, p in ipairs(istable(def and def.voices) and def.voices or {}) do
@@ -139,7 +127,6 @@ function V.FactionPacks(def)
 	return out
 end
 
--- Events every pack should cover; missing ones are reported by the self-test.
 V.CORE_EVENTS = { "contact", "reloading", "grenade_out", "grenade_incoming", "man_down", "suppressing", "kill", "pain", "death" }
 
 V.Sets = V.Sets or {}
@@ -150,7 +137,6 @@ local function category_of(fname)
 	return string.lower(base)
 end
 
--- Scan a pack's folder and build event -> { sound paths }.
 function V.Build(packId)
 	local pack = V.PACKS[packId]
 	if not pack then return nil end
@@ -255,7 +241,7 @@ if SERVER then
 			return
 		end
 		local def = TIF.Factions[fac]
-		-- One voice pack per soldier, picked from the faction's list the first time he speaks.
+
 		if npc.tifVoiceFac ~= fac then
 			local packs = V.FactionPacks(def)
 			npc.tifVoice = packs[math.random(math.max(1, #packs))]
@@ -272,5 +258,4 @@ if SERVER then
 		return snd
 	end
 
-	-- (tif_voice_test: the local dev addon since 0.38.11)
 end

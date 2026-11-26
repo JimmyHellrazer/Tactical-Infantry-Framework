@@ -1,12 +1,3 @@
--- Driver controller (Phase 6): a soldier in seat 1 drives a Glide vehicle along a route.
---
--- Steering: pure pursuit, aiming at a point one look-ahead distance along the route
--- (longer when faster). Speed: the cruise speed, slowed for the turn coming up and near the end.
--- An obstacle probe ahead brakes for anything in the way. Stuck (throttle on, not moving for
--- 2.5 s): reverse with opposite lock for 1.5 s, then try again. Arrival: within `arrive` units and
--- slow, handbrake on, onArrive called.
--- Inputs go through TIF.Glide.Drive (throttle 0..1, steer -1..1 with + = right, brake 0..1).
-
 local TIF = TIF
 local GL = TIF.Glide
 local V = TIF.Vehicle
@@ -24,7 +15,6 @@ local function flat(v)
 	return f
 end
 
--- Drive along points. opts: speed, arrive, onArrive(veh), label, source.
 function D.Drive(veh, points, opts)
 	opts = opts or {}
 	veh.tifDrive = {
@@ -36,7 +26,6 @@ function D.Drive(veh, points, opts)
 	GL.StartEngine(veh)
 end
 
--- Stop where it is (handbrake). Keeps the route so Resume can carry on.
 function D.Stop(veh, why)
 	local d = veh.tifDrive
 	if d then d.state, d.why = "stop", why end
@@ -53,7 +42,6 @@ function D.Clear(veh)
 	if IsValid(veh) then GL.Drive(veh, 0, 0, 1, true) end
 end
 
--- A point `dist` units along the route from the vehicle's position (starting at segment i).
 local function ahead(d, pos, dist)
 	local pts = d.pts
 	local prev = pos
@@ -87,7 +75,6 @@ local function tick(veh, d, now)
 		return
 	end
 
-	-- Advance past points we've reached (or driven past).
 	local pts = d.pts
 	while d.i < #pts do
 		local p = pts[d.i]
@@ -109,36 +96,31 @@ local function tick(veh, d, now)
 		return
 	end
 
-	-- Steering: pure pursuit.
 	local look = math.Clamp(math.abs(speed) * 0.9, 260, 900)
 	local target = ahead(d, pos, look)
 	d.target = target
 	local want = (target - pos):Angle().y
-	local err = math.AngleDifference(want, veh:GetAngles().y) -- + = target to the left
+	local err = math.AngleDifference(want, veh:GetAngles().y)
 	local steer = math.Clamp(-err / 32, -1, 1)
 
-	-- Target speed: slow for the coming turn and near the end.
 	local far = ahead(d, pos, look * 2)
 	local turn = math.abs(math.AngleDifference((far - target):Angle().y, want))
 	local vT = d.speed * math.Clamp(1 - math.max(turn, math.abs(err)) / 100, 0.3, 1)
 	if d.i >= #pts - 1 then vT = math.min(vT, toEnd * 0.7 + 80) end
-	-- Set from outside every tick (convoy spacing).
+
 	if d.speedCap then vT = math.min(vT, d.speedCap) end
 
-	-- Something ahead?
 	local plen = math.Clamp(math.abs(speed) * 1.1, 140, 700)
 	probe.start = pos + fwd * 60
 	probe.endpos = probe.start + fwd * plen
 	probe.filter = { veh }
 	for _, c in ipairs(veh:GetChildren()) do probe.filter[#probe.filter + 1] = c end
 	local hit = util.TraceHull(probe)
-	-- The probe is level, so an uphill ramp's own surface "hits" it: drivable ground (a slope no
-	-- steeper than ~50 degrees) isn't an obstacle.
+
 	if hit.Hit and hit.HitWorld and hit.HitNormal.z > 0.64 then hit = { Hit = false, Fraction = 1 } end
 	d.blocked = hit.Hit and not hit.HitWorld and IsValid(hit.Entity) and hit.Entity ~= veh
 	if hit.Hit then vT = math.min(vT, math.max(0, (hit.Fraction * plen - 80) * 1.2)) end
 
-	-- Stuck: reverse out with opposite lock.
 	if d.reverseUntil then
 		if now < d.reverseUntil then
 			GL.Drive(veh, 0, -d.reverseSteer, 1, false)
@@ -160,9 +142,9 @@ local function tick(veh, d, now)
 	local throttle, brake = 0, 0
 	if vT >= 40 then d.blockedSince = nil end
 	if vT < 40 then
-		-- Blocked: hold still (the brake reverses at a standstill, so handbrake instead).
+
 		d.vT, d.state = vT, "blocked"
-		-- A wall (not a passing car or soldier) for 3 s: back off and try another line.
+
 		d.blockedSince = d.blockedSince or now
 		if hit.HitWorld and now - d.blockedSince > 3 then
 			d.blockedSince = nil

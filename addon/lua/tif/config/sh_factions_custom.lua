@@ -1,14 +1,3 @@
--- Faction editor (shared). Make your own factions, or change the built-in ones, in game:
--- `tif_factions` (or spawn menu > Utilities > Tactical Infantry > Factions). Admins only.
---
--- A faction: id, name, side (enemy / ally / neutral: labels for menus), visual models (one picked at
--- random per soldier), voice pack, weapons by role (one class picked per soldier from each list:
--- primary, secondary; roles without their own list use "default"), vehicles (Glide classes; DTW
--- uses them for its convoys, reinforcements and backup), allies (other faction ids).
--- Saved to data/tif/factions/<id>.json, loaded at start. Built-in factions saved there override the
--- defaults in sh_content.lua; deleting the file restores them.
--- Soldiers of any faction spawn as tif_soldier with the faction set (no entity class needed).
-
 local TIF = TIF
 TIF.FactionEditor = TIF.FactionEditor or {}
 local FE = TIF.FactionEditor
@@ -16,7 +5,6 @@ local FE = TIF.FactionEditor
 FE.ROLES = { "default", "leader", "rifleman", "support", "marksman", "assault", "rpg", "breacher" }
 FE.DIR = "tif/factions"
 
--- The built-ins as shipped, so an override can be undone.
 TIF.BuiltinFactions = TIF.BuiltinFactions or table.Copy(TIF.Factions)
 
 local function clean_list(t, check)
@@ -31,7 +19,6 @@ local function clean_list(t, check)
 	return out
 end
 
--- A faction definition from untrusted data (a file, a player). Returns def or nil, error.
 function FE.Sanitize(t)
 	if not istable(t) then return nil, "not a table" end
 	local id = isstring(t.id) and string.lower(t.id) or ""
@@ -42,8 +29,7 @@ function FE.Sanitize(t)
 		side = (t.side == "enemy" or t.side == "ally" or t.side == "neutral") and t.side or "enemy",
 		models = clean_list(t.models, SERVER and util.IsValidModel or nil),
 		voice = isstring(t.voice) and t.voice or "mercenary",
-		-- GTA car classes saved before 0.37.0 (gtg_grandtheftgmod_<car>, tif_gta_glide_cars_<car>): an installed MW car
-		-- instead (TIF.Mounted.VehicleClass, server), else dropped.
+
 		vehicles = clean_list(istable(t.vehicles) and (function()
 			local out = {}
 			for i, c in ipairs(t.vehicles) do
@@ -54,12 +40,12 @@ function FE.Sanitize(t)
 		loadouts = {},
 		allies = {},
 	}
-	-- Voice packs: a list (each soldier gets one of them), or the old single voice.
+
 	local packs = TIF.Voice and TIF.Voice.PACKS
 	def.voices = clean_list(istable(t.voices) and t.voices or { def.voice }, packs and function(p) return packs[p] ~= nil end or nil)
 	if #def.voices == 0 then def.voices = { "mercenary" } end
 	def.voice = def.voices[1]
-	-- Camo variants (config/sh_packs.lua): each { id, name, models }; the models list becomes all of them.
+
 	if istable(t.variants) then
 		local vars, ids = {}, {}
 		for _, v in ipairs(t.variants) do
@@ -78,7 +64,7 @@ function FE.Sanitize(t)
 			def.variantMode = (m == "mixed" or (isstring(m) and ids[m])) and m or "squad"
 		end
 	end
-	-- Bodygroup limits (tif_soldier.lua random_look): { name = { allowed values } } and { { group, needs } }.
+
 	if istable(t.bodygroups) then
 		local bg = {}
 		for k, list in pairs(t.bodygroups) do
@@ -98,11 +84,11 @@ function FE.Sanitize(t)
 		if #rules > 0 then def.bodyRules = rules end
 	end
 	if t.noBlank == true then def.noBlank = true end
-	-- Modular factions (config/sh_modular.lua): kept through the editor (not edited there yet).
+
 	if istable(t.modular) and istable(t.modular.slots) then
 		local mod = { main = isstring(t.modular.main) and t.modular.main or "body", slots = {}, combos = {}, chance = {},
 			retarget = t.modular.retarget == true }
-		if t.modular.skins == false then mod.skins = false end  -- (no skin variety, 0.30.0)
+		if t.modular.skins == false then mod.skins = false end
 		for slot, list in pairs(t.modular.slots) do
 			if isstring(slot) and istable(list) then mod.slots[slot] = clean_list(list, SERVER and util.IsValidModel or nil) end
 		end
@@ -111,7 +97,7 @@ function FE.Sanitize(t)
 				local e = {}
 				for slot, idx in pairs(c) do
 					if slot == "arch" and istable(idx) then
-						-- (archetype ids the combo is for, 0.30.0)
+
 						e.arch = {}
 						for _, a in ipairs(idx) do if isstring(a) then e.arch[#e.arch + 1] = a end end
 					elseif isstring(slot) and istable(idx) then
@@ -174,7 +160,6 @@ if SERVER then
 		end
 	end
 
-	-- Everyone gets the full list (for menus and the editor).
 	function FE.Send(to)
 		local list = {}
 		for id, def in pairs(TIF.Factions) do
@@ -225,8 +210,6 @@ if SERVER then
 		FE.Send()
 	end)
 
-	-- Sent when the client says it's loaded (PlayerInitialSpawn is too early: a joining player is
-	-- still loading and the message would be lost).
 	util.AddNetworkString("tif_ready")
 	local lastReady = {}
 	net.Receive("tif_ready", function(_, ply)
@@ -235,7 +218,7 @@ if SERVER then
 		FE.Send(ply)
 	end)
 	hook.Add("PlayerDisconnected", "tif_ready", function(ply) lastReady[ply] = nil end)
-	-- After the GTG weapons and Glide vehicles are registered.
+
 	hook.Add("InitPostEntity", "tif_factions", FE.LoadAll)
 	if game.GetWorld and IsValid(game.GetWorld()) then timer.Simple(0, function() FE.LoadAll() FE.Send() end) end
 end
@@ -249,7 +232,7 @@ if CLIENT then
 	net.Receive("tif_factions", function()
 		local t = util.JSONToTable(util.Decompress(net.ReadData(net.ReadUInt(20))) or "") or {}
 		FE.List = t
-		-- Menus elsewhere (TIF settings, DTW) list factions from TIF.Factions.
+
 		for id, def in pairs(t) do
 			TIF.Factions[id] = TIF.Factions[id] or {}
 			for k, v in pairs(def) do TIF.Factions[id][k] = v end
@@ -289,7 +272,6 @@ if CLIENT then
 		return out
 	end
 
-	-- A text box of comma-separated classes with a dropdown to add one.
 	local function list_field(parent, label, choices, value)
 		local row = vgui.Create("DPanel", parent)
 		row:Dock(TOP)
@@ -360,7 +342,7 @@ if CLIENT then
 			fields.voices = list_field(right, "Voice packs (several for variety: each soldier gets one of them)", packIds,
 				def.voices or { def.voice })
 			if def.variants then
-				-- Camo variants: which one soldiers wear. The models below are all variants together.
+
 				local lc = right:Add("DLabel") lc:SetText("Camo (" .. #def.variants .. " variants)") lc:Dock(TOP) lc:SetDark(true)
 				fields.variantMode = right:Add("DComboBox") fields.variantMode:Dock(TOP)
 				local cur = def.variantMode or "squad"

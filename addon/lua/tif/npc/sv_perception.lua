@@ -1,8 +1,3 @@
--- Perception and knowledge.
--- A soldier only knows what it has seen, heard, been hit by, or been told. Each enemy it knows
--- about is a contact. When sight is lost, the contact's position freezes at the last sighting
--- and its uncertainty grows; nothing tracks the real target through walls.
-
 local TIF = TIF
 local AW = TIF.AWARE
 local Budget = TIF.Budget
@@ -29,13 +24,6 @@ function P.Init(npc)
 	npc.tifK = { contacts = {} }
 end
 
--- Perception profiles: how far soldiers see and how quickly they make out someone at range.
---   view     multiplier on the archetype's view distance
---   detect   multiplier on detection speed
---   ref      distance (units) up to which detection runs at full speed; it falls off beyond
---   fov      extra degrees on the unaware field of view
--- "standard" is TIF's original tuning (DTW keeps it, so the AI can be surprised there); "long" is
--- for open fights across streets and fields (the default elsewhere).
 P.Profiles = {
 	standard = { view = 1, detect = 1, ref = 1000, fov = 0 },
 	long = { view = 1.6, detect = 1.5, ref = 1800, fov = 25 },
@@ -44,8 +32,6 @@ local cvProfile = CreateConVar("tif_perception", "long", FCVAR_ARCHIVE,
 	"Soldier perception profile: long (see and spot far, the default) or standard (original, shorter)")
 local cvDetect = CreateConVar("tif_detect_scale", "1", FCVAR_ARCHIVE, "Multiplier on how quickly soldiers spot someone (higher = faster)")
 
--- A soldier's profile: npc.tifPerception (set by an addon, TIF.API.SetPerception), else what hook
--- "TIF_PerceptionProfile" (npc) returns (DTW: "standard"), else tif_perception. Checked every 5 s.
 function P.Profile(npc, now)
 	if npc.tifProfAt and now < npc.tifProfAt then return npc.tifProf end
 	local name = npc.tifPerception or hook.Run("TIF_PerceptionProfile", npc) or cvProfile:GetString()
@@ -80,7 +66,6 @@ local function line_clear(from, to, a, b)
 	return not util.TraceLine(traceData).Hit
 end
 
--- Head, then chest. Each ray costs one trace from the tick budget.
 function P.CanSee(npc, eye, ent)
 	if not Budget.Take("trace", 1) then return nil end
 	if line_clear(eye, TIF.EyeOf(ent), npc, ent) then return true end
@@ -97,11 +82,6 @@ local function stance_factor(ent)
 	return 1
 end
 
--- (API v4) Engage filters: another addon decides whom a soldier may shoot (TIF.API.SetEngageFilter).
--- fn(npc, target) -> "fight" (as usual), "cover" (seen and aimed at, never shot) or "ignore" (not
--- even a contact). The strictest answer of all filters wins. Being shot at or hurt still makes the
--- attacker a contact; whether he may be shot back is again the filter's answer (SWAT: his firing
--- makes him "fight").
 P.Filters = P.Filters or {}
 local RANK = { fight = 0, cover = 1, ignore = 2 }
 function P.Engage(npc, e)
@@ -190,7 +170,7 @@ function P.Update(npc, dt, now)
 			checked = checked + 1
 			local vis = P.CanSee(npc, eye, e)
 			if vis == nil then
-				-- Out of trace budget this tick: keep the last result.
+
 			elseif vis then
 				c = c or contact(npc, e)
 				c.lastCheck = now
@@ -227,7 +207,7 @@ function P.Update(npc, dt, now)
 
 	for e, c in pairs(K.contacts) do
 		if not TIF.IsLiveCombatant(e) then
-			-- Only an actual death earns a "kill" callout (not ai_ignoreplayers, noclip or notarget).
+
 			if npc.tifPrimary == e and c.confirmed and (now - c.seenAt) < 3 and TIF.IsDead(e) then TIF.Say(npc, "kill", 0.6) end
 			K.contacts[e] = nil
 		else
@@ -240,7 +220,7 @@ function P.Update(npc, dt, now)
 					c.dir = v:LengthSqr() > 100 and v:GetNormalized() or nil
 				end
 				if not c.confirmed then c.meter = math.max(0, c.meter - 0.25 * dt) end
-				-- Uncertainty grows with time since the last fix, at the target's last speed.
+
 				local since = now - math.max(c.seenAt, c.heardAt)
 				c.unc = math.min(1200, (c.baseUnc or 0) + since * math.min(220, c.vel:Length2D() + 60))
 				if since > MEMORY and not c.confirmed and c.meter <= 0 then K.contacts[e] = nil end
@@ -249,7 +229,6 @@ function P.Update(npc, dt, now)
 	end
 end
 
--- Best confirmed contact to act on, with hysteresis toward the current one.
 function P.Primary(npc, now)
 	local best, bestScore
 	local pos = npc:GetPos()
@@ -264,7 +243,6 @@ function P.Primary(npc, now)
 	return best
 end
 
--- Highest partial detection, for "something's there" reactions.
 function P.Suspect(npc, now)
 	local best
 	for _, c in pairs(npc.tifK.contacts) do
@@ -282,8 +260,7 @@ end
 function P.Hear(npc, kind, pos, d2, src, faction)
 	local now = CurTime()
 	local rel = TIF.FactionRelation(npc:GetTIFFaction(), faction)
-	-- A friendly player's shots, blasts and steps are his own business: soldiers on his side went to investigate
-	-- every round he fired (ally fire is a stimulus: suspicious, walk over). User, 2026-11-17.
+
 	if rel == TIF.REL_ALLY and IsValid(src) and src:IsPlayer() then return end
 	local dist = math.sqrt(d2)
 	if kind == "gunfire" then
@@ -297,7 +274,7 @@ function P.Hear(npc, kind, pos, d2, src, faction)
 				c.lostAt = c.lostAt or now
 				c.source = "heard"
 			end
-			-- Close gunfire is proof of an enemy; distant gunfire only makes them wary.
+
 			if dist < 1600 then c.confirmed = true end
 			P.Stimulus(npc, c.pos, "gunfire", now)
 			npc.tifHeardAt = now
@@ -340,7 +317,6 @@ function P.OnHurt(npc, attacker)
 	npc.tifHurtAt = now
 end
 
--- Rounds snapping past: the shooter is real and roughly in that direction.
 function P.OnSuppressed(npc, shooter, srcPos)
 	if not TIF.IsLiveCombatant(shooter) or TIF.Relation(npc, shooter) ~= TIF.REL_HOSTILE then return end
 	local now = CurTime()
@@ -357,8 +333,6 @@ function P.OnSuppressed(npc, shooter, srcPos)
 	P.Stimulus(npc, c.pos, "fired_on", now)
 end
 
--- Basic callout: nearby allies learn the contact's position as it was just seen.
--- Phase 3 replaces this with squad-level shared knowledge.
 function P.Share(npc, c)
 	local now = CurTime()
 	local pos = npc:GetPos()
@@ -383,9 +357,6 @@ function P.Share(npc, c)
 	end
 end
 
--- Dev tools -----------------------------------------------------------------
-
--- Pretend every hostile soldier just saw ent.
 function P.Reveal(ent)
 	local now = CurTime()
 	for _, npc in ipairs(TIF.Soldiers) do
@@ -397,7 +368,6 @@ function P.Reveal(ent)
 	end
 end
 
--- Force every soldier to lose sight of everything right now (they keep last known positions).
 function P.ForgetSight()
 	local now = CurTime()
 	for _, npc in ipairs(TIF.Soldiers) do

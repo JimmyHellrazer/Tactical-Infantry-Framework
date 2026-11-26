@@ -1,6 +1,3 @@
--- Lightweight profiler. Begin/End pairs accumulate time per key; Count adds to counters.
--- Every second the totals roll into TIF.Prof.Last (ms per second, calls, worst call).
-
 local TIF = TIF
 TIF.Prof = TIF.Prof or {}
 local P = TIF.Prof
@@ -50,7 +47,7 @@ local function roll()
 		P.cnt[k] = 0
 	end
 	P.Last = { times = times, counts = counts, window = window }
-	-- An error inside a Begin/End pair would leave the stack unbalanced; reset it each window.
+
 	depth = 0
 end
 

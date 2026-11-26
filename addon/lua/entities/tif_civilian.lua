@@ -1,23 +1,3 @@
--- A civilian (TIF, shared by GOPS / DTW / SWAT). Not a combatant: TIF soldiers never target it.
--- Body: the MW19 host (tif_mw_anims) playing MW19's civilian clips (civ_*), with a Czech civilian model
--- bone-merged on clients (NW2 "tif_civ_vis"). Without the MW19 host it falls back to its model's own HL2
--- activities.
--- States (the same names GOPS uses): wander, talk, flee, hide, evacuate; plus leave (scattering out of the
--- area: removed once nobody can see it, for performance). One hit kills (no wounded state).
--- The first scare decides: run off (TIF.Civ.LEAVE_SHARE, removed once gone) or stay nearby hidden (in a scared
--- pose or pressed against a wall away from the danger). Shooting that comes within TIF.Civ.TOO_CLOSE of a hidden
--- civilian moves it on (more likely out of the area each time). A player or soldier walking up gets pointed
--- toward the shooting. Skin and bodygroups random (one seed for model, fallback body and ragdoll).
--- Fear builds with gunfire / blasts (tactics/sv_civilian.lua) and wears off in quiet.
--- Animation (0.38.7, MW22's civilian set on top of MW19's): caught standing about, the first fright is a flinch
--- toward the threat's direction that breaks into a run away from it (or, far off, a startled turn to face it);
--- standing idles calm / scared / panicked by fear, with fidgets; each civilian its own walk, wary for a while after
--- a scare; group talking loops; a doubled-over run with gunfire very close; hiding in the open: cowering (got down
--- into and up out of) or, badly scared, flat on the ground; against a wall it waves fleeing civilians over; anyone
--- walking into a standing civilian makes it step aside. Root motion stops short at walls and drops (ENT:OneShot).
--- Hooks: TIF_CivilianUse(civ, ply), TIF_CivilianHurt(civ, dmg, att), TIF_CivilianKilled(civ, att),
--- TIF_CivilianLeft(civ).
-
 AddCSLuaFile()
 
 ENT.Base = "base_nextbot"
@@ -31,8 +11,6 @@ ENT.TIFCivilian = true
 
 local HOST = "models/tif_mw/mw_male.mdl"
 
--- Skin and bodygroups from one seed (NW2 "tif_civ_seed"), so the client model, the fallback body and the ragdoll
--- all look the same: every bodygroup with options gets one at random.
 local function apply_look(e, seed)
 	if not IsValid(e) or not seed or seed <= 0 then return end
 	local skins = e:SkinCount() or 1
@@ -44,7 +22,7 @@ local function apply_look(e, seed)
 end
 
 if CLIENT then
-	-- The Czech model on the host's bones; the host itself isn't drawn.
+
 	function ENT:Initialize()
 		self:DrawShadow(false)
 	end
@@ -75,7 +53,7 @@ if CLIENT then
 	function ENT:Draw()
 		local f = follower(self)
 		if f then
-			-- The host isn't drawn, so its bones are set up here for the bone-merged model to follow.
+
 			self:SetupBones()
 			f:DrawModel()
 		else
@@ -88,8 +66,6 @@ if CLIENT then
 	end
 	return
 end
-
--- Server ------------------------------------------------------------------------------------------------
 
 local function C() return TIF.Civ end
 
@@ -107,7 +83,7 @@ function ENT:Initialize()
 		apply_look(self, self.civSeed)
 	end
 	self.civVis = vis
-	-- One hit and they're down for good (no wounded state).
+
 	self:SetHealth(1)
 	self:SetMaxHealth(1)
 	self:SetCollisionBounds(Vector(-12, -12, 0), Vector(12, 12, 70))
@@ -120,7 +96,7 @@ function ENT:Initialize()
 	self.home = self.home or self:GetPos()
 	self.homeRadius = self.homeRadius or 1200
 	self.fear = 0
-	-- Each civilian keeps one panic gait and idle (crowds don't move in step).
+
 	self.var = math.random(1, 99)
 	if Civ then Civ.Register(self) end
 end
@@ -130,8 +106,6 @@ function ENT:OnRemove()
 	if Civ then Civ.Unregister(self) end
 end
 
--- Spawn menu entries (config/sh_spawnlist.lua): tif_civ_noleave = never scatters away; tif_civ_crowd = n spawns
--- n - 1 more round this one (for testing a street scattering).
 function ENT:KeyValue(k, v)
 	if k == "tif_civ_noleave" then self.noLeave = v == "1"
 	elseif k == "tif_civ_crowd" then self.civCrowd = tonumber(v) end
@@ -149,11 +123,8 @@ function ENT:Think()
 	end
 end
 
--- Animation -------------------------------------------------------------------------------------------------
-
 local function clip(role) return TIF.GTG and TIF.GTG.Clip(role, "mw_male") end
 
--- Role with a variant suffix (civ_prun_<n>): this civilian's own variant of what exists.
 function ENT:Variant(prefix, max)
 	for i = 0, max - 1 do
 		local n = (self.var + i) % max + 1
@@ -162,7 +133,6 @@ function ENT:Variant(prefix, max)
 	return nil
 end
 
--- Play a clip: loops keep going; a one-shot runs once (self.oneShotUntil). rate: playback.
 function ENT:Play(role, rate)
 	local c = clip(role)
 	if not c then return 0 end
@@ -177,7 +147,6 @@ function ENT:Play(role, rate)
 	return c.dur / (rate or 1)
 end
 
--- Fallback (no MW19 host): HL2 activities.
 function ENT:ActFallback(act)
 	if self.curAct == act then return end
 	self.curAct = act
@@ -185,7 +154,6 @@ function ENT:ActFallback(act)
 	self:StartActivity((seq and seq > 0) and act or ACT_IDLE)
 end
 
--- One of a pool: this civilian's own (by self.var) of those that exist.
 function ENT:FromPool(pool)
 	for i = 0, #pool - 1 do
 		local r = pool[(self.var + i) % #pool + 1]
@@ -196,8 +164,6 @@ end
 
 local WALKS = { "civ_walk", "civ_walk_1", "civ_walk_2", "civ_walk_3", "civ_walk_4" }
 
--- The locomotion clip for the current state and speed. Calm walking: this civilian's own walk (wary, glancing
--- round, for a while after a scare). duck: doubled over, gunfire very close.
 function ENT:MoveClip(kind)
 	if kind == "wounded" then return "civ_wounded_run" end
 	if kind == "duck" then return clip("civ_duck_run") and "civ_duck_run" or self:MoveClip("panic_run") end
@@ -213,7 +179,6 @@ function ENT:MoveClip(kind)
 	return self:FromPool(WALKS) or "civ_walk"
 end
 
--- Running from the danger: doubled over when it's very close (a third of civilians), else a panicked run / jog.
 function ENT:FleeKind(default)
 	local d = self.dangerPos
 	if self.mw and d and (self.fear or 0) > 0.85 and self.var % 3 == 0 and clip("civ_duck_run")
@@ -227,25 +192,20 @@ local FALLBACK_ACT = { walk = ACT_WALK, panic_walk = ACT_WALK, wounded = ACT_WAL
 
 function ENT:BodyUpdate()
 	if self.mw then
-		-- Locomotion loops play at the ground speed's share of the clip's speed (feet match the ground).
+
 		local c = self.civClip
 		if c and c.loop and (c.speed or 0) > 1 then
 			local v = self.loco:GetVelocity():Length2D()
 			self:SetPlaybackRate(math.Clamp(v / c.speed, 0.4, 1.6))
 		end
 		self:FrameAdvance()
-		-- Idles and hides keep going even where the clip itself isn't a loop.
-		-- (0.38.29: not a clip TIF.Shield left her in: "the death/free will repeat forever"; it holds its last frame until
-		-- her own behaviour plays the next one)
+
 		if c and not c.loop and not self.civOneShot and self:GetCycle() >= 0.99 and self.civRole ~= self.civHoldLast then self:SetCycle(0) end
 	else
 		self:BodyMoveXY()
 	end
 end
 
--- Movement --------------------------------------------------------------------------------------------------
-
--- Walk / run to pos with a locomotion kind; returns "ok" | "failed" | "stuck" | "interrupted".
 function ENT:GoTo(pos, kind, keepState, timeout)
 	local path = Path("Follow")
 	path:SetMinLookAheadDistance(200)
@@ -258,8 +218,7 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 	if self.mw then self:Play(role) else self:ActFallback(FALLBACK_ACT[kind] or ACT_RUN) end
 	local st = self.state
 	local deadline = CurTime() + (timeout or 40)
-	-- (0.38.18) Steering round people ahead (TIF.Crowd), and the soldiers' quick stuck check: every STUCK_T s of too
-	-- little progress, a sidestep (CIV_SIDE_T s) then a fresh path; STUCK_MAX in a row, or the engine's own: stuck.
+
 	local Crowd = TIF.Crowd
 	local watch = { t = CurTime(), pos = self:GetPos() }
 	local stuckN, side = 0, nil
@@ -318,7 +277,6 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 end
 ENT.STUCK_T, ENT.STUCK_MAX, ENT.CIV_SIDE_T = 0.6, 3, 0.8
 
--- Waiting in place. Standing about calmly (wander / talk), it steps out of the way of someone walking into it.
 function ENT:Wait(t, keepState)
 	local st = self.state
 	local untilT = CurTime() + t
@@ -330,7 +288,6 @@ function ENT:Wait(t, keepState)
 	return true
 end
 
--- Numpad direction (relative to facing, 8 = ahead) of a yaw difference (+ = to the left).
 local function numpad(rel)
 	local a = math.abs(rel)
 	if a < 22.5 then return "8" elseif a > 157.5 then return "2" end
@@ -347,7 +304,6 @@ local function hull(self)
 	return Vector(mins.x, mins.y, 0), Vector(maxs.x, maxs.y, math.max(20, maxs.z - 18))
 end
 
--- Room for a clip's root motion: a straight hull trace to where it ends, and ground there.
 function ENT:RoomFor(c)
 	local m = c and c.move
 	if not m or math.abs(m[1]) + math.abs(m[2]) < 4 then return true end
@@ -360,9 +316,6 @@ function ENT:RoomFor(c)
 	return util.TraceLine({ start = e + UP, endpos = e - Vector(0, 0, 60), mask = MASK_NPCSOLID_BRUSHONLY }).Hit
 end
 
--- A one-shot clip, waiting it out (gestures, fidgets, stepping aside, reactions). Root motion from the clip's
--- curve, kept on the ground; it stops short (the clip with it) at a wall, someone in the way or a drop.
--- Returns true when played through.
 function ENT:OneShot(role, keepState)
 	if not self.mw or not clip(role) then return false end
 	local c = clip(role)
@@ -386,7 +339,7 @@ function ENT:OneShot(role, keepState)
 			if np:DistToSqr(cur) > 0.01 then
 				local t = util.TraceHull({ start = cur + UP, endpos = np + UP, mins = mins, maxs = maxs, mask = MASK_NPCSOLID, filter = self })
 				local g = not t.Hit and util.TraceLine({ start = np + UP, endpos = np - Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY })
-				-- (Starting inside someone, e.g. a crowd: let it move rather than freeze.)
+
 				if t.Hit and t.StartSolid then g = util.TraceLine({ start = np + UP, endpos = np - Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY }) end
 				if not (g and g.Hit) then done = false break end
 				self:SetPos(Vector(np.x, np.y, g.HitPos.z))
@@ -395,13 +348,11 @@ function ENT:OneShot(role, keepState)
 		end
 		coroutine.yield()
 	end
-	-- (grabbed mid-clip: the scene owns her clip now)
+
 	if not self.tifHeld then self.civOneShot = nil end
 	return done
 end
 
--- Standing about calmly: this civilian's own idle (MW19's plain one or MW22's weight shifts, arms folded, looking
--- round). Scared (after a fright, until it wears off): a scared idle; badly scared: a panicked one.
 local CALM = { "civ_idle_1", "civ_stand_1", "civ_stand_2", "civ_stand_3", "civ_stand_4", "civ_stand_5", "civ_stand_6", "civ_stand_7" }
 function ENT:Idle()
 	if self.mw then
@@ -415,8 +366,6 @@ function ENT:Idle()
 	self.loco:SetDesiredSpeed(0)
 end
 
--- Someone (a player or soldier) walking into this civilian: step out of their way, to the side away from their
--- line (a panicked hop when scared). Checked five times a second, at most every 2 s.
 function ENT:Dodge()
 	if not self.mw or self.civOneShot then return false end
 	local now = CurTime()
@@ -458,9 +407,6 @@ function ENT:Dodge()
 	return false
 end
 
--- The first fright (Scare from wander / talk): with the threat at numpad n, a flinch that breaks into a run away
--- from it (bigger the more scared; the shorter one, else a startle, where there's no room to run). Far off and
--- not much of a scare: a startled turn to face it, then off.
 function ENT:React()
 	local pos = self.reactAt
 	self.reactAt = nil
@@ -491,18 +437,14 @@ function ENT:FaceTo(pos)
 	self:SetAngles(Angle(0, yaw, 0))
 end
 
--- States ----------------------------------------------------------------------------------------------------
-
 function ENT:SetState(st)
 	if self.state == st then return end
-	-- (0.38.29, user: the hostage's "looping anim wont play") Held as a human shield: nothing of her own (a flee / hide
-	-- that was running when she was grabbed) moves her out of "held"; TIF.Shield clears tifHeld before letting her go.
+
 	if self.tifHeld and st ~= "held" then return end
 	self.state = st
 	self:SetNW2String("tif_civ_state", st)
 end
 
--- Danger nearby (TIF.Civ.Scare: gunfire, blasts, being hurt). amount 0..1.
 function ENT:Scare(pos, amount)
 	if self.gone then return end
 	local Civ = C()
@@ -510,16 +452,16 @@ function ENT:Scare(pos, amount)
 	self.fear = math.min(1, (self.fear or 0) + (amount or 0.5))
 	self.dangerPos = pos
 	self.scaredAt = now
-	-- (0.38.20) held as a human shield (TIF.Shield): the scene decides when she runs
+
 	if self.state == "held" then return end
-	-- The first real scare decides: scatter out of the area, or stay and hide close by.
+
 	if not self.decided and self.fear >= 0.2 then
 		self.decided = true
 		local share = (Civ and Civ.LEAVE_SHARE) or 0.8
 		if self.shelter or self.noLeave then share = 0 end
 		if math.random() < share then self.leaving = true end
 	end
-	-- Caught standing about: a reaction first (ENT:React, at the start of flee / leave).
+
 	if self.state == "wander" or self.state == "talk" then
 		self.reactAt = pos
 	end
@@ -529,7 +471,7 @@ function ENT:Scare(pos, amount)
 		self:SetState("flee")
 	elseif self.state == "hide" and pos:DistToSqr(self:GetPos()) < ((Civ and Civ.TOO_CLOSE) or 700) ^ 2
 		and now > (self.nextRelocate or 0) and not self.shelter then
-		-- The fight came to his hiding place: get out of it, further away (and maybe out of the area now).
+
 		self.nextRelocate = now + 8
 		self.relocations = (self.relocations or 0) + 1
 		if not self.noLeave and math.random() < 0.5 * self.relocations then
@@ -541,9 +483,6 @@ function ENT:Scare(pos, amount)
 	end
 end
 
--- Hiding where there's no wall: this civilian's own scared pose (cowering, hands over the head, curled up on
--- the ground; chain_<n>: MW22's cower, got down into and up out of). Badly scared (blasts, rounds landing close)
--- half of them lie flat instead. The two hands-tied kneels (civ_kneel_1 / _3) are kept for hostages.
 local SCARED = { "civ_cower_1", "civ_cower_2", "civ_cower_3", "civ_kneel_2", "civ_kneel_4", "civ_kneel_5",
 	"chain_1", "chain_2", "chain_3" }
 function ENT:ScaredPose()
@@ -563,7 +502,6 @@ function ENT:ScaredPose()
 	return "civ_idle_1"
 end
 
--- Out of the MW22 cower (leaving the hide, or to point): back up to a panicked stand.
 function ENT:Uncower()
 	local ch = self.civChain
 	if not ch then return end
@@ -578,19 +516,19 @@ function ENT:RunBehaviour()
 		if self.gone then
 			coroutine.yield()
 		elseif st == "wander" then
-			-- A fright wears off after a quiet spell (scared idles and wary walking until then).
+
 			if (self.fear or 0) > 0 and CurTime() - (self.scaredAt or 0) > 45 then self.fear = 0 end
 			local p = Civ and Civ.RandomPoint(self.home, self.homeRadius)
 			if p and math.random() < 0.65 then self:GoTo(p, "walk") end
 			self:Idle()
-			-- Now and then a fidget (MW19's idle twitches) while standing about.
+
 			if self.mw and (self.fear or 0) <= 0.05 and math.random() < 0.35 and self:Wait(math.Rand(2, 5))
 				and self:OneShot("civ_idle_" .. math.random(2, 6)) then
 				self:Idle()
 			end
 			self:Wait(math.Rand(4, 14))
 		elseif st == "talk" then
-			-- In conversation (MW22's group talking loops, each partner its own, out of step).
+
 			local chat = self.mw and (self.fear or 0) <= 0.05 and self:Variant("civ_chat_", 6)
 			if chat then
 				self:Play(chat)
@@ -604,7 +542,7 @@ function ENT:RunBehaviour()
 			if self.state == "talk" then self:SetState("wander") end
 		elseif st == "flee" then
 			self:React()
-			-- Away from the danger to somewhere to hide (a wall on the far side, indoors).
+
 			local spot = Civ and Civ.HideSpot(self, self.dangerPos or self:GetPos())
 			self.hideSpot = spot
 			if spot then self:GoTo(spot.pos, self:FleeKind(self.fear > 0.6 and "panic_run" or "panic_jog"), true, 25) end
@@ -613,7 +551,7 @@ function ENT:RunBehaviour()
 			self:Hide(Civ)
 		elseif st == "leave" then
 			self:React()
-			-- Scatter: run out of the area; removed once nobody can see it (TIF.Civ tick).
+
 			local p = Civ and Civ.LeavePoint(self, self.dangerPos or self:GetPos())
 			if p then
 				local r = self:GoTo(p, "panic_run", true, 60)
@@ -621,7 +559,7 @@ function ENT:RunBehaviour()
 			else
 				self.leaveTries = (self.leaveTries or 0) + 1
 			end
-			-- Couldn't get away: hide here instead.
+
 			if (self.leaveTries or 0) >= 2 then self.leaving = false self:SetState("hide") end
 			self:Idle()
 			self:Wait(0.5, true)
@@ -637,10 +575,10 @@ function ENT:RunBehaviour()
 			end
 			self:SetState("wander")
 		elseif st == "injured" then
-			-- (No wounded civilians any more: anything set to injured just hides.)
+
 			self:SetState("hide")
 		elseif st == "held" then
-			-- (0.38.20) a human shield (tactics/sv_shield.lua): it places and plays her; nothing of her own
+
 			self.loco:SetDesiredSpeed(0)
 			if not self.tifHeld then self:SetState("flee") end
 		else
@@ -650,10 +588,6 @@ function ENT:RunBehaviour()
 	end
 end
 
--- Hiding: pressed against the wall (the side it's on) or in its scared pose, facing the danger. When a player
--- or soldier walks up (within 300, once per helper, the danger heard in the last minute) it points toward where
--- the shooting came from, right then. Calms down after a quiet spell.
--- Pressed against a wall, a civilian waves fleeing civilians running past over to it (once every 15 s).
 function ENT:BeckonOthers(Civ)
 	local now = CurTime()
 	if now < (self.nextBeckon or 0) then return end
@@ -675,7 +609,7 @@ function ENT:Hide(Civ)
 	local spot = self.hideSpot
 	local role, wall
 	if self.mw then
-		-- The pose is kept for this hiding place (picked once: fear changes while there don't swap it).
+
 		if self.hideFor ~= spot or not self.hideRole then
 			self:Uncower()
 			self.hideFor = spot
@@ -700,7 +634,7 @@ function ENT:Hide(Civ)
 	end
 	self.loco:SetDesiredSpeed(0)
 	local function leaving()
-		-- Out of the hiding place: up out of the cower first (whatever comes next).
+
 		self.hideRole, self.hideFor = nil, nil
 		if not self.gone then self:Uncower() end
 	end
@@ -711,7 +645,7 @@ function ENT:Hide(Civ)
 		local prone = string.find(role or "", "^civ_prone_") ~= nil
 		if h and h ~= self.pointedFor and not prone then
 			self.pointedFor = h
-			-- (From the cower: up, point, back down.)
+
 			local ch = self.civChain
 			self:Uncower()
 			local rel = math.AngleDifference((self.dangerPos - self:GetPos()):Angle().y, self:GetAngles().y)
@@ -726,7 +660,7 @@ function ENT:Hide(Civ)
 		end
 		coroutine.yield()
 	end
-	-- Quiet for a while: calm down (unless told to stay sheltered).
+
 	if CurTime() - (self.scaredAt or 0) > 40 then
 		self.fear = math.max(0, (self.fear or 0) - 0.5)
 		if self.fear <= 0.2 and not self.shelter then
@@ -736,12 +670,10 @@ function ENT:Hide(Civ)
 	end
 end
 
--- Damage / death --------------------------------------------------------------------------------------------
-
 function ENT:OnInjured(dmg)
 	local att = dmg:GetAttacker()
 	hook.Run("TIF_CivilianHurt", self, dmg, att)
-	-- (1 health: any hit kills. Something that did no damage still scares.)
+
 	if self:Health() - dmg:GetDamage() > 0 then self:Scare(dmg:GetDamagePosition(), 1) end
 end
 
@@ -749,7 +681,7 @@ function ENT:OnKilled(dmg)
 	local att = dmg:GetAttacker()
 	hook.Run("TIF_CivilianKilled", self, att)
 	if self.mw and util.IsValidRagdoll(self.civVis or "") then
-		-- The Czech model itself as the ragdoll, posed from the host's bones (same ValveBiped names).
+
 		local rag = ents.Create("prop_ragdoll")
 		if IsValid(rag) then
 			rag:SetModel(self.civVis)
@@ -777,7 +709,7 @@ function ENT:OnKilled(dmg)
 				end
 			end
 			if nearest then nearest:ApplyForceCenter(force * 0.4) end
-			-- (its hits on the ground: MW19 body-fall sounds, sh_foley)
+
 			if TIF.Foley and TIF.Foley.CorpseSounds then TIF.Foley.CorpseSounds(rag) end
 			local t = GetConVar("tif_corpse_time")
 			if t and t:GetFloat() > 0 then SafeRemoveEntityDelayed(rag, t:GetFloat()) end

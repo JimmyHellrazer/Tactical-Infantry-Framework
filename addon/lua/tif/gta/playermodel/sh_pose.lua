@@ -1,4 +1,3 @@
--- From GrandTheftGMod 0.98 (playermodel/sh_pose.lua), trimmed for TIF: parts TIF uses. Built by tools/build_gta_bundle.py.
 local PMS = TIFG.PMS
 local MERGE = PMS.MERGE
 local math_abs = math.abs

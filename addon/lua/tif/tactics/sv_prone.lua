@@ -1,6 +1,4 @@
-﻿-- Prone. The faction model plays the Prone Mod's ValveBiped animations itself on the client;
--- the server keeps a low hull and a face-down GTA pose for hitboxes.
--- Networked: NW2Int "tif_prone" (0 none, 1 going down, 2 down, 3 getting up), NW2Float "tif_prone_t".
+﻿
 
 local TIF = TIF
 local A = TIF.Anim
@@ -14,7 +12,7 @@ P.CRAWL_SPEED = 34
 P.TURN_RATE = 80
 
 local durations = {}
--- Get-down / get-up durations from the faction model's own sequences (cached per model).
+
 local function durs(model)
 	local d = durations[model]
 	if d then return d end
@@ -32,8 +30,6 @@ local function durs(model)
 	return d
 end
 
--- MW19 body: its own prone clips (mwp_down / mwp_up / mwp_idle / mwp_crawl_*), played on the host by the
--- client like any other locomotion; no Prone Mod needed.
 local function mw_durs(npc)
 	local id = npc.tifHomeHost
 	if not (id and TIF.GTG.IsVB(id)) then return nil end
@@ -59,9 +55,6 @@ local function net_phase(npc, phase, now)
 	npc:SetNW2Float("tif_prone_t", now)
 end
 
--- Running and going prone: MW19's AI dive (mwp_dive_<jog|run>_<foot>_<n>) instead of stopping and lying down. The
--- one that ends facing the threat (else the way he runs), with room ahead for its slide (90-150 units). It plays
--- as an action over the prone set (cl_body proneAct) and moves him along its root. Returns the dive's length or nil.
 P.DIVE_SPEED = 110
 local function dive(npc)
 	local id = npc.tifHomeHost
@@ -86,7 +79,7 @@ local function dive(npc)
 		end
 	end
 	if not best then return nil end
-	-- Room for the slide (its travel, along the run).
+
 	local dist = math.sqrt(bc.move[1] ^ 2 + bc.move[2] ^ 2)
 	local pos = npc:GetPos() + Vector(0, 0, 8)
 	local tr = util.TraceHull({ start = pos, endpos = pos + v:GetNormalized() * (dist + 16), mins = Vector(-12, -12, 0),
@@ -99,7 +92,7 @@ end
 function P.GoDown(npc, reason)
 	if npc.tifProne or not P.Available(npc) then return false end
 	local now = CurTime()
-	-- (the dive reads his run before the stop: the loco keeps its velocity this tick; the dive replaces any stop clip)
+
 	local v0 = npc.loco:GetVelocity()
 	TIF.Move.Stop(npc)
 	local diveD = mw_durs(npc) and v0:Length2D() >= P.DIVE_SPEED and dive(npc)
@@ -115,7 +108,7 @@ function P.GoDown(npc, reason)
 	TIF.Move.Stop(npc)
 	TIF.Action.Clear(npc)
 	if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "going prone") end
-	-- Still on the GTA body after a GTA-only action: back to the MW19 body, whose prone clips are used.
+
 	if mw_durs(npc) and npc.tifHostId ~= npc.tifHomeHost and npc.TIFSetHost then npc:TIFSetHost(npc.tifHomeHost) end
 	local d = durations_of(npc)
 	npc.tifProne = { phase = P.DOWN, t0 = now, phaseEnd = now + d.down, since = now, reason = reason }
@@ -135,13 +128,12 @@ function P.GetUp(npc)
 	net_phase(npc, P.UP, now)
 end
 
--- Called every think. Finishes transitions. Returns true while the soldier can't do anything else.
 function P.Update(npc, now)
 	local p = npc.tifProne
 	if not p then return false end
 	if p.phase == P.DOWN and now >= p.phaseEnd then
 		p.phase = P.IN
-		-- (a dive was an action: lying now, the prone set takes over)
+
 		if p.dive and npc.tifAct and string.sub(npc.tifAct.name, 1, 9) == "mwp_dive_" then TIF.Action.Clear(npc) end
 		net_phase(npc, P.IN, now)
 	elseif p.phase == P.UP and now >= p.phaseEnd then

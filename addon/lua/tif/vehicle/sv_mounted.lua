@@ -1,16 +1,3 @@
--- Mounted squads (Phase 6): a squad boards a vehicle, drives somewhere or patrols a loop, and
--- dismounts at the destination or when it meets the enemy.
---
--- sq.mount = { veh, phase, riders = { npc = seat }, ... }
---   boarding     members walk to their seats (driver: a rifleman, not the leader; the leader rides
---                in seat 2). Ready when all are in, or after 25 s with a driver.
---   ready        waiting for orders
---   driving      the driver follows the route (TIF.Driver)
---   stopping     contact: the driver brakes; when slow, everyone gets out
---   dismounting  passengers out first, one every 0.35 s, then the driver
---   dismounted   on foot; normal squad tactics. A patrol squad remounts when its base is calm.
--- Contact = any rider sees an enemy, or hears/is told of one within 1500 units.
-
 local TIF = TIF
 local SQ = TIF.Squad
 local V = TIF.Vehicle
@@ -23,17 +10,13 @@ local MT = TIF.Mounted
 
 MT.CONTACT_RANGE = 1500
 MT.EXIT_GAP = 0.35
-MT.EXIT_SPEED = 25  -- a routine dismount waits until the vehicle is slower than this (u/s)
+MT.EXIT_SPEED = 25
 local DRIVER_PREF = { rifleman = 1, assault = 2, breacher = 2, support = 4, marksman = 4, leader = 9 }
 
 local function log(sq, ...)
 	if SQ.Log then SQ.Log(sq, "[vehicle] ", ...) end
 end
 
--- (0.37.0) TIF no longer ships GTA cars (its tif_gta_glide_cars_<car> copies of GTG's pack); vehicles come from the
--- TIF vehicle addons (tif_mw_cars). Saved factions, presets and settings that still name a GTA car (old
--- gtg_grandtheftgmod_<car> or tif_gta_glide_cars_<car>) get the first installed MW car instead: an SUV / pickup for
--- the cars, in MT.CAR_FALLBACK order. MT.DefaultCar() is the class to use when nothing is named.
 MT.CAR_FALLBACK = { "tif_mw_cherokee", "tif_mw_ram1500", "tif_mw_hilux", "tif_mw_tundra", "tif_mw_defender",
 	"tif_mw_ram1500_armor", "tif_mw_choptop" }
 function MT.DefaultCar()
@@ -71,14 +54,13 @@ function MT.SpawnVehicle(class, pos, yaw)
 	return veh
 end
 
--- Board a vehicle. Returns the number of soldiers assigned a seat.
 function MT.Mount(sq, veh)
 	if not GL.IsUsable(veh) then return 0 end
 	local members = SQ.Members(sq)
 	local seats = V.SeatCount(veh)
 	if seats == 0 or #members == 0 then return 0 end
 	local riders, n = {}, 0
-	-- Anyone already sitting in this vehicle keeps their seat.
+
 	local waiting = {}
 	for _, m in ipairs(members) do
 		if m.tifVeh == veh and m.tifSeatIdx then
@@ -90,7 +72,7 @@ function MT.Mount(sq, veh)
 			waiting[#waiting + 1] = m
 		end
 	end
-	-- The driver's seat: the most driver-like soldier that isn't the leader.
+
 	if V.SeatFree(veh, 1) then
 		table.sort(waiting, function(a, b)
 			local pa = (DRIVER_PREF[a.tifArchId] or 3) + (a == sq.leader and 10 or 0)
@@ -100,7 +82,7 @@ function MT.Mount(sq, veh)
 		local d = table.remove(waiting, 1)
 		if d and V.Board(d, veh, 1) then riders[d] = 1 n = n + 1 end
 	end
-	-- Everyone else: the free seat whose door is nearest, leader first.
+
 	table.sort(waiting, function(a, b) return a == sq.leader and b ~= sq.leader end)
 	for _, m in ipairs(waiting) do
 		local best, bestD
@@ -120,23 +102,18 @@ function MT.Mount(sq, veh)
 	return n
 end
 
--- Board a vehicle someone else drives (a player): passengers only, no stopping for contact (they
--- shoot from the windows), out with MT.Dismount. Returns the number assigned a seat.
 function MT.MountPassive(sq, veh)
 	local n = MT.Mount(sq, veh)
 	if sq.mount then sq.mount.passive = true end
 	return n
 end
 
--- Mount with everyone put straight into their seats (no walk to the doors): for a squad that's
--- already "in" the vehicle as far as the story goes, e.g. a convoy appearing mid-journey. The
--- squad is ready on the next tick.
 function MT.MountSeated(sq, veh)
 	local n = MT.Mount(sq, veh)
 	if n == 0 or not sq.mount then return n end
 	for m, seat in pairs(sq.mount.riders) do
 		if IsValid(m) and m.tifBoard then
-			-- (V.Sit stops him and clears the boarding state and the seat claim.)
+
 			V.Sit(m, veh, seat)
 		end
 	end
@@ -181,7 +158,6 @@ local function start_drive(sq, dest, dismount, label)
 	return true
 end
 
--- Drive to pos; dismount there unless stay.
 function MT.DriveTo(sq, pos, stay)
 	local mt = sq.mount
 	if not mt then return false end
@@ -190,7 +166,6 @@ function MT.DriveTo(sq, pos, stay)
 	return start_drive(sq, pos, not stay)
 end
 
--- Drive a loop of points until contact.
 function MT.Patrol(sq, pts)
 	local mt = sq.mount
 	if not mt or #pts < 2 then return false end
@@ -199,13 +174,12 @@ function MT.Patrol(sq, pts)
 	return start_drive(sq, pts[1], false, "patrol 1/" .. #pts)
 end
 
--- Everyone out. threat: where the enemy is (for the debug log; exits use each seat's door).
 function MT.Dismount(sq, threat, why)
 	local mt = sq.mount
 	if not mt or mt.phase == "dismounting" or mt.phase == "dismounted" then return end
 	D.Stop(mt.veh, why)
 	mt.phase, mt.exitQueue, mt.nextExit, mt.dismountT = "dismounting", {}, CurTime(), CurTime()
-	-- Passengers first, driver last.
+
 	local list = {}
 	for m, seat in pairs(mt.riders) do
 		if IsValid(m) and not m.tifDead then list[#list + 1] = { m = m, seat = seat } end
@@ -217,7 +191,6 @@ function MT.Dismount(sq, threat, why)
 	if threat and list[1] then TIF.Say(list[1].m, "contact", 0.9) end
 end
 
--- Back in (a patrol after the all-clear).
 function MT.Remount(sq)
 	local mt = sq.mount
 	if not mt or not GL.IsUsable(mt.veh) then return false end
@@ -237,7 +210,6 @@ function MT.Remount(sq)
 	return true
 end
 
--- The nearest enemy any rider knows about: contact, distance from the vehicle.
 local function contact(sq)
 	local mt = sq.mount
 	local best, bestD
@@ -253,9 +225,6 @@ local function contact(sq)
 	return best, bestD
 end
 
--- When to stop and get out: a patrol (or a parked vehicle) stops for anything within 1200; a
--- vehicle driving somewhere pushes on unless the enemy is within 600. Further enemies only get
--- shot at from the windows (drive-by).
 MT.STOP_PATROL = 1200
 MT.STOP_TRANSIT = 600
 
@@ -267,8 +236,7 @@ local function tick(sq, mt, now)
 	end
 
 	if mt.phase == "boarding" then
-		-- Riders whose boarding failed: try another free seat (3 tries). After 20 s, anyone standing
-		-- right by the vehicle is put in a seat directly.
+
 		for m, seat in pairs(mt.riders) do
 			if IsValid(m) and not m.tifDead and m.tifVeh ~= veh and not m.tifBoard and not m.tifLeaving then
 				local s = V.SeatFree(veh, seat, m) and seat or nil
@@ -296,7 +264,7 @@ local function tick(sq, mt, now)
 			local p = mt.pending
 			mt.pending = nil
 			if mt.convoy then
-				-- Part of a convoy: the convoy sets off when every vehicle is ready.
+
 			elseif p and p.patrol and mt.patrol then
 				start_drive(sq, mt.patrol.pts[mt.patrol.i], false, "patrol " .. mt.patrol.i .. "/" .. #mt.patrol.pts)
 			elseif p and p.pos then
@@ -309,8 +277,6 @@ local function tick(sq, mt, now)
 		return
 	end
 
-	-- Passengers of a player-driven vehicle (MountPassive): the player decides when to stop; they
-	-- get out when told (Dismount) or when the vehicle is wrecked.
 	if mt.passive and (mt.phase == "driving" or mt.phase == "ready") then return end
 
 	if mt.phase == "driving" or mt.phase == "ready" then
@@ -335,8 +301,7 @@ local function tick(sq, mt, now)
 	end
 
 	if mt.phase == "dismounting" then
-		-- Not under fire: the vehicle comes to a proper stop before anyone gets out (up to 6 s; a
-		-- combat dismount doesn't wait, and jumps out of a moving vehicle if it has to).
+
 		if not mt.combat and IsValid(veh) and veh:GetVelocity():Length() > MT.EXIT_SPEED and now - (mt.dismountT or now) < 6 then
 			mt.nextExit = now + 0.5
 			return
@@ -351,7 +316,7 @@ local function tick(sq, mt, now)
 		end
 		if #mt.exitQueue == 0 and #V.Occupants(veh) == 0 then
 			mt.phase = "dismounted"
-			-- On foot: back to the squad's order before mounting (or free).
+
 			local prev = mt.prevOrder
 			if prev and prev.kind ~= "mounted" then sq.order = prev prev.time = now else sq.order = { kind = "free", time = now } end
 			SQ.Publish(sq)
@@ -372,7 +337,6 @@ timer.Create("tif_mounted_tick", 0.25, 0, function()
 	end
 end)
 
--- Is the squad busy with its vehicle (tactics should wait)?
 function MT.Busy(sq)
 	return sq.mount ~= nil and sq.mount.phase ~= "dismounted"
 end

@@ -1,22 +1,3 @@
--- Base commands (Phase 4). Dev only (listen host, server console, superadmins).
---
--- Using a base:
---   tif_base_garrison [name]    spawn a base's garrison (saved file or map preset; no name = the
---                               map's first preset, e.g. "compound" on tif_range)
---   tif_base_clear              remove all bases and their soldiers
---   tif_base_info               print each base's level and garrison
---   tif_base_level <calm|alert|alarm>   force the level of every base
---   tif_base_list               saved and preset bases for this map
---
--- Building one (stand where things go; drawn with tif_debug 1):
---   tif_base_new <name> [faction] [radius]   start a draft centred on you
---   tif_base_post [post|reserve] [archetype] a guard post / reserve spot here, facing your view
---   tif_base_route [size]                    start a patrol route (size = soldiers)
---   tif_base_point                           add your position to the last route
---   tif_base_reinforce [size]                reinforcements arrive here
---   tif_base_undo                            remove the last post or route point
---   tif_base_save                            save to data/tif/bases/<map>_<name>.json
-
 local TIF = TIF
 local B = TIF.Base
 
@@ -76,7 +57,7 @@ dev("tif_base_level", function(ply, args)
 	local now = CurTime()
 	for _, base in pairs(B.List) do
 		if want == B.ALARM then
-			-- A real alarm needs someone to fight: point everyone at the player who asked.
+
 			if IsValid(ply) then
 				base.knowledge[ply] = { pos = ply:GetPos(), vel = Vector(), time = now }
 			end
@@ -98,8 +79,6 @@ dev("tif_base_list", function(ply)
 	say(ply, "Presets: ", #presets > 0 and table.concat(presets, ", ") or "none",
 		"   Saved: ", #saved > 0 and table.concat(saved, ", ") or "none")
 end, "List saved and preset bases for this map")
-
--- Building -------------------------------------------------------------------------------
 
 local function draft(ply)
 	if not B.Draft then say(ply, "No draft: tif_base_new <name> first") end

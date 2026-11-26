@@ -1,17 +1,3 @@
--- Casualties (Phase 7): wounded soldiers who go down instead of dying, and squadmates who come
--- to get them back up.
---
--- Going down:  a hit that would kill has a chance (tif_downed_chance) to leave the soldier on the
---              ground at 10 health instead. Not for head shots, blasts, or hits over 150 damage.
---              Downed: lying on the back (first frame of GTG's injured get-up from the back), gun
---              put away, out of the fight (enemies stop targeting them). Any further damage kills.
--- Bleeding out: dies after tif_bleedout seconds unless treated.
--- Treating:    the nearest squadmate (within 1500, not the leader if anyone else can) runs over when
---              no enemy is in sight of it within 800, kneels beside the casualty for 5 s, and the
---              casualty gets up (injured get-up to the knees, then to standing) with 40 health.
---              "man down" / "cover me" callouts. If the medic sees an enemy it fights and comes
---              back after.
-
 local TIF = TIF
 local AW = TIF.AWARE
 local A = TIF.Anim
@@ -28,8 +14,7 @@ local cvBleed = CreateConVar("tif_bleedout", "45", FCVAR_ARCHIVE, "Seconds a dow
 
 CAS.TREAT_TIME = 5
 CAS.MEDIC_RANGE = 1500
--- Rarity (like CoD): never one of the last men standing (at least MIN_ALLIES able friendlies within
--- ALLY_RANGE), one casualty per squad at a time, and SQUAD_COOLDOWN seconds before the squad's next.
+
 CAS.MIN_ALLIES = 2
 CAS.ALLY_RANGE = 1500
 CAS.SQUAD_COOLDOWN = 40
@@ -69,7 +54,6 @@ local function first_clip(npc, list)
 	return nil
 end
 
--- Called from EntityTakeDamage before the damage lands. Returns true if the soldier went down.
 function CAS.TryDown(npc, dmg)
 	if not cvOn:GetBool() or npc.tifDowned or npc.tifDead or npc.tifVeh or npc.tifSurrendered or npc.tifNoDown then return false end
 	local amount = dmg:GetDamage()
@@ -101,7 +85,7 @@ function CAS.Down(npc, dmg)
 	npc.tifFire.want = false
 	npc.tifDownedWeapon = npc:GetTIFWeapon()
 	npc:SetTIFWeapon("")
-	-- MW19 body: its last stand (falls, lies wounded, crawls a little; TIF.LastStandMW).
+
 	local LS = TIF.LastStandMW
 	if LS and LS.Use(npc) then
 		LS.Down(npc, dmg, now)
@@ -116,7 +100,7 @@ function CAS.Down(npc, dmg)
 	npc:SetNW2Bool("tif_downed", true)
 	log(npc, "down")
 	TIF.Say(npc, "pain", 1)
-	-- Someone calls it.
+
 	local sq = npc.tifSquad
 	for _, m in ipairs(sq and TIF.Squad.Members(sq) or {}) do
 		if m ~= npc and not m.tifDowned then TIF.Say(m, "man_down", 0.8) break end
@@ -126,7 +110,6 @@ function CAS.Down(npc, dmg)
 	end
 end
 
--- Back on his feet (treated).
 local function back_up(npc)
 	npc.tifDowned = nil
 	CAS.Downed[npc] = nil
@@ -143,7 +126,7 @@ CAS.BackUp = back_up
 local function revive(npc, now)
 	local d = npc.tifDowned
 	if not d then return end
-	-- MW19 body: its own get-up (the revive clips already played).
+
 	local LS = TIF.LastStandMW
 	if LS and LS.Use(npc) then
 		if LS.GetUp(npc, d, now) then back_up(npc) end
@@ -165,7 +148,6 @@ local function revive(npc, now)
 	if g.step == 2 and now >= g.until_ then back_up(npc) end
 end
 
--- Every think of a downed soldier.
 function CAS.DownThink(npc, now)
 	local d = npc.tifDowned
 	npc.tifFire.want = false
@@ -182,9 +164,9 @@ function CAS.DownThink(npc, now)
 		return
 	end
 	npc.tifAction = string.format("downed (%ds)", math.max(0, d.bleed - now))
-	-- MW19 body: lying wounded, a short crawl away from the enemy / toward friends; passing out at the end.
+
 	if mw then
-		-- A medic is working on him (the medic runs both sides' clips).
+
 		if d.revive and LS.ReviveAlive(npc, d, now) then Move.Stop(npc) return end
 		if LS.Think(npc, d, now) then return end
 	end
@@ -205,9 +187,6 @@ function CAS.DownThink(npc, now)
 	end
 end
 
--- Medics ------------------------------------------------------------------------------------------
-
--- Returns true while treating controls the soldier.
 function CAS.MedicThink(npc, c, now)
 	local m = npc.tifMedic
 	local p = m.patient
@@ -215,7 +194,7 @@ function CAS.MedicThink(npc, c, now)
 		npc.tifMedic = nil
 		return false
 	end
-	-- An enemy in sight close by: fight first.
+
 	if c and c.visible and npc:GetPos():DistToSqr(c.pos) < 800 * 800 then
 		m.start = nil
 		return false
@@ -236,12 +215,12 @@ function CAS.MedicThink(npc, c, now)
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil
 		if not m.said then m.said = true TIF.Say(npc, "cover_me", 0.7) end
-		-- (Sprints to him, or the aimed walk for the last few steps: the fight gaits, no jog with the gun down.)
+
 		if not Move.SetGoal(npc, pos, Move.CombatGait(npc, pos), "medic") then npc.tifMedic = nil return false end
 		m.start = nil
 		return true
 	end
-	-- MW19 bodies (both): MW19's revive, kneeling on the near side (TIF.LastStandMW).
+
 	local LS = TIF.LastStandMW
 	if LS and LS.Use(npc) and LS.Use(p) then
 		npc.tifAction = "treating"
@@ -262,7 +241,6 @@ function CAS.MedicThink(npc, c, now)
 	return true
 end
 
--- Twice a second: give each downed soldier a medic.
 timer.Create("tif_casualty_tick", 0.5, 0, function()
 	if TIF.AIDisabled() then return end
 	for npc in pairs(CAS.Downed) do

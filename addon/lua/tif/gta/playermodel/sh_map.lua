@@ -1,4 +1,3 @@
--- From GrandTheftGMod 0.98 (playermodel/sh_map.lua), trimmed for TIF: parts TIF uses. Built by tools/build_gta_bundle.py.
 local PMS = TIFG.PMS
 local M = PMS.Math
 local mul3, tr3, mulv, sub, unit, swing, frame, cross = M.mul3, M.tr3, M.mulv, M.sub, M.unit, M.swing, M.frame, M.cross
@@ -297,7 +296,7 @@ function PMS.MapFor(leader_model, follower_model)
 	end
 	local key = string.lower(leader_model) .. "\n" .. string.lower(follower_model) .. "\n" .. mode
 	local map = PMS.Maps[key]
-	-- (TIF) A failed map is tried again after 10 s.
+
 	PMS.MapRetry = PMS.MapRetry or {}
 	if map == false and CurTime() >= (PMS.MapRetry[key] or 0) then map = nil end
 	if map == nil then

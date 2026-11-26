@@ -1,14 +1,3 @@
--- MW19 last stand (MW19 body), on top of TIF.Casualty (which decides who goes down, rarely: sv_casualty.lua).
---   Down:     MW19's long-death fall onto his back or side (standing / crouched set, LS.FallClip), blended into
---             lying wounded (mwls_idle) as it ends, gun gone; already prone: straight to lying wounded.
---   Crawl:    once, a short crawl (up to CRAWL_DIST) away from the enemy toward friends, facing the enemy,
---             8-way crawl clips by direction.
---   Revive:   a squadmate kneels on the near side and runs MW19's paired revive: his help_in / loop / out, the
---             casualty's hurt_in / loop / out (the side picks both, numpad around the casualty); then the
---             casualty gets up (mwls_getup) with 40 health.
---   Bleed out: the pass-out clip, then dead (straight to the ragdoll).
--- Roles: mwls_* (manifest stage78_family). TIF.Casualty calls Down, Think, GetUp, MedicThink.
-
 local TIF = TIF
 local Act = TIF.Action
 local Move = TIF.Move
@@ -18,9 +7,9 @@ local LS = TIF.LastStandMW
 
 LS.CRAWL_DIST = 220
 LS.CRAWL_TIME = 7
-LS.LOOP_TIME = 3.5       -- seconds of the revive loop (plus in / out)
-LS.KNEEL = 30            -- helper's pelvis from the casualty's chest
-LS.CHEST = { x = -6, y = -9 } -- the casualty's chest in his own frame (from the idle clip: head -x, pelvis +x)
+LS.LOOP_TIME = 3.5
+LS.KNEEL = 30
+LS.CHEST = { x = -6, y = -9 }
 
 local function has(npc, n) return npc.tifHomeHost and TIF.GTG.Clip(n, npc.tifHomeHost) ~= nil end
 
@@ -38,7 +27,6 @@ local function chest(npc)
 	return npc:GetPos() + f * LS.CHEST.x + l * LS.CHEST.y
 end
 
--- Down ---------------------------------------------------------------------------------------------------
 LS.FALL_END = 0.97
 
 function LS.FallClip(npc, dmg)
@@ -68,7 +56,6 @@ function LS.Down(npc, dmg, now)
 	npc.tifHitboxPose = "down"
 end
 
--- The 8-way crawl clip for travel at relAng (degrees off the facing).
 local CRAWL = { { 0, "fwd_0" }, { 45, "fwd_45" }, { 90, "fwd_90" }, { 135, "bwd_135" }, { 180, "bwd_180" },
 	{ -135, "bwd_-135" }, { -90, "fwd_-90" }, { -45, "fwd_-45" } }
 local function crawl_clip(rel)
@@ -80,7 +67,6 @@ local function crawl_clip(rel)
 	return "mwls_crawl_" .. best .. "_loop"
 end
 
--- Where to crawl: away from the enemy, toward the nearest able friend, a short way.
 local function crawl_goal(npc)
 	local pos = npc:GetPos()
 	local away = Vector(0, 0, 0)
@@ -109,11 +95,10 @@ local function crawl_goal(npc)
 	return pos + to * LS.CRAWL_DIST
 end
 
--- Every think while downed and not being revived. True if it handled this think.
 function LS.Think(npc, d, now)
 	local s = d.ls
 	if not s then return false end
-	-- Bleeding out: pass out, then die.
+
 	if now >= d.bleed then
 		if s.phase ~= "passout" then
 			Move.Stop(npc)
@@ -139,7 +124,7 @@ function LS.Think(npc, d, now)
 		end
 		return true
 	end
-	-- One short crawl, a moment after landing.
+
 	if s.phase == "lying" and not s.crawled and now - s.since > math.Rand(1, 2.5) then
 		s.crawled = true
 		local g = crawl_goal(npc)
@@ -164,9 +149,8 @@ function LS.Think(npc, d, now)
 	return false
 end
 
--- Back on his feet after a revive. True when done.
 function LS.GetUp(npc, d, now)
-	-- A buddy revive (MW22) already ends with him back on his feet.
+
 	if d.buddyUp then
 		d.buddyUp = nil
 		return true
@@ -181,8 +165,6 @@ function LS.GetUp(npc, d, now)
 	return now >= s.untilT
 end
 
--- Revive (run by the medic) ---------------------------------------------------------------------------------
--- The side the medic comes from, numpad around the casualty's facing.
 local NUM = { [8] = 0, [7] = 45, [4] = 90, [1] = 135, [2] = 180, [3] = -135, [6] = -90, [9] = -45 }
 local function side(p, from)
 	local rel = math.AngleDifference((from - p:GetPos()):Angle().y, p:GetAngles().y)
@@ -203,10 +185,6 @@ local function abort(p)
 end
 LS.Abort = abort
 
--- Every think of a medic next to his casualty. True while the revive is in charge; sets the casualty's
--- d.treated when it's done (TIF.Casualty then runs the get-up).
--- MW22 buddy revive: a paired clip set by how the wounded lies (here: from the last stand), helper on his left (4)
--- or right (6). Both halves share one origin: each plays from the wounded's spot and facing on its own root motion.
 LS.BUDDY_SHARE = 0.5
 local function buddy_start(npc, p, d, now)
 	local rel = math.AngleDifference((npc:GetPos() - p:GetPos()):Angle().y, p:GetAngles().y)
@@ -295,7 +273,6 @@ function LS.MedicThink(npc, p, m, now)
 	return true
 end
 
--- The casualty's side: is the revive still being run? (The medic may have been pulled into a fight.)
 function LS.ReviveAlive(p, d, now)
 	local r = d.revive
 	if not r then return false end

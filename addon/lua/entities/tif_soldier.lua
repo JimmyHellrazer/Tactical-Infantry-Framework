@@ -1,6 +1,3 @@
--- TIF soldier: a NextBot on the GTG host ped. The server thinks, moves and shoots; the client
--- composes GTA animation into 8 layer slots and draws the faction model on top (see tif/npc/cl_body.lua).
-
 AddCSLuaFile()
 
 ENT.Base = "base_nextbot"
@@ -10,7 +7,7 @@ ENT.Spawnable = false
 ENT.AdminOnly = true
 ENT.RenderGroup = RENDERGROUP_OPAQUE
 ENT.TIFSoldier = true
-ENT.TIFFaction = nil -- set by tif_soldier_<faction> subclasses or tifSpawnFaction before Spawn()
+ENT.TIFFaction = nil
 
 local STAND_MAX = Vector(13, 13, 72)
 local CROUCH_MAX = Vector(13, 13, 46)
@@ -36,13 +33,10 @@ end
 if CLIENT then
 	function ENT:Initialize() TIF.Body.Add(self) end
 	function ENT:Draw(flags) TIF.Body.DrawHost(self, flags) end
-	-- A full update (network hiccup in multiplayer) calls OnRemove on entities that stay; their body
-	-- is rebuilt on the next draw (TIF.Body.DrawHost), since Initialize isn't called again.
+
 	function ENT:OnRemove(fullUpdate) TIF.Body.Remove(self) end
 	return
 end
-
--- Server -----------------------------------------------------------------------
 
 local modelInfo = {}
 local function model_info(model)
@@ -54,7 +48,7 @@ local function model_info(model)
 		e:SetModel(model)
 		info.skins = math.max(1, e:SkinCount())
 		for _, bg in ipairs(e:GetBodyGroups() or {}) do
-			-- Which options are empty ("blank" in the model: nothing drawn).
+
 			local blank = {}
 			for k, sm in pairs(bg.submodels or {}) do
 				if not isstring(sm) or sm == "" or string.lower(sm) == "blank" then blank[k] = true end
@@ -67,10 +61,6 @@ local function model_info(model)
 	return info
 end
 
--- Random skin and bodygroups. A faction can restrict them (by bodygroup name, any case):
---   bodygroups = { nvgs = { 0 }, ... }        allowed values per group (others: any)
---   bodyRules = { { "goggles", "headwear" } } goggles only when headwear isn't 0 (else 0)
---   noBlank = true                            never pick an empty option (no helmet, no gear...)
 local function random_look(model, fac)
 	local info = model_info(model)
 	local fid = fac and fac.id
@@ -92,7 +82,7 @@ local function random_look(model, fac)
 			end
 			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
 		elseif g.num > 1 and name ~= "body" then
-			-- Keep the base body; randomise gear, heads, headwear.
+
 			local fit = {}
 			for x = 0, g.num - 1 do if usable(x) then fit[#fit + 1] = x end end
 			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
@@ -100,7 +90,7 @@ local function random_look(model, fac)
 		digits[i] = v
 		byName[name] = i
 	end
-	-- Gear that needs other gear: dropped without it.
+
 	for _, r in ipairs(istable(fac and fac.bodyRules) and fac.bodyRules or {}) do
 		local gi, ni = byName[string.lower(tostring(r[1]))], byName[string.lower(tostring(r[2]))]
 		if gi and ni and digits[ni] == 0 then digits[gi] = 0 end
@@ -110,8 +100,6 @@ local function random_look(model, fac)
 	return pick(model .. "#skin", skins) or 0, table.concat(digits, " ")
 end
 
--- The spawn menu's entries (tif/config/sh_spawnlist.lua) give faction and role as key-values,
--- set before the soldier spawns.
 function ENT:KeyValue(k, v)
 	if k == "tif_faction" and v ~= "" then self.tifSpawnFaction = v
 	elseif k == "tif_arch" and v ~= "" then self.tifArchId = TIF.Archetypes and TIF.Archetypes[v] and v or self.tifArchId end
@@ -128,24 +116,22 @@ function ENT:Initialize()
 		return
 	end
 	self:SetModel(host)
-	-- tifHostId: the body playing right now; tifHomeHost: the one it returns to after a GTA-only action.
+
 	self.tifHostId, self.tifHomeHost = hostId, hostId
 	self:SetNW2String("tif_host", hostId)
 	self:SetTIFFaction(facId)
 
-	-- A random model (from one camo variant for factions that have them: config/sh_packs.lua).
 	local vis = TIF.PickVisual and TIF.PickVisual(fac, self) or fac.models[math.random(#fac.models)]
-	-- Modular factions (config/sh_modular.lua): body + head + headgear picked by the faction's rules; the parts ride
-	-- on the faction model (NW2 tif_parts). Random skins, default bodygroups.
+
 	local parts = ""
-	-- (called on its own: an `a and b and f()` chain keeps only f's first return value, which lost the parts)
+
 	local modMain, modParts
 	if TIF.Modular and TIF.Modular.Pick then modMain, modParts = TIF.Modular.Pick(fac, self.tifArchId or "rifleman") end
 	if modMain then vis, parts = modMain, modParts or "" end
 	local skin, groups = random_look(vis, fac)
 	if modMain and fac.modular.skins == false then skin = 0 end
 	if modMain then
-		-- Defaults, except a stand-in body (codport heads carry one) switched to its blank option.
+
 		local digits = {}
 		for i, g in ipairs(model_info(vis).groups) do
 			local v = 0
@@ -178,7 +164,6 @@ function ENT:Initialize()
 	loco:SetDeceleration(1100)
 	loco:SetMaxYawRate(self.tifArch.turnRate)
 
-	-- 8 layer slots for the client to drive.
 	local idleClip = TIF.GTG.Clip("idle", hostId)
 	local idle = self:LookupSequence(idleClip and idleClip.seq or "") or 0
 	if idle < 0 then idle = 0 end
@@ -196,18 +181,14 @@ function ENT:Initialize()
 	if TIF.Morale then TIF.Morale.Init(self) end
 	self:TIFPickMainSequences(hostId)
 	TIF.Register(self)
-	-- Spawned alone (spawn menu): join a nearby squad of the same faction, or start one.
-	-- Group spawns assign squads themselves and set tifNoAutoSquad.
+
 	timer.Simple(0, function()
 		if IsValid(self) and not self.tifNoAutoSquad and not self.tifSquad then TIF.Squad.AutoJoin(self) end
 	end)
 end
 
--- Slots carry a tiny non-zero weight: a zero-weight layer can be deactivated by the engine.
 local SLOT_WEIGHT = 0.002
 
--- Create any missing layer slots. With nudge, also touch every slot's weight so the entity's
--- layer data is sent to clients again (used when a client reports missing slots).
 function ENT:TIFRefreshSlots(nudge)
 	local made = 0
 	for i = 1, TIF.Anim.SLOTS do
@@ -243,7 +224,6 @@ net.Receive("tif_slots_missing", function(_, ply)
 	ent:TIFRefreshSlots(true)
 end)
 
--- Server pose for hitboxes only: one full-body sequence per stance.
 function ENT:TIFPickMainSequences(host)
 	local function seq(name)
 		local c = TIF.GTG.Clip(name, host)
@@ -257,9 +237,6 @@ function ENT:TIFPickMainSequences(host)
 	}
 end
 
--- Switch the body (host model) a soldier animates on. (Until 0.38.0: to the GTA body for an action the MW19 body
--- had no clip for, and back afterwards; with the MW19 body the only one, it only puts an odd soldier back on it.)
--- Clients follow through NW2 "tif_host" (cl_body rebuilds the faction model and gun for the new body).
 function ENT:TIFSetHost(id)
 	if not id or id == self.tifHostId then return end
 	local model = TIF.GTG.HostModel(id)
@@ -279,9 +256,7 @@ end
 local SLIM_MIN, SLIM_MAX, SLIM_CROUCH = Vector(-7, -7, 0), Vector(7, 7, 72), Vector(7, 7, 46)
 function ENT:TIFApplyStance()
 	local crouch = self:GetTIFStance() == 1
-	-- (2026-11-21, user: the second man of a breach "going in super hastily ... do some sort of bounding box
-	-- adjustment") A narrower body during CQB breach / entry clips (TIFSetSlim, sv_brain): through the doorway past the
-	-- others without bumping anyone.
+
 	if self.tifSlim then
 		self:SetCollisionBounds(SLIM_MIN, crouch and SLIM_CROUCH or SLIM_MAX)
 	else
@@ -315,8 +290,7 @@ function ENT:RunBehaviour()
 end
 
 function ENT:BodyUpdate()
-	-- MW19 death clip: the server plays it too, so the ragdoll is posed (and gets bone velocities) from the
-	-- real mid-fall pose. Normally the server only holds one pose per stance for hitboxes.
+
 	local dy = self.tifDying
 	if dy then
 		if dy.seq and dy.seq >= 0 then
@@ -344,7 +318,7 @@ function ENT:BodyUpdate()
 	local m = self.tifMainSeq
 	if m then
 		local want
-		-- Prone, or downed: lying on the ground (hitboxes low).
+
 		local prone = (self.tifProne ~= nil and self.tifProne.phase == 2) or self.tifDowned ~= nil
 		if prone then want = m.prone
 		elseif self.tifHitboxPose == "crouch" then want = m.crouch
@@ -450,25 +424,21 @@ function ENT:OnInjured(dmg)
 	dir:Normalize()
 	self:SetTIFHitDir(dir)
 	self:SetTIFHitTime(CurTime())
-	-- MW19 body: a short stagger by hit region and direction (TIF.HitsMW).
-	-- (0.38.31, user: in a paired fight "the death of one had an a pose into a ragdoll") Not on a killing hit: the engine
-	-- runs this before OnKilled, so the stagger replaced the clip he was in (the fight's, a human shield's death) just
-	-- before the corpse was posed from it: the ragdoll started from the stagger's upright first frame. A killing hit
-	-- gets its death (clip) from OnKilled anyway.
+
 	if TIF.HitsMW and not self.tifNoDeathClip and self:Health() > 0 then pcall(TIF.HitsMW.Pain, self, dmg) end
 end
 
-local CLIP_DEATH_HOLD = 0.2 -- (see OnKilled: a few server ticks of the clip, for its real pose and motion)
+local CLIP_DEATH_HOLD = 0.2
 function ENT:OnKilled(dmg)
 	if self.tifDead then return end
 	self.tifDead = true
-	-- Morale first: it needs to know whether this was the squad leader.
+
 	if TIF.Morale then pcall(TIF.Morale.OnDeath, self, dmg:GetAttacker()) end
 	TIF.Unregister(self)
 	TIF.Cover.Release(self)
 	TIF.Squad.Remove(self)
 	TIF.Say(self, "death")
-	-- Nearby allies react to the loss.
+
 	for _, ally in ipairs(TIF.Soldiers) do
 		if IsValid(ally) and ally:GetTIFFaction() == self:GetTIFFaction() and ally:GetPos():DistToSqr(self:GetPos()) < 1200 * 1200 then
 			TIF.Perception.Stimulus(ally, self:GetPos(), "man_down", CurTime())
@@ -477,25 +447,20 @@ function ENT:OnKilled(dmg)
 		end
 	end
 	hook.Run("OnNPCKilled", self, dmg:GetAttacker(), dmg:GetInflictor())
-	-- For outside addons (TIF.API): hook "TIF_SoldierKilled" (soldier, attacker).
+
 	hook.Run("TIF_SoldierKilled", self, dmg:GetAttacker())
 	local ok, err = pcall(self.TIFDropWeapon, self)
 	if not ok then TIF.Error("Weapon drop failed: ", tostring(err)) end
-	-- Killed while knocked down: his ragdoll is already the body (TIF.HitsMW.Knockdown).
+
 	if self.tifKnock and TIF.HitsMW and TIF.HitsMW.KnockDeath and TIF.HitsMW.KnockDeath(self) then
 		self:SetNoDraw(true)
 		self:SetNotSolid(true)
 		SafeRemoveEntityDelayed(self, 0)
 		return
 	end
-	-- MW19 body: a situational death clip first; the ragdoll comes mid-fall (TIF.HitsMW, Think).
+
 	local hit = { pos = dmg:GetDamagePosition(), force = dmg:GetDamageForce() }
-	-- A clip that is his death already (a paired fight's loser, a human shield's captor: tifNoDeathClip). (2026-11-20,
-	-- user: "melee pair ragdolls seem to come from the idle they were doing hidden instead of the actual last pose they
-	-- had in the fight") The server only holds a stance pose for hitboxes, and switching it to the clip in the kill's
-	-- own tick still read the bones cached that tick: the hidden idle. So the clip carries on on the server like a
-	-- death clip (BodyUpdate plays tifDying's seq, from where it was) for CLIP_DEATH_HOLD s, and the ragdoll takes
-	-- over from that pose with its bone velocities (TIF.HitsMW.DyingThink).
+
 	local act = self.tifNoDeathClip and self.tifAct
 	local seq = act and act.clip and act.clip.seq and self:LookupSequence(act.clip.seq)
 	if seq and seq >= 0 and TIF.HitsMW and TIF.HitsMW.DyingThink then
@@ -515,8 +480,7 @@ function ENT:OnKilled(dmg)
 	end
 	if dying then
 		self.tifDeathHit = hit
-		-- Never left standing if something goes wrong.
-		-- (A long death, fall + crawl + death, runs up to ~15 s: 20 s for those.)
+
 		local safety = (self.tifDying and self.tifDying.chain) and 20 or 6
 		timer.Simple(safety, function() if IsValid(self) and self.tifDying then self.tifDying = nil self:TIFFinishDeath({}) end end)
 		return
@@ -525,8 +489,6 @@ function ENT:OnKilled(dmg)
 	self:TIFFinishDeath(nil)
 end
 
--- The corpse (posed like the soldier now; bone velocities from a death clip, if one played) and the soldier
--- gone. The soldier must disappear even if building the body fails.
 function ENT:TIFFinishDeath(boneVel)
 	local ok, err = pcall(self.TIFMakeCorpse, self, self.tifDeathHit, boneVel)
 	if not ok then TIF.Error("Corpse failed: ", tostring(err)) end
@@ -537,15 +499,6 @@ end
 
 local cvCorpse = CreateConVar("tif_corpse_time", "60", FCVAR_ARCHIVE, "Seconds soldier bodies and dropped guns stay (0 = until cleanup)")
 
--- A server ragdoll of the GTA ped, posed like the soldier at the moment of death and tagged with
--- the faction model so every client can dress it.
--- hit: { pos, force } of the killing shot. boneVel: { [host bone] = velocity } from a death clip (MW19), so
--- the ragdoll carries on the fall; nil = the soldier's movement velocity.
--- (0.38.4) A faction model without ragdoll physics used to give a ragdoll of the host body (mw_male.mdl), which has
--- none either: a prop_ragdoll with no physics objects hangs where it's made in the skeleton's zero pose, a rigid
--- horizontal stick figure at waist height (user clip: "crumple completely, arms and legs straight"; deaths and blast
--- knockdowns of soldiers on such models). Those get a stock ValveBiped ragdoll instead, posed from the soldier's bones
--- by name and dressed by clients with the faction model (NW2 tif_vis + tif_vb_dress).
 local CORPSE_FALLBACK = { "models/humans/group03/male_07.mdl", "models/humans/group01/male_07.mdl", "models/kleiner.mdl" }
 local warnedNoRag = {}
 local function fallback_ragdoll()
@@ -555,30 +508,24 @@ local function fallback_ragdoll()
 	return nil
 end
 
--- (0.38.9, user: the death-clip -> ragdoll handoff "a LITTLE rough, you can see the jump and sometimes they receive
--- way too much force and will do the classic source glitch jump".) Bone speeds from the clip capped lower (was 800);
--- bones that start inside the floor (a hand or knee through the ground at the handoff: physics shoves them out, the
--- launch) lift the whole body clear first; and for CORPSE_SETTLE s the joints get extra angular damping, so a pose
--- at the edge of the ragdoll's joint limits settles instead of springing.
 local BONE_VEL_MAX = 480
 local CORPSE_SETTLE, SETTLE_ANG_DAMP = 0.45, 6
 local floorOut = {}
 local floorTr = { mask = MASK_SOLID_BRUSHONLY, output = floorOut }
 local BONE_M = Matrix()
--- clampUp: a death-clip handoff (no launching upward off it; blast knockdowns keep their throw). Safe to call again
--- after re-posing (takedowns): the original damping is kept from the first call.
+
 local function settle_corpse(rag, clampUp)
 	if not IsValid(rag) then return end
 	local n = rag:GetPhysicsObjectCount()
 	local lift = 0
 	for i = 0, n - 1 do
 		local phys = rag:GetPhysicsObjectNum(i)
-		-- (only bones actually inside the world: one under a table isn't lifted onto it)
+
 		if IsValid(phys) and bit.band(util.PointContents(phys:GetPos()), CONTENTS_SOLID) ~= 0 then
 			local p = phys:GetPos()
 			floorTr.start, floorTr.endpos = p + Vector(0, 0, 30), p
 			local tr = util.TraceLine(floorTr)
-			-- the bone's centre under a floor surface (not just resting near it)
+
 			if tr.Hit and not tr.StartSolid and tr.HitNormal.z > 0.6 and tr.HitPos.z > p.z + 0.5 then
 				lift = math.max(lift, tr.HitPos.z + 2 - p.z)
 			end
@@ -614,23 +561,20 @@ ENT.TIFSettleCorpse = settle_corpse
 function ENT:TIFMakeCorpse(hit, boneVel)
 	local rag = ents.Create("prop_ragdoll")
 	if not IsValid(rag) then return end
-	-- On a ValveBiped host (MW19) the faction model itself is the ragdoll: same bone names, its own physics,
-	-- nothing for clients to dress.
+
 	local vis = self:GetTIFVisual()
 	local vbHost = TIF.GTG.IsVB(self.tifHostId)
 	local own = vbHost and vis ~= "" and util.IsValidRagdoll(vis)
-	-- No physics on the faction model: a stand-in ragdoll, dressed (see above).
+
 	local stand = vbHost and not own and fallback_ragdoll() or nil
 	if stand and not warnedNoRag[vis] then
 		warnedNoRag[vis] = true
 		TIF.Warn("Faction model has no ragdoll physics, its corpses use a stand-in ragdoll: ", tostring(vis))
 	end
-	-- Retargeted models (modular factions, codport ports): their bones are on another rig's axes, so each physics
-	-- bone's rotation goes through the retarget's rest offset (else the ragdoll starts twisted). The MW19 host has
-	-- no ragdoll of its own, so this is their only corpse.
+
 	local restOff = own and TIF.Modular and TIF.Modular.NeedsRetarget(vis) and TIF.Modular.RestOffsets(self:GetModel(), vis) or nil
 	rag:SetModel(own and vis or stand or self:GetModel())
-	-- (modular factions: the corpse wears the same parts)
+
 	rag:SetNW2String("tif_parts", self:GetNW2String("tif_parts", ""))
 	rag:SetPos(self:GetPos())
 	rag:SetAngles(self:GetAngles())
@@ -641,19 +585,15 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 		rag:SetNW2String("tif_vis", vis)
 		rag:SetNW2Int("tif_skin", self:GetTIFSkin())
 		rag:SetNW2String("tif_bg", self:GetTIFBodygroups())
-		-- the stand-in is ValveBiped like the faction model: clients bone-merge it on (no GTA retarget)
+
 		if stand then rag:SetNW2Bool("tif_vb_dress", true) end
 	end
-	-- Bones by name for the faction model and the stand-in alike (both ValveBiped, like the host).
+
 	local byName = own or stand ~= nil
 	rag:Spawn()
 	rag:Activate()
 	rag:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 
-	-- Server bone matrices are built on demand from the current (hitbox) pose: one standing / crouched pose per
-	-- stance. (0.38.4) Without a death clip (knockdowns, deaths that skip the clip) the action he was in (a throw, a
-	-- reload, a vault...) is posed on the server first, so the ragdoll starts from that instead of the stiff aim pose
-	-- (user clip: thrown and landing as a plank, "arms and legs straight in the direction the torso is facing").
 	local act = not boneVel and self.tifAct
 	if act and act.clip and act.clip.seq then
 		local seq = self:LookupSequence(act.clip.seq)
@@ -661,9 +601,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 			self:ResetSequence(seq)
 			self:SetCycle(math.Clamp((CurTime() - (act.t0 or CurTime())) / math.max(0.05, act.dur or 1), 0, 1))
 			self:SetPlaybackRate(0)
-			-- (InvalidateBoneCache and SetupBones are client-only: on the server they were nil, the corpse code died
-			-- right after spawning the ragdoll and it dropped from its reference pose: the A-pose after every paired
-			-- fight death, log_sv 2026-11-20. Server bone matrices are rebuilt from the sequence on demand.)
+
 			if self.InvalidateBoneCache then self:InvalidateBoneCache() end
 			if self.SetupBones then self:SetupBones() end
 		end
@@ -672,14 +610,13 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	local hitPos = hit and hit.pos or self:WorldSpaceCenter()
 	local force = hit and hit.force or Vector()
 	if force:Length() > 9000 then force = force:GetNormalized() * 9000 end
-	-- After a death clip the shot has already been acted out: only a little of its push is left. (hit.fresh: a new shot
-	-- that ended a long death early, TIF.HitsMW.ShotEnd: its push is all its own.)
+
 	if boneVel and not (hit and hit.fresh) then force = force * 0.25 end
 	local nearest, nearestD
 	for i = 0, rag:GetPhysicsObjectCount() - 1 do
 		local phys = rag:GetPhysicsObjectNum(i)
 		local rb = rag:TranslatePhysBoneToBone(i)
-		-- The faction-model ragdoll's bones are found on the host by name.
+
 		local hb = byName and self:LookupBone(rag:GetBoneName(rb) or "") or (not byName and rb) or nil
 		local m = hb and TIF.CopyBone(self, hb, BONE_M)
 		if IsValid(phys) and m then
@@ -697,12 +634,10 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 			if bv then
 				phys:SetVelocity(bv)
 			elseif hit and hit.posed then
-				-- (0.38.9) the caller poses it and sets its motion itself (MW22 takedowns): no jitter or spin of ours on
-				-- top (0.38.4's random spin stayed on their re-posed corpse: the handoff went from a pose to a jerk)
+
 				phys:SetVelocity(vel)
 			else
-				-- (0.38.4) no clip motion to carry: each bone a little of its own, so the limbs go loose instead of the
-				-- whole body moving as one rigid piece
+
 				phys:SetVelocity(vel + VectorRand() * 45)
 				phys:AddAngleVelocity(VectorRand() * 160)
 			end
@@ -714,8 +649,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 		if boneVel then
 			if nearest then nearest:ApplyForceCenter(force * 0.4) end
 		else
-			-- (0.38.4) a blast / hit with no death clip: half on the part nearest the hit, half spread over the body (all
-			-- on one bone launched the rest stiffly behind it)
+
 			local n = rag:GetPhysicsObjectCount()
 			for i = 0, n - 1 do
 				local phys = rag:GetPhysicsObjectNum(i)
@@ -725,7 +659,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 		end
 	end
 	settle_corpse(rag, boneVel ~= nil)
-	-- (its hits on the ground: MW19 body-fall sounds, sh_foley)
+
 	if TIF.Foley and TIF.Foley.CorpseSounds then TIF.Foley.CorpseSounds(rag) end
 	local t = cvCorpse:GetFloat()
 	if t > 0 then SafeRemoveEntityDelayed(rag, t) end
@@ -746,7 +680,7 @@ function ENT:TIFDropWeapon(which)
 	if not IsValid(prop) then return end
 	prop:SetModel(model)
 	prop:SetPos(m and m:GetTranslation() or self:WorldSpaceCenter())
-	-- Baked MW guns (tif_guns) sit in the hand's frame minus studiomdl's +90 deg Z turn (cl_body gun_pose).
+
 	if m and string.sub(model, 1, 16) == "models/tif_guns/" then
 		m = m * Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
 	end
@@ -764,7 +698,7 @@ function ENT:TIFDropWeapon(which)
 		po:SetVelocity(self.loco:GetVelocity() + self:GetRight() * 45 - Vector(0, 0, 30))
 		po:AddAngleVelocity(Vector(math.Rand(-60, 60), math.Rand(-60, 60), math.Rand(-120, 120)))
 	end
-	-- (MW19 weapon-drop sounds as it lands, sh_foley)
+
 	if TIF.Foley and TIF.Foley.GunDropSounds then TIF.Foley.GunDropSounds(prop, TIF.GTG.WeaponKind(w.class)) end
 	local t = cvCorpse:GetFloat()
 	if t > 0 then SafeRemoveEntityDelayed(prop, t) end

@@ -1,8 +1,3 @@
--- Player and admin commands that ship with TIF (the listen host, server console or superadmins):
---   squad orders (the tif_menu buttons): tif_follow, tif_dismiss, tif_order, tif_formation
---   spawning / clearing (the settings panel's quick actions): tif_spawn, tif_spawn_squad, tif_clear
--- (Until 0.38.11 in debug/sv_commands.lua with the test commands, which moved to the local dev addon.)
-
 local TIF = TIF
 local SQUAD_MIX = TIF.SquadMix
 
@@ -37,8 +32,6 @@ admin("tif_clear", function(ply, args)
 	TIF.Log("Removed ", n, " soldier(s)")
 end, "tif_clear [faction]: remove soldiers")
 
--- Phase 3: squads ---------------------------------------------------------------
-
 admin("tif_spawn_squad", function(ply, args)
 	if not IsValid(ply) then return end
 	local faction = args[1] or "insurgents"
@@ -65,7 +58,6 @@ local function nearest_allied_squad(ply)
 	return best
 end
 
--- Allied soldiers near you join your squad and follow you.
 admin("tif_follow", function(ply, args)
 	if not IsValid(ply) then return end
 	local radius = tonumber(args[1]) or 1200
@@ -100,7 +92,6 @@ admin("tif_dismiss", function(ply)
 	TIF.Log("You don't lead a squad")
 end, "tif_dismiss: your squad stops following you and holds where it is")
 
--- Order the squad you lead, or (with a looked-at soldier) that soldier's squad.
 local ORDERS = { hold = true, follow = true, regroup = true, advance = true, free = true, clear = true }
 admin("tif_order", function(ply, args)
 	if not IsValid(ply) then return end
@@ -108,14 +99,14 @@ admin("tif_order", function(ply, args)
 	if not ORDERS[kind] then TIF.Log("Orders: hold, follow, regroup, advance, free, clear") return end
 	local tr = ply:GetEyeTrace()
 	local sq
-	-- (0.38.11: only an allied soldier's squad: it took any looked-at soldier's, enemies included)
+
 	if IsValid(tr.Entity) and tr.Entity.TIFSoldier and tr.Entity.tifSquad and TIF.Relation(tr.Entity, ply) == TIF.REL_ALLY then sq = tr.Entity.tifSquad end
 	if not sq then
 		for _, s in pairs(TIF.Squad.List) do if s.leader == ply then sq = s break end end
 	end
 	sq = sq or nearest_allied_squad(ply)
 	if not sq then TIF.Log("No squad to order: look at a soldier, or use tif_follow first") return end
-	-- Any new order ends a building clear in progress.
+
 	if sq.cqb then TIF.CQB.Stop(sq, "new order") end
 	if kind == "clear" then
 		if TIF.CQB.Start(sq, tr.HitPos) then

@@ -1,13 +1,7 @@
--- Decent Vehicle adapter. TIF reads DV's road waypoint graph and route search, and can write a
--- waypoint graph for maps that come with a TIF road layout (see vehicle/sv_dvroads.lua).
--- It never spawns DV drivers (DV can't drive Glide vehicles).
-
 local TIF = TIF
 TIF.DV = TIF.DV or {}
 local A = TIF.DV
 
--- DV's table is the global DecentVehicleDestination ("dvd" is only a local name inside DV's own
--- files, so there is no global dvd).
 local function DV() return DecentVehicleDestination end
 A.Table = DV
 
@@ -23,9 +17,8 @@ function A.HasRoutes()
 	return SERVER and A.Present() and isfunction(DV().GetRouteVector) and A.WaypointCount() > 0
 end
 
--- Writing waypoints (server) ----------------------------------------------------------------
 if SERVER then
-	-- Remove every waypoint (and tell clients, so DV's tool view matches).
+
 	function A.Clear()
 		if not A.Present() then return end
 		table.Empty(DV().Waypoints)
@@ -35,7 +28,6 @@ if SERVER then
 		end
 	end
 
-	-- Add a waypoint; returns its id. opts: speedKph (default 50), group (0).
 	function A.Add(pos, opts)
 		if not (A.Present() and DV().AddWaypoint) then return nil end
 		opts = opts or {}
@@ -48,12 +40,10 @@ if SERVER then
 		return #DV().Waypoints
 	end
 
-	-- One-way link (traffic may go from -> to).
 	function A.Link(from, to)
 		if A.Present() and DV().AddNeighbor then DV().AddNeighbor(from, to) end
 	end
 
-	-- Save to data/decentvehicle/<map>.txt, the file DV loads when the map starts.
 	function A.Save()
 		if not (A.Present() and DV().GetSaveTable) then return false end
 		file.CreateDir("decentvehicle")
@@ -62,10 +52,6 @@ if SERVER then
 	end
 end
 
--- Linked waypoints (ids) near pos: the nearest one however far away (a sector centre can be well
--- off the road), plus every other within `band` units further than it, at most `n`. That takes in
--- both lanes of the nearest road. Height counts double, so a road on another level loses.
--- Linked = has a way on (boat lanes cut out of the graph and dead ends are skipped).
 local function nearest_ids(pos, n, band)
 	local list = {}
 	for id, w in ipairs(DV().Waypoints) do
@@ -77,7 +63,7 @@ local function nearest_ids(pos, n, band)
 	end
 	table.sort(list, function(a, b) return a.d < b.d end)
 	if not list[1] then return {} end
-	-- Half the picks going each way along the road (lanes are one-way), nearest first.
+
 	local wps = DV().Waypoints
 	local function heading(id)
 		local w = wps[id]
@@ -115,12 +101,6 @@ local function length(pts)
 	return n
 end
 
--- Two-way road graph ------------------------------------------------------------------------------
--- DV's waypoints are one-way traffic lanes, which on maps like gm_fork can double a trip (go round
--- to the lane that leads where you want). Soldiers don't keep to traffic rules, so TIF routes on
--- the same waypoints with every link usable both ways. Rebuilt when the waypoints change (count, or
--- DecentVehicleDestination.TIFStamp bumped by whoever edits them, e.g. the DTW road clean-up).
-
 local graph
 function A.Invalidate() graph = nil end
 
@@ -143,7 +123,6 @@ local function build()
 	return graph
 end
 
--- The k nearest connected waypoints to pos within `band` of the nearest (height counts double).
 local function near(G, pos, k, band)
 	local list = {}
 	for id, w in ipairs(DV().Waypoints) do
@@ -162,7 +141,6 @@ local function near(G, pos, k, band)
 	return out
 end
 
--- Binary heap of { f, id }.
 local function push(h, f, id)
 	h[#h + 1] = { f, id }
 	local i = #h
@@ -191,7 +169,6 @@ local function pop(h)
 	return top
 end
 
--- A* from the road points near `from` to any near `to`, links both ways. Points start-first.
 local function two_way(from, to)
 	local G = build()
 	local wps = DV().Waypoints
@@ -235,9 +212,6 @@ local function two_way(from, to)
 	return nil
 end
 
--- Route from -> to as a list of points (start first), or nil: the two-way road graph first; DV's own
--- one-way search as a fallback (several start lanes tried, shortest kept). DV returns waypoints
--- end-first.
 function A.Route(from, to)
 	if not A.HasRoutes() then return nil end
 	local dv = DV()
@@ -254,8 +228,7 @@ function A.Route(from, to)
 				local ok, wps = pcall(dv.GetRoute, sid, ends)
 				if ok and istable(wps) and #wps > 0 then
 					local pts = to_points(wps)
-					-- Count the drive to the first waypoint too (a lane across the road is close but
-					-- may face the wrong way; the route length decides).
+
 					local len = length(pts) + (pts[1] and from:Distance(pts[1]) or 0)
 					if #pts > 0 and (not bestLen or len < bestLen) then best, bestLen = pts, len end
 				end

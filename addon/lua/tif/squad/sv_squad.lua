@@ -1,13 +1,3 @@
--- Squads: a leader (a soldier, or a player for friendly squads), members, a standing order,
--- a formation, and shared knowledge of enemies (radio-style: sightings reach every member).
---
--- Orders:
---   free     each soldier acts on its own (Phase 1-2 behaviour); posts are where they spawned
---   hold     stay around a position; fight from there without chasing beyond the leash
---   follow   keep formation on the leader (soldier or player); fight within a leash of it
---   regroup  close up on the leader, then follow
---   advance  the leader moves to a position, the rest follow in formation, then hold there
-
 local TIF = TIF
 local Move = TIF.Move
 
@@ -22,7 +12,6 @@ SQ.FOLLOW_LEASH = 900
 SQ.RADIO_DELAY = { 0.3, 0.9 }
 SQ.FORMATIONS = { "wedge", "column", "line", "file" }
 
--- Leader-local offsets (x forward, y left) for member slot i (1-based, leader excluded).
 local function slot_offset(formation, i, spacing)
 	spacing = spacing or 95
 	if formation == "column" then
@@ -31,16 +20,16 @@ local function slot_offset(formation, i, spacing)
 		local k = math.ceil(i / 2)
 		return Vector(-20, (i % 2 == 1 and 1 or -1) * spacing * k, 0)
 	elseif formation == "file" then
-		-- Two files behind the leader (good for roads and corridors).
+
 		local k = math.ceil(i / 2)
 		return Vector(-spacing * k, (i % 2 == 1 and 1 or -1) * 45, 0)
 	end
-	-- wedge
+
 	local k = math.ceil(i / 2)
 	return Vector(-spacing * k, (i % 2 == 1 and 1 or -1) * spacing * k, 0)
 end
 
-local publish -- defined below; used by SQ.Add above its definition
+local publish
 
 local function is_valid_leader(ent)
 	if not IsValid(ent) then return false end
@@ -48,7 +37,6 @@ local function is_valid_leader(ent)
 	return ent.TIFSoldier and not ent.tifDead
 end
 
--- With tif_debug 1, squad decisions go to the console (and console.log with -condebug).
 function SQ.Log(sq, ...)
 	local cv = GetConVar("tif_debug")
 	if cv and cv:GetBool() then TIF.Log("[squad ", sq.id, " ", sq.faction, "] ", table.concat({ ... }, "")) end
@@ -88,7 +76,6 @@ function SQ.Add(sq, npc)
 	publish(sq)
 end
 
--- Pick the next leader: a "leader" archetype first, then the healthiest soldier.
 local function best_leader(sq)
 	local best, bestScore
 	for _, m in ipairs(SQ.Members(sq)) do
@@ -98,7 +85,6 @@ local function best_leader(sq)
 	return best
 end
 
--- Debug overlay info on each member: leader entity and order name.
 publish = function(sq)
 	for _, m in ipairs(sq.members) do
 		if IsValid(m) then
@@ -116,8 +102,6 @@ function SQ.SetLeader(sq, leader)
 	publish(sq)
 end
 
--- An empty squad goes; a room clear it was on ended with it, silently until 2026-11-20 (log_sv: squads 18 / 20 said
--- "next door" and nothing after): into the log file, with where it was.
 local function drop_squad(sq, why)
 	local cq = sq.cqb
 	if cq and TIF.Event then
@@ -138,7 +122,7 @@ function SQ.Remove(npc)
 		local nl = best_leader(sq)
 		SQ.SetLeader(sq, nl)
 		if IsValid(nl) then
-			-- Stop and regroup on the new leader.
+
 			if sq.order.kind == "advance" then sq.order = { kind = "hold", pos = nl:GetPos(), time = CurTime() } end
 			TIF.Say(nl, "backup", 0.6)
 		end
@@ -146,23 +130,19 @@ function SQ.Remove(npc)
 	if #SQ.Members(sq) == 0 then drop_squad(sq, "empty (last man removed)") end
 end
 
--- opts.pace (advance): "rush" (jog until close or in contact), "move" (default: jog while the objective is far
--- and it's quiet, then the tactical walk), "careful" (tactical walk all the way).
 function SQ.SetOrder(sq, kind, pos, yaw, opts)
 	sq.order = { kind = kind, pos = pos, yaw = yaw, time = CurTime(), pace = opts and opts.pace or nil }
 	publish(sq)
-	-- One acknowledgement per order, from someone in the squad.
+
 	local m = SQ.Members(sq)
 	if #m > 0 then TIF.Say(m[math.random(#m)], "affirmative", 0.8) end
 	for _, mem in ipairs(m) do
-		mem.tifPost = nil -- recomputed from the order
+		mem.tifPost = nil
 		mem.tifSearch = nil
 	end
 	SQ.Signal(sq, kind)
 end
 
--- The leader's hand signal for an order (MW22 gestures, MW19 body): "on me" toward his men for follow / regroup /
--- advance, "hold" for hold. Only standing (or crouched) still, not fighting, nothing else playing.
 SQ.SIGNAL_CHANCE = 0.7
 function SQ.Signal(sq, kind)
 	local L = sq.leader
@@ -173,7 +153,7 @@ function SQ.Signal(sq, kind)
 	if kind == "hold" then
 		name = "mwgs_stop"
 	elseif kind == "follow" or kind == "regroup" or kind == "advance" then
-		-- Toward the middle of his men (numpad round his facing: 8 ahead, 4 left, 6 right, 2l / 2r behind).
+
 		local c, n = Vector(), 0
 		for _, mem in ipairs(SQ.Members(sq)) do
 			if mem ~= L then c:Add(mem:GetPos()) n = n + 1 end
@@ -189,9 +169,8 @@ function SQ.Signal(sq, kind)
 	if name and TIF.GTG.Clip(name, L.tifHomeHost) then TIF.Action.Play(L, name, { root = true, clear = true }) end
 end
 
--- Leash for a soldier: where it must stay near during fights, or nil.
 function SQ.Leash(npc)
-	-- A personal leash (base guard on a post) comes first.
+
 	local own = npc.tifLeash
 	if own then return own.pos, own.radius end
 	local sq = npc.tifSquad
@@ -204,7 +183,6 @@ function SQ.Leash(npc)
 	return nil
 end
 
--- Formation slot for a member, in world space, or nil (leaders and free squads have none).
 function SQ.Slot(npc)
 	local sq = npc.tifSquad
 	if not sq or sq.leader == npc then return nil end
@@ -235,12 +213,10 @@ function SQ.Slot(npc)
 	return Move.Snap(p) or anchor, yaw
 end
 
--- Patrol leader: walk the route loop, pausing a few seconds at each point. The rest of the
--- squad follows in formation (file by default).
 local function patrol_lead(npc, sq, o, now)
 	local pts = o.route
 	if not o.i then
-		-- Resume at the nearest point (after a fight or at the start).
+
 		local best, bestD
 		for i, p in ipairs(pts) do
 			local d = p:DistToSqr(npc:GetPos())
@@ -267,9 +243,6 @@ local function patrol_lead(npc, sq, o, now)
 	return true
 end
 
--- How fast an advance goes (see SQ.SetOrder opts.pace). Jogging while it's far and quiet; the tactical walk
--- once close (rush: 700, move: 1600) or once the squad has had contact in the last 25 s (the push itself is
--- then the squad tactics' bounds). Once slowed it stays slowed for this order (no jog / walk flipping).
 SQ.PACE = { rush = 700, move = 1600 }
 function SQ.AdvancePace(sq, npc, o, now)
 	local pace = o.pace or "move"
@@ -283,14 +256,12 @@ function SQ.AdvancePace(sq, npc, o, now)
 	return "run"
 end
 
--- Out of combat: move to and keep the formation slot / order position.
--- Returns true if the squad order controlled the soldier this think.
 function SQ.Duty(npc, now)
 	local sq = npc.tifSquad
 	if not sq or sq.order.kind == "free" then return false end
 	local o = sq.order
 	npc.tifFire.want = false
-	-- The soldier leading an advance walks to the target, then the squad holds there.
+
 	if sq.leader == npc then
 		if o.kind == "patrol" and o.route and #o.route > 0 then
 			return patrol_lead(npc, sq, o, now)
@@ -310,7 +281,7 @@ function SQ.Duty(npc, now)
 			Move.SetGoal(npc, o.pos, "walk", "hold")
 			return true
 		end
-		return false -- leader holding still: normal duty (look around)
+		return false
 	end
 	local slot, yaw = SQ.Slot(npc)
 	if not slot then return false end
@@ -318,7 +289,7 @@ function SQ.Duty(npc, now)
 	local leader = sq.leader
 	local leaderSpeed = IsValid(leader) and leader:GetVelocity():Length2D() or 0
 	if d2 > 70 * 70 then
-		-- Keep up with a jogging leader (an advance at pace), else walk.
+
 		local lm = IsValid(leader) and leader.tifMove
 		local leaderJogs = lm and lm.goal and (lm.speed == "run" or lm.speed == "sprint")
 		local speed = (d2 > 450 * 450 or leaderSpeed > 200 or leaderJogs) and "run" or (npc.tifMode == 1 and "tactical" or "walk")
@@ -328,7 +299,7 @@ function SQ.Duty(npc, now)
 	else
 		Move.Stop(npc)
 		npc.tifAction = "in formation (" .. o.kind .. ")"
-		-- Face where the leader faces, with a little spread so the group covers more angles.
+
 		npc.tifFormationLook = npc.tifFormationLook or math.Rand(-35, 35)
 		local r = math.rad((yaw or 0) + npc.tifFormationLook)
 		npc.tifFace = npc:GetPos() + Vector(math.cos(r), math.sin(r), 0) * 300 + Vector(0, 0, 60)
@@ -337,9 +308,6 @@ function SQ.Duty(npc, now)
 	return true
 end
 
--- Shared knowledge -----------------------------------------------------------
-
--- A member saw/heard an enemy: the rest of the squad hears it on the radio shortly after.
 function SQ.Report(npc, c)
 	local sq = npc.tifSquad
 	if not sq or not IsValid(c.ent) then return end
@@ -349,7 +317,6 @@ function SQ.Report(npc, c)
 	sq.knowledge[c.ent] = { pos = Vector(c.pos), vel = Vector(c.vel), time = t, by = npc, visible = c.visible }
 end
 
--- Bring a member's unseen contacts up to date with the squad's newest information.
 function SQ.Sync(npc, now)
 	local sq = npc.tifSquad
 	if not sq then return end
@@ -376,7 +343,6 @@ function SQ.Sync(npc, now)
 	end
 end
 
--- Join soldiers spawned one at a time (spawn menu) to a nearby squad of the same faction.
 function SQ.AutoJoin(npc)
 	if not IsValid(npc) or npc.tifSquad then return end
 	local best, bestD
@@ -391,7 +357,6 @@ function SQ.AutoJoin(npc)
 	if best then SQ.Add(best, npc) else SQ.Create(npc:GetTIFFaction(), { npc }) end
 end
 
--- Player-led squad for a player (friendly soldiers that follow them).
 function SQ.ForPlayer(ply)
 	for _, sq in pairs(SQ.List) do
 		if sq.leader == ply then return sq end
@@ -402,7 +367,6 @@ function SQ.ForPlayer(ply)
 	return sq
 end
 
--- Housekeeping: dead player leaders hand over to a soldier; empty squads vanish.
 timer.Create("tif_squad_gc", 1, 0, function()
 	for id, sq in pairs(SQ.List) do
 		local alive = SQ.Members(sq)

@@ -1,6 +1,3 @@
--- Movement: navmesh path following with a tactical cost (areas visible to known threats cost
--- more), path budgets, failed-goal memory, and body facing (strafing while aiming).
-
 local TIF = TIF
 local Budget = TIF.Budget
 local Prof = TIF.Prof
@@ -10,9 +7,9 @@ local M = TIF.Move
 
 local GOAL_TOLERANCE = 30
 local SAME_GOAL = 48
-local FAIL_MEMORY = 10      -- seconds a failed goal is not retried
+local FAIL_MEMORY = 10
 local FAIL_RADIUS = 96
-local EXPOSURE_COST = 1.6   -- extra cost multiplier for an area a known threat can see
+local EXPOSURE_COST = 1.6
 
 function M.Init(npc)
 	local p = Path("Follow")
@@ -20,11 +17,10 @@ function M.Init(npc)
 	p:SetGoalTolerance(GOAL_TOLERANCE)
 	npc.tifPath = p
 	npc.tifMove = { failed = {}, result = nil }
-	-- Speeds of the home body's clips, so feet match the ground (MW19 walk/jog differ from GTA's).
+
 	npc.tifSpeeds = TIF.Anim.Speeds(npc.tifHomeHost or TIF.Factions[npc:GetTIFFaction()].host)
 end
 
--- Nearest point on the navmesh, or nil.
 function M.Snap(pos)
 	local area = navmesh.GetNearestNavArea(pos, false, 250, false, true)
 	if not IsValid(area) then return nil, nil end
@@ -48,16 +44,9 @@ local function mark_failed(m, pos, now)
 	if #m.failed > 12 then table.remove(m.failed, 1) end
 end
 
--- Request movement. speed: "walk" | "tactical" | "alert" (MW19 alert walk) | "run" | "aimrun" | "sprint" | "crouch".
--- Returns false if the goal is off the navmesh or failed recently.
--- Moves that come from the squad order itself are never clamped to the leash.
 local LEASH_EXEMPT = { formation = true, hold = true, advance = true, post = true, patrol = true, cqb = true,
 	flee = true, medic = true }
 
--- Goal spreading: soldiers sent to the same spot (a sound to investigate, the last contact after a fight) each
--- took the exact same coordinate and walked into one another. A goal another soldier is already heading to or
--- standing on moves to a free, reachable spot around it, on this soldier's side; one already near it and not
--- crowding anyone stays where he is. Moves that are meant to be shared or are placed already are left alone.
 M.SPREAD_R = 72
 M.SPREAD_EXEMPT = { formation = true, cqb = true, board = true, medic = true, cover = true, flee = true,
 	crawl = true, post = true }
@@ -104,12 +93,11 @@ local function spread(npc, pos)
 end
 M.Spread = spread
 
--- faceYaw (optional): the facing wanted on arrival (a post's), used by MW19 stop clips.
 function M.SetGoal(npc, pos, speed, tag, faceYaw)
 	local m = npc.tifMove
 	local now = CurTime()
 	m.faceYaw = faceYaw
-	-- Squad leash: holding or following soldiers don't chase beyond it.
+
 	if not LEASH_EXEMPT[tag] and TIF.Squad then
 		local center, radius = TIF.Squad.Leash(npc)
 		if center and pos:DistToSqr(center) > radius * radius then
@@ -128,14 +116,14 @@ function M.SetGoal(npc, pos, speed, tag, faceYaw)
 	if not M.SPREAD_EXEMPT[tag or ""] then pos = spread(npc, pos) end
 	local snapped = M.Snap(pos)
 	if not snapped or recently_failed(m, snapped, now) then return false end
-	-- A new goal mid stop clip: drop the stop and go.
+
 	if m.stopping then
 		m.stopping = nil
 		if npc.tifAct and npc.tifAct.trans then TIF.Action.Clear(npc) end
 	end
 	m.goal, m.speed, m.tag, m.needCompute, m.result, m.startedAt = snapped, speed, tag, true, nil, now
 	m.want, m.fresh, m.detour, m.watch, m.stuckN, m.passN = want, true, nil, nil, 0, 0
-	-- A dash in a fight (to cover, a flank, closing in): sometimes a few covering rounds as it starts.
+
 	if (speed == "run" or speed == "sprint" or speed == "aimrun") and tag ~= "flee" and tag ~= "board"
 		and TIF.Weapon.CoveringBurst then
 		TIF.Weapon.CoveringBurst(npc, now)
@@ -143,9 +131,6 @@ function M.SetGoal(npc, pos, speed, tag, faceYaw)
 	return true
 end
 
--- Gaits in a fight: the MW19 aimed walk (~100 u/s, can shoot) for short moves, a sprint (gun down, no shooting)
--- for anything longer. No aimed jog: soldiers don't cover ground fast while aiming. Kept for the whole move once
--- picked (same goal), so a sprint doesn't drop to a walk as he gets close.
 M.SPRINT_DIST = 300
 function M.CombatGait(npc, goal)
 	local m = npc.tifMove
@@ -160,7 +145,7 @@ end
 
 function M.Stop(npc)
 	local m = npc.tifMove
-	-- Halting mid-walk (MW19 body): a stop clip carries him to a standstill instead of freezing.
+
 	if m.goal and not m.stopping and TIF.TransMW then TIF.TransMW.StopHere(npc, m) end
 	m.goal, m.needCompute, m.tag, m.stopping, m.fresh = nil, false, nil, nil, nil
 	m.want, m.detour, m.watch, m.sprintT = nil, nil, nil, nil
@@ -171,7 +156,6 @@ function M.Moving(npc)
 	return npc.tifMove.goal ~= nil
 end
 
--- Collect nav areas of confirmed threats once per think, for the path cost.
 function M.UpdateThreatAreas(npc)
 	local areas = {}
 	for _, c in pairs(npc.tifK.contacts) do
@@ -181,7 +165,7 @@ function M.UpdateThreatAreas(npc)
 		end
 	end
 	npc.tifThreatAreas = areas
-	-- Firing lanes of squadmates who are shooting: paths avoid crossing in front of them.
+
 	local lanes = {}
 	local sq = npc.tifSquad
 	if sq then
@@ -204,7 +188,6 @@ function M.UpdateThreatAreas(npc)
 	npc.tifFireLanes = lanes
 end
 
--- Is a point inside a squadmate's firing lane (a 10-degree wedge plus a body width)?
 local LANE_TAN = math.tan(math.rad(10))
 local function in_lane(lanes, p)
 	for i = 1, #lanes do
@@ -232,7 +215,7 @@ local function cost_fn(npc, now)
 	local avR2 = M.AVOID_R * M.AVOID_R
 	return function(area, from, ladder, elevator, length)
 		if not IsValid(from) then return 0 end
-		-- GMod passes NULL objects for "no ladder" / "no elevator", and NULL is truthy in Lua.
+
 		if IsValid(ladder) or IsValid(elevator) then return -1 end
 		if not loco:IsAreaTraversable(area) then return -1 end
 		local dist = length > 0 and length or from:GetCenter():Distance(area:GetCenter())
@@ -264,10 +247,8 @@ local function Act_Done(npc, now) return TIF.Action.Done(npc, now) end
 
 local speed_of, sprint_speed, watch_stuck
 
--- Sprint builds up: from his current pace (at least the aimed walk) to full over SPRINT_RAMP seconds (user: a
--- soldier went from standing to a full sprint at once, very quick on real maps).
 M.SPRINT_RAMP = 1.5
--- Run and gun (covering burst on a dash): which mwrg_ clip, from the aim's angle off the run. "" = none / no clips.
+
 local RG_DIRS = { { "f", 0 }, { "l", 90 }, { "r", -90 }, { "bl", 135 }, { "br", -135 } }
 function M.RunGunDir(npc)
 	local host = npc.tifHomeHost
@@ -284,10 +265,7 @@ function M.RunGunDir(npc)
 	end
 	return best
 end
--- Full sprint pace, as a share of the sprint clip's own speed. The clip is MW19's (sdr_mp_strafe_sprint_ar_8, 247 u/s
--- = MW19's AI sprint loop, 251); CoD soldiers mostly cover ground at their run pace (sdr_com_run_loop01, 217 u/s), and
--- 247 read too quick on Source maps (user, 2026-11-17). 0.88 = 217: the legs blend the jog and the sprint there.
--- (Since 0.31.1 the sprint clip IS the AI run loop, sdr_com_run_loop01 at 217: full speed.)
+
 M.SPRINT_SCALE = 1.0
 function sprint_speed(npc, m, sp, now)
 	local full = speed_of(npc, sp)
@@ -304,10 +282,6 @@ function sprint_speed(npc, m, sp, now)
 	return Lerp(k, m.sprintFrom, full)
 end
 
--- Caught on something (a squadmate, a prop, a corner the path cuts): his speed is ~0 though he's trying to move,
--- so he stood in the calm idle. Every STUCK_T seconds of path following, too little progress for the pace he wants
--- = stuck: a sidestep away from the blocker (another soldier, or the side the hull traces find open), then a fresh
--- path. Three in a row: the goal is given up (as the engine's own stuck check does).
 M.STUCK_T = 0.6
 M.STUCK_MAX = 3
 local SIDE_MIN, SIDE_MAX = Vector(-13, -13, 6), Vector(13, 13, 60)
@@ -325,15 +299,6 @@ local function blocker(npc, fwd)
 	return best
 end
 
--- (0.38.26, user: "a step back into a step forward, i see it alot when their stuck on someone but its usually not
--- enough to unstick them because of the step forward again") Hemmed in, unstick backed him off 30 in and then
--- re-pathed the same line into the same person. Now, by what he's stuck on:
---   another TIF soldier / civilian   the two pass through each other for M.PASS_T (TIF.Crowd.GhostPair: the same
---                                    no-collide group as the overlap rule, which never fires for two hulls pressed
---                                    together), and a standing, idle soldier steps aside (TIF.Crowd.MakeWay). Not a
---                                    strike toward giving the goal up; at most M.PASS_MAX times per goal.
---   a player, a prop, the world      backs off M.BACKOFF (60) when both sides are blocked, and his next paths steer
---                                    round that spot for M.AVOID_T s (cost_fn, M.AVOID_R).
 M.PASS_T, M.PASS_MAX = 1.5, 2
 M.BACKOFF = 60
 M.AVOID_T, M.AVOID_R = 5, 70
@@ -389,7 +354,7 @@ end
 function watch_stuck(npc, m, want, now)
 	local me = npc:GetPos()
 	local w = m.watch
-	-- (Only over steady path following: clips, traversals and waits in between start a fresh window.)
+
 	if not w or now - w.last > 0.35 then
 		m.watch = { t = now, last = now, pos = me }
 		return false
@@ -414,8 +379,7 @@ function watch_stuck(npc, m, want, now)
 	return true
 end
 
--- Wading (NW2 tif_wade, sv_brain): knee-deep water caps the pace, chest-deep more (MW22's wading clips).
-M.WADE_CAP = { 60, 45 }   -- (the clips: wade ~30-47 u/s, hurried wade ~50)
+M.WADE_CAP = { 60, 45 }
 local base_speed
 function speed_of(npc, mode)
 	local v = base_speed(npc, mode)
@@ -432,22 +396,18 @@ function base_speed(npc, mode)
 	if mode == "aimrun" then return s.aimrun end
 	if mode == "sprint" then return s.sprint * M.SPRINT_SCALE end
 	if mode == "crouch" then return s.crouch end
-	if mode == "crawl" then return 32 end -- MW19 last-stand crawl (clips ~28-40)
+	if mode == "crawl" then return 32 end
 	return s.run * (mult.run or 1)
 end
 
--- Runs every behaviour update (from the NextBot coroutine).
 function M.Step(npc)
-	-- Seated in a vehicle: the vehicle carries the soldier.
+
 	if npc.tifVeh then return end
 	local m = npc.tifMove
 	local now = CurTime()
-	-- A room clear's glide onto a spot / through a doorway (TIF.CQB.GlideStep): every tick, no path meanwhile.
+
 	if npc.tifGlide and TIF.CQB and TIF.CQB.GlideStep and TIF.CQB.GlideStep(npc, now) then return end
-	-- (2026-11-25, user: "sometimes theres a prone failure, where they can stay in prone at walk and run") Speed here
-	-- comes from the move kind and never looked at prone, so anything that set a goal while he lay there (a squad move,
-	-- a medic run, a morale break) slid him along in the prone pose. Lying down with a goal: he gets up first and
-	-- moves once he's up (the last-stand crawl, speed "crawl", is the one move made lying down).
+
 	local pr = npc.tifProne
 	if pr and m.goal and m.speed ~= "crawl" then
 		local PB = TIF.ProneB
@@ -469,12 +429,12 @@ function M.Step(npc)
 	end
 	if not m.goal then return end
 	local path = npc.tifPath
-	-- MW19 LMG on its bipod: packed up first (TIF.BipodMW), then off he goes.
+
 	if npc.tifBipod then
 		if TIF.BipodMW then TIF.BipodMW.Leave(npc, now) end
 		return
 	end
-	-- MW19 stop clip carrying the soldier onto the goal: arrived when it ends.
+
 	if m.stopping then
 		local a = npc.tifAct
 		if not (a and a.trans) or Act_Done(npc, now) then
@@ -483,12 +443,10 @@ function M.Step(npc)
 		end
 		return
 	end
-	-- MW19 traversal (mantle, vault, drop) carrying him: the path waits until its hand-back point.
+
 	local TR = TIF.TraverseMW
 	if TR and TR.Busy(npc, now) then return end
-	-- MW19 start / turn clip playing: the path waits (the clip moves the body). A turn on the spot is dropped
-	-- for a new move (calm turns take 3 s).
-	-- A strafe reversal hands back to the path at its code_move note (the rest of the clip is the new strafe).
+
 	local ta = npc.tifAct
 	if ta and ta.trans and ta.handU and (now - ta.t0) >= ta.dur * ta.handU then
 		TIF.Action.Clear(npc)
@@ -516,15 +474,13 @@ function M.Step(npc)
 		m.stopping = true
 		return
 	end
-	-- Strafing the other way now: the AI reversal clip (plant and push off) instead of the legs flipping.
+
 	if T and T.Reverse and T.Reverse(npc, m, now) then return end
-	-- A closed door right ahead: MW19's door interaction (push / shoulder / kick), the door opening on its contact.
+
 	if TIF.DoorMW and TIF.DoorMW.Check(npc, m, now) then return end
-	-- A ledge, an obstacle or a drop right ahead on the path: MW19's traversal clip.
+
 	if TR and TR.Check(npc, m, now) then return end
-	-- Covering burst on a dash: MW19 body with the run-and-gun clips: keeps running, the few rounds go out to the side
-	-- of the run (NW2 tif_rungun = which way the gun points, cl_body plays mwrg_<v>; tifAimFree lets it shoot off
-	-- the body's facing). Otherwise the aimed walk (gun up) for its few rounds, then the sprint.
+
 	local sp = m.speed
 	local rg = ""
 	if (sp == "sprint" or sp == "run") and TIF.Weapon.CoverFiring and TIF.Weapon.CoverFiring(npc, now) then
@@ -536,7 +492,7 @@ function M.Step(npc)
 	npc.tifAimFree = npc.tifRunGun or (npc.tifAimFree and not npc.tifRunGunWas) or nil
 	npc.tifRunGunWas = npc.tifRunGun
 	local want = sprint_speed(npc, m, sp, now)
-	-- Sidestepping something he got caught on (unstick): straight to the side spot, then a fresh path.
+
 	local d = m.detour
 	if d then
 		if now > d.untilT or npc:GetPos():DistToSqr(d.pos) < 16 * 16 then
@@ -544,20 +500,19 @@ function M.Step(npc)
 			m.needCompute = true
 			return
 		end
-		-- At his own pace (0.19.7 forced 80: a calm walk at 40 played its legs double speed, user: "sped up").
+
 		npc.loco:SetDesiredSpeed(math.max(want, 30))
 		npc.loco:Approach(d.pos, 1)
 		return
 	end
-	-- Walking off: a full-body clip that doesn't move him (a finished one-shot holding its last frame, a standing
-	-- loop: an idle activity, a CQB wait pose) ends here, or he slid along the path in that pose (user, 2026-11-17).
+
 	local a = npc.tifAct
 	if a and not a.trans and not npc.tifDowned and not npc.tifProne and not a.keepMoving
 		and npc:GetNW2String("tif_act_base", "") == ""
 		and (Act_Done(npc, now) or (a.clip.speed or 0) < 1) then
 		TIF.Action.Clear(npc)
 	end
-	-- (0.38.18) Someone in the way ahead: behind him at his pace, or eased past (TIF.Crowd, sv_crowd.lua).
+
 	local steer
 	if TIF.Crowd and TIF.Crowd.Steer then
 		local fwd = npc.loco:GetVelocity()
@@ -584,7 +539,7 @@ function M.Step(npc)
 		m.result = "stuck"
 		return
 	end
-	-- Paths that drag on for too long are given up (blocked doors, props).
+
 	if now - (m.startedAt or now) > 25 then
 		mark_failed(m, m.goal, now)
 		M.Stop(npc)
@@ -592,31 +547,27 @@ function M.Step(npc)
 	end
 end
 
--- Facing, every tick. npc.tifFace = position to keep the body pointed at (aiming / looking),
--- or nil to let the path turn the body toward travel.
 local FACE_ANG = Angle and Angle(0, 0, 0)
 function M.Face(npc, dt)
-	-- Seated (angles are local to the vehicle) or mid get-out clip (the clip turns the body).
+
 	if npc.tifVeh or npc.tifLeaving then return end
 	local loco = npc.loco
-	-- (a paired melee fight: the clip turns him, both men placed for it; no facing of ours on top)
+
 	if npc.tifMelee and npc.tifMelee.fight then
 		loco:SetMaxYawRate(0)
 		return
 	end
-	-- An MW19 turn / start / stop clip turns the body itself.
+
 	if npc.tifAct and npc.tifAct.trans then
 		loco:SetMaxYawRate(0)
 		return
 	end
 	local face = npc.tifFace
-	-- Covering burst: the body swings toward the enemy for those rounds (strafing on the dash).
+
 	local cf = npc.tifCoverFire
-	-- (not when running and gunning: the body keeps to the run, the clip points the gun)
+
 	if cf and CurTime() < cf.untilT and cf.shots > 0 and not npc.tifRunGun then face = cf.aim end
-	-- Calm (weapon lowered) soldiers only have a forward walk: while walking they face where they go (the path
-	-- turns them) and look around once they stop. Otherwise they slid sideways playing the forward walk.
-	-- (Not a downed soldier crawling: he drags himself away still facing the enemy.)
+
 	if face and npc.tifMode == TIF.Anim.MODE_RELAXED and not npc.tifAct and not npc.tifDowned
 		and loco:GetVelocity():Length2DSqr() > 30 * 30 then
 		face = nil
@@ -631,8 +582,8 @@ function M.Face(npc, dt)
 	local want = to:Angle().y
 	local cur = npc:GetAngles().y
 	local prone = npc.tifProne
-	if prone and prone.phase ~= 2 then return end -- no turning while getting down or up
-	-- Standing still and facing far off: an MW19 turn-in-place clip instead of spinning on the spot.
+	if prone and prone.phase ~= 2 then return end
+
 	if TIF.TransMW and not M.Moving(npc) and loco:GetVelocity():Length2DSqr() < 10 * 10
 		and TIF.TransMW.Turn(npc, want) then return end
 	local rate = prone and TIF.ProneB.TURN_RATE or npc.tifArch.turnRate

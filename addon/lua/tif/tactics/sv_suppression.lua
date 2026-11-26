@@ -1,7 +1,3 @@
--- Suppression: incoming fire builds pressure (0..1) that changes decisions, not just aim.
--- Sources: bullets passing close, hits, nearby explosions. Decays over time; archetypes resist
--- differently (a guard panics, a support gunner shrugs).
-
 local TIF = TIF
 local Prof = TIF.Prof
 
@@ -26,7 +22,7 @@ function S.Add(npc, amount, srcPos, shooter)
 	local cur = npc:GetTIFSupp()
 	if math.abs(cur - after) > 0.03 or (after == 1 and cur < 1) then npc:SetTIFSupp(after) end
 	if before < 0.45 and after >= 0.45 then TIF.Say(npc, "swear", 0.5) end
-	-- Rounds snapping past reveal roughly where they came from.
+
 	if IsValid(shooter) and srcPos and TIF.Perception.OnSuppressed then
 		TIF.Perception.OnSuppressed(npc, shooter, srcPos)
 	end
@@ -36,18 +32,13 @@ function S.Decay(npc, dt)
 	local s = npc.tifSupp or 0
 	if s <= 0 then return end
 	local resist = npc.tifArch and npc.tifArch.suppressResist or 0.3
-	-- Pressure holds for a moment after the last round before fading.
+
 	if CurTime() - (npc.tifSuppAt or 0) < 0.6 then return end
 	s = math.max(0, s - dt * DECAY * (1 + resist))
 	npc.tifSupp = s
 	if math.abs(npc:GetTIFSupp() - s) > 0.03 or s == 0 then npc:SetTIFSupp(s) end
 end
 
--- Whizby flinch (MW19 AI sdr_cqb_strafe_whizby, ~0.9 s): a round snapping close past a soldier, now and then.
--- (0.38.6) Those clips are additive data: played as a full-body action (mwz_whizby_<n>, until 0.38.5) they drew him
--- as a rigid stick figure for about a second, the user's "crumple". Now they're delta layers (mwzw_<n>) the clients
--- lay over whatever he's doing (cl_body, from NW2 tif_whizby_t / _n): standing, walking or crouched. He only checks
--- his fire for a moment.
 S.WHIZBY_CHANCE, S.WHIZBY_COOLDOWN = 0.3, 4
 local whizbyCount = {}
 function S.Whizby(npc, now)

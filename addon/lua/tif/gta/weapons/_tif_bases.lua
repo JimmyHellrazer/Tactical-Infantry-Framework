@@ -1,12 +1,6 @@
--- TIF weapon bases (TIF 0.38.0): the stats and fire behaviour the baked MW guns start from (weapon_tifmw_*:
--- table.Copy of a base, then their own model, name, sounds and hold). Flattened from the GTA definitions TIF
--- used to ship (tools: scratchpad make_bases.py), without their GTA-body animation names and models.
--- Keys: rifle, smg, lmg, shotgun, marksman, pistol, launcher. GTG.hold picks the MW weapon kind
--- (TIF.GTG.WeaponKind); damage / rate / range / falloff / spread / recoil are TIF sv_weapon's.
 TIFG.WeaponBases = TIFG.WeaponBases or {}
 local B = TIFG.WeaponBases
 
--- (was weapon_gtg_assaultrifle)
 B["rifle"] = {
 	GTG = {
 		auto = true,
@@ -45,7 +39,6 @@ B["rifle"] = {
 	Slot = 2,
 }
 
--- (was weapon_gtg_smg)
 B["smg"] = {
 	GTG = {
 		auto = true,
@@ -84,7 +77,6 @@ B["smg"] = {
 	Slot = 2,
 }
 
--- (was weapon_gtg_mg)
 B["lmg"] = {
 	GTG = {
 		auto = true,
@@ -123,7 +115,6 @@ B["lmg"] = {
 	Slot = 2,
 }
 
--- (was weapon_gtg_pumpshotgun)
 B["shotgun"] = {
 	GTG = {
 		batch_spread = 0.04,
@@ -162,7 +153,6 @@ B["shotgun"] = {
 	Slot = 3,
 }
 
--- (was weapon_gtg_marksmanrifle)
 B["marksman"] = {
 	GTG = {
 		auto = true,
@@ -206,7 +196,6 @@ B["marksman"] = {
 	Slot = 3,
 }
 
--- (was weapon_gtg_pistol)
 B["pistol"] = {
 	GTG = {
 		damage = 26,
@@ -244,7 +233,6 @@ B["pistol"] = {
 	},
 }
 
--- (was weapon_gtg_rpg)
 B["launcher"] = {
 	GTG = {
 		damage = 0,

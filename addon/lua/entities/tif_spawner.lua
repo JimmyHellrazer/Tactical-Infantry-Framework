@@ -1,7 +1,3 @@
--- Spawns a group of TIF soldiers as one squad where it's placed, then removes itself. Used by the
--- spawn menu's "Fireteam (4)" and "Squad (8)" entries (tif/config/sh_spawnlist.lua):
--- key-values tif_faction (faction id) and tif_count.
-
 AddCSLuaFile()
 
 ENT.Type = "point"
@@ -15,13 +11,12 @@ end
 
 if CLIENT then return end
 
--- Who spawned it (for the soldiers' undo entry).
 hook.Add("PlayerSpawnedNPC", "tif_spawner", function(ply, ent)
 	if IsValid(ent) and ent:GetClass() == "tif_spawner" then ent.tifPly = ply end
 end)
 
 function ENT:Initialize()
-	-- Next tick: the spawn menu sets its creator after spawning.
+
 	timer.Simple(0, function()
 		if not IsValid(self) then return end
 		local faction = self.tifFaction or "insurgents"

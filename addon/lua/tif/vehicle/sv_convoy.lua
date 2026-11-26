@@ -1,20 +1,3 @@
--- Convoys (Phase 6+): several mounted squads, one vehicle each, driving one route in a column.
---
--- Route:    planned once from the lead vehicle (TIF.Routes); every vehicle drives the same points.
---           A patrol convoy drives a loop (the legs between its points joined up) and starts it
---           again when the lead gets back round.
--- Spacing:  the lead holds the convoy pace (380 u/s) and slows / waits when the column behind it
---           stretches past 2.2x / 3.5x the gap. Each follower keeps `gap` (420) to the vehicle
---           ahead: stops when closer than 0.6x, matches its speed under 1x, speeds up past 1.6x.
---           Followers count as arrived further back (one gap per place in the column).
--- Contact:  any squad in the convoy stopping to fight stops the whole convoy: every vehicle within
---           2000 units of the fight stops and its squad gets out (combat dismount); vehicles further
---           back just stop and wait.
--- Arrival:  a transit convoy that reaches its destination gets out there (or waits, with stay).
--- Remount:  squads that got out to fight climb back in after 30 s with nobody fighting or searching
---           (or when their base calls the all-clear), and the convoy sets off again when every
---           vehicle is ready.
-
 local TIF = TIF
 local SQ = TIF.Squad
 local MT = TIF.Mounted
@@ -36,7 +19,6 @@ local function log(cv, ...)
 	if cvd and cvd:GetBool() then TIF.Log("[convoy ", cv.id, "] ", table.concat({ ... }, "")) end
 end
 
--- squads: list in column order (first = lead), each already mounted (or boarding) in its vehicle.
 function CV.Create(squads)
 	local cv = { id = CV.NextId, squads = {}, state = "forming", pace = CV.PACE, gap = CV.GAP }
 	CV.NextId = CV.NextId + 1
@@ -61,7 +43,6 @@ local function alive(cv)
 	return out
 end
 
--- Join the legs between patrol points into one loop of route points.
 local function loop_route(pts)
 	local all, src = {}, nil
 	for i = 1, #pts do
@@ -74,14 +55,12 @@ local function loop_route(pts)
 	return all, src
 end
 
--- Drive to pos (stay = keep riding there).
 function CV.DriveTo(cv, pos, stay)
 	cv.mode, cv.dest, cv.stay, cv.loop = "transit", Vector(pos), stay, nil
 	cv.state = "forming"
 	return true
 end
 
--- Patrol a loop of points.
 function CV.Patrol(cv, pts)
 	cv.mode, cv.loop, cv.dest = "patrol", pts, nil
 	cv.state = "forming"
@@ -113,7 +92,7 @@ local function set_off(cv, list)
 		D.Drive(mt.veh, pts, {
 			source = src, label = "convoy " .. cv.id .. " #" .. i, speed = cv.pace * 1.3,
 			arrive = D.ARRIVE + cv.gap * (i - 1),
-			-- Only the lead's arrival matters; the convoy handles it.
+
 			onArrive = i == 1 and function() cv.leadArrived = true end or nil,
 		})
 	end
@@ -126,7 +105,7 @@ local function halt(cv, list, why, threat)
 		local mt = sq.mount
 		if mt.phase == "driving" or mt.phase == "ready" then
 			if threat and mt.veh:GetPos():DistToSqr(threat) > CV.HALT_RANGE ^ 2 then
-				-- Too far from the fight to get out: just stop and wait.
+
 				D.Stop(mt.veh, why)
 				mt.phase = "ready"
 			else
@@ -144,7 +123,7 @@ local function tick(cv, now)
 	if #list == 0 then CV.List[cv.id] = nil return end
 
 	if cv.state == "forming" or cv.state == "idle" then
-		-- Everyone mounted?
+
 		local ready = true
 		for _, sq in ipairs(list) do
 			local p = sq.mount.phase
@@ -155,7 +134,7 @@ local function tick(cv, now)
 	end
 
 	if cv.state == "halted" then
-		-- Quiet for 30 s: everyone on foot climbs back in (a base's all-clear does the same).
+
 		local busy = false
 		for _, sq in ipairs(list) do
 			for _, m in ipairs(SQ.Members(sq)) do
@@ -172,7 +151,7 @@ local function tick(cv, now)
 			end
 			log(cv, "all quiet, remounting")
 		end
-		-- Back in (remount puts them in "boarding", then "ready").
+
 		local allReady = true
 		for _, sq in ipairs(list) do
 			if sq.mount.phase ~= "ready" then allReady = false break end
@@ -184,7 +163,6 @@ local function tick(cv, now)
 		return
 	end
 
-	-- Driving: did anyone stop to fight?
 	for _, sq in ipairs(list) do
 		local mt = sq.mount
 		if mt.phase == "stopping" or mt.phase == "dismounting" or mt.phase == "dismounted" then
@@ -193,7 +171,6 @@ local function tick(cv, now)
 		end
 	end
 
-	-- Lead arrived.
 	if cv.leadArrived then
 		cv.leadArrived = nil
 		if cv.mode == "patrol" then
@@ -209,7 +186,6 @@ local function tick(cv, now)
 		return
 	end
 
-	-- Spacing.
 	for i, sq in ipairs(list) do
 		local veh = sq.mount.veh
 		local d = veh.tifDrive
@@ -241,7 +217,6 @@ timer.Create("tif_convoy_tick", 0.25, 0, function()
 	end
 end)
 
--- Convoy a squad belongs to.
 function CV.Of(sq)
 	return sq.mount and sq.mount.convoy or nil
 end

@@ -1,24 +1,14 @@
--- Magazine motion on baked MW guns (models from tif_gunbake carry a second bone, tif_mag). Reloads follow the
--- MW19 clips' own notetracks:
---   drop_clip          the old mag leaves the gun (hidden on it; a copy falls to the ground)
---   attach_clip_left   the new mag is in the left hand (follows the palm)
---   detach_clip_left   the mag is seated (back on the gun)
--- LMG clips mark the box swap with ps_wfoly_lm_reload_npc_out / _in; the RPG's warhead is attach / detach with
--- nothing on the launcher before it. Guns without a tif_mag bone (GTA guns) are left alone.
--- Cost: one bone matrix per reloading gun while it's drawn, plus at most MAX_DROPS falling mags (a trace a frame
--- while they fall, nothing once they land).
 TIF.GunMag = TIF.GunMag or {}
 local M = TIF.GunMag
 
 local cvDrop = CreateClientConVar("tif_mag_drop", "1", true, false, "Dropped magazines fall from reloading soldiers (0 = off)")
 local L_HAND = "ValveBiped.Bip01_L_Hand"
 local MAG_BONE, ROOT_BONE = "tif_mag", "tif_gun"
--- Mag centre in the left hand's frame (ValveBiped: x along the fingers, y toward the palm side).
+
 M.PALM = Vector(3.4, 1.2, 0)
 local MAX_DROPS, DROP_LIFE, DROP_RANGE = 8, 10, 1500
 local TINY = Vector(0.001, 0.001, 0.001)
 
--- Per clip: the notetrack times (0..1), or false when the clip has no mag swap.
 local events = {}
 local function clip_events(clip)
 	local e = events[clip]
@@ -37,7 +27,6 @@ local function clip_events(clip)
 	return e or nil
 end
 
--- The mag bone and the root bone of a gun model, or false.
 local boneOf = {}
 local function mag_bones(g)
 	local model = g:GetModel()
@@ -87,7 +76,6 @@ local function build_gun(ent)
 	end
 end
 
--- Falling mags: a copy of the gun model with everything but the mag shrunk away.
 local drops = {}
 local function build_drop(ent)
 	local b = mag_bones(ent)
@@ -203,7 +191,6 @@ function M.Update(ent, st)
 	end
 end
 
--- Gun removed with its soldier: its falling mags stay until they time out.
 function M.Clear()
 	for _, d in ipairs(drops) do
 		if IsValid(d.ent) then d.ent:Remove() end

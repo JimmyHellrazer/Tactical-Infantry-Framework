@@ -1,12 +1,3 @@
--- Watchdog (0.38.30): stuck states that throw no error, written to the log file (core/sh_log.lua, TIF.Event "watch")
--- and, where it's safe, put right. Every WATCH_EVERY s; each finding once per thing.
---   human shield   a held civilian with no live scene, a civilian "held" with no scene, an animation lock left on a
---                  soldier with no scene: let go (logged)
---   CQB            a clear on its stack STACK_LONG s, or in its entry ENTRY_LONG s with men still unreleased: logged
---                  with what it's waiting on (not changed: CQB's own timeouts end it)
--- tif_mark [note]: anyone can mark a moment ("that soldier's stuck"): the note, where you are and what every TIF
--- soldier / civilian within MARK_RADIUS is doing goes in the log.
-
 local TIF = TIF
 TIF.Watchdog = TIF.Watchdog or {}
 local W = TIF.Watchdog
@@ -22,7 +13,7 @@ local function name_of(e) return IsValid(e) and (e:GetClass() .. "#" .. e:EntInd
 
 function W.Check(now)
 	local SH = TIF.Shield
-	-- Human shields
+
 	if TIF.Civ and TIF.Civ.List then
 		for _, c in ipairs(TIF.Civ.List()) do
 			local held = c.tifHeld
@@ -43,7 +34,7 @@ function W.Check(now)
 			s.tifActLock = nil
 		end
 	end
-	-- CQB
+
 	local SQ = TIF.Squad
 	if SQ and SQ.List then
 		for _, sq in pairs(SQ.List) do
@@ -79,7 +70,6 @@ timer.Create("tif_watchdog", W.WATCH_EVERY, 0, function()
 	if not ok and TIF.Event then TIF.Event("watch", "watchdog error: ", tostring(err)) end
 end)
 
--- tif_mark [note]: what's going on around you, into the log.
 local function describe(e, from)
 	local p = e:GetPos()
 	local bits = { name_of(e), string.format("%.0f u", p:Distance(from)) }

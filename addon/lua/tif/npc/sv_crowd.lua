@@ -1,18 +1,3 @@
--- Crowd (0.38.18, user: "make sure they wont get stuck on eachother. its something i see alot both in and outdoors,
--- and on civillians"). Soldiers and civilians used to notice each other only after bumping (sv_move watch_stuck:
--- 0.6 s without progress, a sidestep and a fresh path; civilians only the engine's slow stuck check). Three parts:
---   Steer      a moving body looks a little way along where it's going. Someone ahead walking the same way: it
---              keeps to their pace behind them. Someone standing, crossing or coming the other way: it eases past on
---              its right (everyone keeps right, so two meeting head-on don't mirror each other), or its left when
---              that side is walled / the other is already to its right. No new path: an extra Approach blended into
---              the path's own.
---   Ghost      two TIF bodies overlapping (root-motion clips move the body with a world-only trace, spawns, vehicle
---              exits) for GHOST_AFTER s, or at once when one is in a root-motion clip: both go to
---              COLLISION_GROUP_NPC_SCRIPTED (NPCs in scripts that don't collide with each other; bullets and players
---              still hit them) until they're apart, then back.
---   SidePoint  the open spot beside a body (hull traced), for civilians' quick stuck check (tif_civilian GoTo).
--- tif_crowd 0: all off. Timed under "crowd" in TIF's profiler.
-
 local TIF = TIF
 TIF.Crowd = TIF.Crowd or {}
 local C = TIF.Crowd
@@ -22,14 +7,14 @@ local cv = CreateConVar("tif_crowd", "1", FCVAR_ARCHIVE,
 	"Soldiers and civilians steer round each other and come apart when they overlap (0: off)")
 function C.On() return cv:GetBool() end
 
-C.LOOK = 80          -- how far ahead someone counts as in the way
-C.LANE = 26          -- half width of the lane ahead (two hulls side by side)
-C.SCAN_T = 0.2       -- each mover looks again this often
-C.SIDE = 36          -- how far to the side he eases
-C.WEIGHT = 1.5       -- the side pull against the path's own (1)
-C.FOLLOW = 25        -- someone ahead faster than this along my way is walked behind, not passed
-C.OVERLAP = 22       -- hull centres closer than this on both axes = overlapping (hulls are 24-26 wide)
-C.APART = 28         -- back to normal collisions once nobody is this close
+C.LOOK = 80
+C.LANE = 26
+C.SCAN_T = 0.2
+C.SIDE = 36
+C.WEIGHT = 1.5
+C.FOLLOW = 25
+C.OVERLAP = 22
+C.APART = 28
 C.GHOST_AFTER = 0.5
 C.GHOST_MIN = 0.6
 C.GHOST_GROUP = COLLISION_GROUP_NPC_SCRIPTED
@@ -174,8 +159,6 @@ function C.Steer(ent, fwd, want, goal, now)
 	return pace, nil
 end
 
--- Ghost ---------------------------------------------------------------------------------------------------------
-
 local function root_clip(e)
 	local a = e.tifAct
 	return a and (a.root or a.to) and not a.finished
@@ -197,20 +180,17 @@ end
 local function unghost(e)
 	local g = e.tifCrowdGhost
 	e.tifCrowdGhost = nil
-	-- (only if nothing else changed it meanwhile: vehicles, melee, deaths set their own)
+
 	if g and IsValid(e) and e:GetCollisionGroup() == C.GHOST_GROUP and g.old ~= C.GHOST_GROUP then e:SetCollisionGroup(g.old) end
 end
 C.Unghost = unghost
 
--- (0.38.26) Two TIF bodies stuck pressed together (sv_move unstick: hulls touching never overlap, so the rule below
--- doesn't catch them): through each other for `secs` (then back once they're apart, as for overlaps). True if both
--- could be ghosted.
 function C.GhostPair(a, b, secs, now)
 	if not cv:GetBool() or not (IsValid(a) and IsValid(b)) then return false end
 	if not (can_ghost(a) and can_ghost(b)) then return false end
 	ghost(a, now)
 	ghost(b, now)
-	-- (Tick lets go GHOST_MIN after the last refresh: held at least secs)
+
 	local hold = now + secs - C.GHOST_MIN
 	for _, e in ipairs({ a, b }) do
 		local g = e.tifCrowdGhost
@@ -219,8 +199,6 @@ function C.GhostPair(a, b, secs, now)
 	return a.tifCrowdGhost ~= nil and b.tifCrowdGhost ~= nil
 end
 
--- (0.38.26) Make way: a soldier standing about (no goal, nothing on) that someone is stuck on side-steps WAY_DIST
--- out of that one's line, at a walk, for up to WAY_T s (driven every tick below; anything else he starts takes over).
 C.WAY_DIST, C.WAY_T, C.WAY_SPEED, C.WAY_AGAIN = 40, 1.2, 70, 4
 C.Way = C.Way or {}
 function C.MakeWay(b, mover, fwd, now)
@@ -250,7 +228,6 @@ hook.Add("Tick", "tif_crowd_way", function()
 	end
 end)
 
--- Every 0.25 s: overlapping TIF pairs, how long, ghosting and un-ghosting.
 local function idle_soldier(e)
 	if not (e.TIFSoldier and not e.tifDead) then return false end
 	if e.tifCov or e.tifProne or e.tifVeh or e.tifDowned or e.tifSurrendered or e.tifAct or e.tifMedic or e.tifBipod

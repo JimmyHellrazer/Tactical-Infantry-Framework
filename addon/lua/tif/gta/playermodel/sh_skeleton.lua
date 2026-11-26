@@ -1,6 +1,4 @@
--- From GrandTheftGMod 0.98 (playermodel/sh_skeleton.lua), trimmed for TIF: parts TIF uses. Built by tools/build_gta_bundle.py.
 local PMS = TIFG.PMS
-
 
 local string_lower, string_match, bit_band = string.lower, string.match, bit.band
 local math_sqrt, math_abs = math.sqrt, math.abs
@@ -220,7 +218,7 @@ PMS.SkeletonRetry = {}
 function PMS.Skeleton(model)
 	model = string_lower(model)
 	local sk = PMS.Skeletons[model]
-	-- (TIF) A failed read is tried again after 10 s (the model may not have been readable yet).
+
 	if sk == nil or (sk == false and CurTime() >= (PMS.SkeletonRetry[model] or 0)) then
 		sk = PMS.ParseSkeleton(model) or false
 		PMS.Skeletons[model] = sk

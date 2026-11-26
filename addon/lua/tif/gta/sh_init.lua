@@ -1,7 +1,3 @@
--- TIF's animation / weapon content (global TIFG): the clip and character registry, the retarget library for
--- faction models on other rigs, the MW19 body's clips and character, the MW guns.
--- (Until TIF 0.38.0 this was a copy of GrandTheftGMod's GTA content built by tools/build_gta_bundle.py: GTA ped,
--- clips, weapons, vehicles, drive-bys, sounds, projectiles. All of that was removed: the MW19 body is the only one.)
 TIFG = TIFG or {}
 local ROOT = "tif/gta/"
 local MANIFEST = {

@@ -1,7 +1,3 @@
--- Load every faction model and bundled gun model while the map loads. Otherwise each one is read
--- from disk the first time a soldier wearing or carrying it comes into view, which on a big garrison
--- (many models at once) shows up as a stutter. tif_precache 0 turns it off.
-
 local TIF = TIF
 
 local cv = CreateConVar("tif_precache", "1", FCVAR_ARCHIVE, "Load soldier and gun models at map start (fewer stutters when a garrison appears)")
@@ -16,8 +12,7 @@ local function precache()
 			n = n + 1
 		end
 	end
-	-- Content-pack factions (dozens of camo models) only when in use: the players' faction, or one
-	-- an addon names through hook "TIF_PrecacheFactions" (tbl) by setting tbl[id] = true (DTW: its sides).
+
 	local want = {}
 	want[TIF.PlayerFaction()] = true
 	hook.Run("TIF_PrecacheFactions", want)

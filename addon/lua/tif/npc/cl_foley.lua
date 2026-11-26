@@ -1,13 +1,3 @@
--- MW19 body foley on the client (sh_foley.lua has the sounds and surfaces). Driven by the notetracks of the clip the
--- legs play (cl_body hands it over every frame: st.legPlay[1] with its cycle), so every walk, run, turn, arrival,
--- traversal and death clip sounds where MW19 put its sounds:
---   Foot (heel plants, left / right)            footstep for his gait on the surface under him
---   mvmt_step_pre / mvmt_step_post              gear / cloth with the step (his vest kind), now and then weapon rattle
---   land                                        a landing (and the weapon's rattle)
---   ps_bodyfall_head / limb_small / limb_large / torso   body falls in the death clips
--- plus stance changes (crouch, stand, going prone and up) and a mantle sound on traversals (mwtr_). Each client plays
--- its own (EmitSound on the client: nothing over the network); only within RANGE of the local player.
-
 TIF.FoleyCL = TIF.FoleyCL or {}
 local C = TIF.FoleyCL
 local F = TIF.Foley
@@ -17,7 +7,7 @@ local cvVol = CreateClientConVar("tif_foley_volume", "1", true, false, "Volume o
 C.RANGE = 2000
 C.SURF_EVERY = 0.25
 C.RATTLE_CHANCE = 0.3
--- per gait: footstep volume, sound level, the gear set's gait
+
 local GAIT = {
 	creep = { vol = 0.32, lvl = 62, step = "walk", mvmt = "creep" },
 	walk = { vol = 0.5, lvl = 68, step = "walk", mvmt = "walk" },
@@ -30,7 +20,6 @@ local FALL = { ps_bodyfall_head = "head", ps_bodyfall_limb_small = "limb_sm", ps
 	ps_bodyfall_torso = "torso" }
 local VESTS = { "vestlight", "vestheavy", "vestaq" }
 
--- A clip's sound points, sorted by time (0..1): { t, kind, arg }.
 local cache = {}
 local function events_of(clip)
 	local ev = cache[clip]
@@ -47,20 +36,19 @@ local function events_of(clip)
 			elseif n == "mvmt_step_post" then ev[#ev + 1] = { t[2], "gear", "post" }
 			elseif n == "land" then ev[#ev + 1] = { t[2], "land" }
 			elseif FALL[n] then ev[#ev + 1] = { t[2], "fall", FALL[n] }
-			-- (2026-11-21, user: "melee pairs need some sort of hit of body and hit noise") the paired fights' beat
-			-- cues (MW's own: one per grapple impact, each fighter), the gun knocked away, the loser going down
+
 			elseif isstring(n) and string.sub(n, 1, 16) == "ps_hm_grnd_melee" then ev[#ev + 1] = { t[2], "scuffle" }
 			elseif n == "dropgun" or n == "gun_drop" then ev[#ev + 1] = { t[2], "gundrop" }
 			elseif n == "melee_death" then ev[#ev + 1] = { t[2], "fall", "torso" } end
 		end
 	end
-	-- (moving clips without Foot notes: their foot plants, frame numbers)
+
 	if not feet and (clip.speed or 0) > 1 and clip.frames and clip.frames > 1 then
 		for _, side in ipairs({ "l", "r" }) do
 			for _, fr in ipairs(clip[side .. "plant"] or {}) do ev[#ev + 1] = { fr / (clip.frames - 1), "step", side } end
 		end
 	end
-	-- (moving clips without the gear notes: the gear with each foot plant)
+
 	local hasGear = false
 	for _, e in ipairs(ev) do if e[2] == "gear" then hasGear = true break end end
 	if not hasGear and (clip.speed or 0) > 1 then
@@ -88,7 +76,7 @@ local function vest_of(ent, st)
 	st.folVest = v
 	return v
 end
--- (stance and mantle sounds have no "vestaq")
+
 local function vest2(v) return v == "vestaq" and "vestlight" or v end
 
 local function rattle_set(st)
@@ -142,7 +130,6 @@ local function play(ent, snd, lvl, vol, pitch)
 end
 C.Play = play
 
--- One sound point of the playing clip.
 function C.Fire(ent, st, e, clip, now)
 	if FrameNumber() == frameNo and played >= C.MAX_PER_FRAME then return end
 	local kind = e[2]
@@ -174,13 +161,12 @@ function C.Fire(ent, st, e, clip, now)
 	end
 end
 
--- Every frame from cl_body (MW19 body, drawn): the notetracks the top leg clip passed since last frame.
 function C.Update(ent, st, now)
 	if not cvOn:GetBool() or not F then return end
 	local lp = st.legPlay and st.legPlayN and st.legPlayN > 0 and st.legPlay[1]
 	local me = LocalPlayer()
 	local near = IsValid(me) and ent:GetPos():DistToSqr(me:GetPos()) < C.RANGE * C.RANGE
-	-- Stance changes, going prone / getting up, traversals.
+
 	local stance, prone, act = ent:GetTIFStance(), st.vbProne or 0, st.actName or ""
 	if near and st.folStance ~= nil then
 		local v = vest2(vest_of(ent, st))
@@ -199,7 +185,7 @@ function C.Update(ent, st, now)
 			play(ent, F.PickAny("mantle/" .. v .. "/" .. h, "mantle/vestlight/48over"), 68, 0.7)
 		end
 	end
-	-- (the body hitting the ground, a moment into the get-down)
+
 	if st.folProneAt and now >= st.folProneAt then
 		st.folProneAt = nil
 		if near then
@@ -212,19 +198,17 @@ function C.Update(ent, st, now)
 	C.Track(ent, st, now, lp.clip, lp.cycle or 0, near)
 end
 
--- The sound points a clip passed since last time it was seen (same clip, last cycle -> this one, round the end for
--- loops). Shared by soldiers (cl_body's top leg clip) and civilians (their server-played sequence).
 function C.Track(ent, st, now, clip, cyc, near)
-	-- Same clip as last frame: the points between its last cycle and this one (round the end for loops).
+
 	if clip == st.folClip and st.folCyc and near then
 		local p = st.folCyc
 		local ev = events_of(clip)
 		if #ev > 0 and cyc ~= p then
 			local wrapped = cyc < p
 			if wrapped and not clip.loop then
-				-- (a one-shot clip restarted: nothing this frame)
+
 			elseif not wrapped and cyc - p > 0.5 then
-				-- (a jump: a teleport, a resync)
+
 			else
 				for i = 1, #ev do
 					local e = ev[i]
@@ -237,8 +221,6 @@ function C.Track(ent, st, now, clip, cyc, near)
 	st.folClip, st.folCyc = clip, cyc
 end
 
--- Civilians (tif_civilian on the MW19 host): the server plays their clip as the entity's sequence; its name gives the
--- clip (TIFG mw_male, by seq) and GetCycle the point in it. Their gear is plain cloth, no weapon rattle.
 C.CIV_SCAN = 0.5
 local civs, civScanT, bySeq = {}, 0, nil
 local civState = setmetatable({}, { __mode = "k" })

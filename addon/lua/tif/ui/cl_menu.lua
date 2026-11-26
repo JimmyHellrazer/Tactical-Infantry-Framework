@@ -1,7 +1,3 @@
--- Squad order menu: hold +tif_menu (bind a key to it) or run tif_menu.
--- Buttons run the same console commands as typing them (tif_follow, tif_order, tif_formation),
--- so orders use your crosshair the moment you click.
-
 local TIF = TIF
 local frame
 

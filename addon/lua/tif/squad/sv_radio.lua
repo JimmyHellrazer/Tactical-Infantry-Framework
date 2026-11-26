@@ -1,14 +1,3 @@
--- Radio between squads (Phase 7). Inside a squad, sightings already go round instantly (sv_squad);
--- bases share everything within the base (encounter/sv_base). This links squads of the same faction
--- anywhere within tif_radio_range of each other.
---
--- Contact reports: a squad's fresh sightings (last 5 s) reach other friendly squads in range after
---   2-4 s (someone has to call it in). They then know where the enemy is and react like any
---   squad that heard of one (alerted: cover, close in, bound).
--- Backup: a squad in a fight that's losing (lost men, shaken, or outnumbered) asks once every 40 s.
---   The nearest friendly squad in range that isn't fighting, isn't led by a player and isn't
---   tied to a post answers: it gets the enemy positions at once and moves in.
-
 local TIF = TIF
 local AW = TIF.AWARE
 local SQ = TIF.Squad
@@ -67,7 +56,7 @@ local function tick(now)
 
 	for _, a in ipairs(list) do
 		local sa = a.sq
-		-- Report fresh sightings to friendly squads in range.
+
 		for ent, k in pairs(sa.knowledge) do
 			if now - k.time < 5 and TIF.IsLiveCombatant(ent) and (not k.radioed or k.radioed < k.time) then
 				k.radioed = k.time
@@ -79,7 +68,7 @@ local function tick(now)
 				end
 			end
 		end
-		-- Losing a fight: call for backup.
+
 		if fighting(sa) and now > (sa.nextBackup or 0) and losing(sa, now) and not (IsValid(sa.leader) and sa.leader:IsPlayer()) then
 			local best, bestD
 			for _, b in ipairs(list) do
@@ -99,7 +88,7 @@ local function tick(now)
 					if TIF.IsLiveCombatant(ent) then give(best, ent, k) end
 				end
 				best.backupFor = sa
-				-- Hold orders would keep them leashed at home: answering means going.
+
 				if best.order.kind == "hold" then SQ.SetOrder(best, "free") end
 				local m = SQ.Members(best)[1]
 				if m then TIF.Say(m, "affirmative", 0.9) end
@@ -110,7 +99,6 @@ local function tick(now)
 		end
 	end
 
-	-- Deliver reports that have been called in.
 	local keep = {}
 	for _, p in ipairs(RD.Pending) do
 		if now >= p.at then

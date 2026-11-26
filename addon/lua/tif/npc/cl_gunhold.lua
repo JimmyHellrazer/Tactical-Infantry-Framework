@@ -1,15 +1,3 @@
--- How MW19-body soldiers hold and carry their guns (client):
---   Left-hand IK   the left hand goes onto the gun's grip_l point (baked MW guns: the handguard / foregrip),
---                  inside the host's bone build, with a two-bone arm solve that keeps the clip's hand rotation
---                  and elbow direction. Weighted by the clips' own ik_out / ik_in notetracks (reloads, draws,
---                  cover actions let go on their own) and faded out when the clip's hand is far from the gun.
---                  Then the gun's MW19 left-hand finger pose (handguard or foregrip grip).
---   Sling          fallback for actions whose clips don't carry the gun themselves (campaign clips move the gun
---                  bone, j_gun, which cl_body follows): a chest sling (long guns), across the back (launchers) or a
---                  thigh holster (pistols), placed from the torso bones.
---   Slung primary  while the sidearm is out, the primary hangs on the sling.
--- Cost: IK only for soldiers in view within IK_RANGE (a few matrix ops); one extra model only while a pistol is
--- drawn.
 TIF.GunHold = TIF.GunHold or {}
 local M = TIF.GunHold
 local Bd = TIF.Body
@@ -17,7 +5,7 @@ local G = TIF.GTG
 
 local cvIK = CreateClientConVar("tif_hand_ik", "1", true, false, "Soldiers' left hand holds the gun's handguard / foregrip (0 = off)")
 local IK_RANGE = 1600
-local IK_NEAR, IK_FAR = 8, 16  -- clip hand this close to the grip: full IK; this far: none
+local IK_NEAR, IK_FAR = 8, 16
 
 local B = {
 	pelvis = "ValveBiped.Bip01_Pelvis", spine4 = "ValveBiped.Bip01_Spine4", neck = "ValveBiped.Bip01_Neck1",
@@ -42,7 +30,6 @@ local function bpos(ent, name)
 	return m and m:GetTranslation() or nil
 end
 
--- Torso frame from bone positions (independent of how the skeleton's bone axes are set up).
 local function torso(ent)
 	local p, s, n = bpos(ent, B.pelvis), bpos(ent, B.spine4), bpos(ent, B.neck)
 	local l, r = bpos(ent, B.lclav), bpos(ent, B.rclav)
@@ -80,12 +67,11 @@ local function kind_of(st, class)
 	return st.pistol and "pistol" or (st.wkind or "rifle")
 end
 
--- Where a slung gun sits (world pos / angles of the gun entity), by weapon kind. src: the body with built bones.
 function M.SlingPose(src, st, gi, class)
 	if not gi then return nil end
 	local kind = kind_of(st, class)
 	if kind == "pistol" then
-		-- Thigh holster, right side: grip up out of the holster, muzzle down, slide facing forward.
+
 		local t, k = bpos(src, B.rthigh), bpos(src, B.rcalf)
 		local c, fwd, left = torso(src)
 		if not (t and k and c) then return nil end
@@ -97,22 +83,19 @@ function M.SlingPose(src, st, gi, class)
 	local c, fwd, left, up = torso(src)
 	if not c then return nil end
 	if kind == "rpg" then
-		-- Across the back, muzzle up past the right shoulder, sights facing out.
+
 		local def = class and G.WeaponDef(class)
 		local lift = (def and def.disposable) and M.DISPOSABLE_LIFT or 0
 		local grip = c - fwd * M.BACK_DIST - up * (8 - lift)
 		return frame_pose(gi, grip, up * 0.8 - left * 0.45 - fwd * 0.1, -fwd)
 	end
-	-- Long guns on a front sling: muzzle down to his left, stock up toward the right shoulder, the gun's side
-	-- against the chest. Bigger guns hang a little lower.
+
 	local drop = math.Clamp(((gi.length or 36) - 30) * 0.15, 0, 4)
 	local grip = c + fwd * 9 - up * (5 + drop) - left * 3
 	local barrel = -up * 0.8 + left * 0.5 + fwd * 0.12
 	return frame_pose(gi, grip, barrel, left * 0.8 + up * 0.55)
 end
 
--- IK weight from a clip's hand notetracks at cycle u (side "left" / "right", default left): 1 on the gun, 0
--- between ik_out_end and ik_in_start, ramps between. Clips without them: 1 (the other checks decide).
 local ikTags = { left = {}, right = {} }
 local function clip_ik(clip, u, side)
 	if not clip or not u then return 1 end
@@ -141,8 +124,6 @@ local function clip_ik(clip, u, side)
 end
 M.ClipIK = clip_ik
 
--- Two-bone IK ---------------------------------------------------------------------------------------------------
-
 local function rot_between(a, b)
 	local v = a:Cross(b)
 	local c = a:Dot(b)
@@ -169,7 +150,6 @@ local function tr(v)
 	return m
 end
 
--- Per model and side: the arm bones and, for every other bone under the upper arm, which of them carries it.
 local armOf = { L = {}, R = {} }
 local function arm(ent, side)
 	side = side or "L"
@@ -237,15 +217,12 @@ local function solve_arm(e, a, T, handRot)
 	return true
 end
 
--- A rotation-only matrix from angles.
 local function rot_of(ang)
 	local m = Matrix()
 	m:SetAngles(ang)
 	return m
 end
 
--- MW19 left-hand finger poses (per gun, from mp_fingers_<gun>[_grip]_l via gun_holds.py): local rotations of
--- the L finger bones relative to their parents, parents first. Applied while the hand is on the gun.
 local FINGERS = {
 	"ValveBiped.Bip01_L_Finger0", "ValveBiped.Bip01_L_Finger01", "ValveBiped.Bip01_L_Finger02",
 	"ValveBiped.Bip01_L_Finger1", "ValveBiped.Bip01_L_Finger11", "ValveBiped.Bip01_L_Finger12",
@@ -382,7 +359,6 @@ local function ik_cb(e)
 	end
 end
 
--- Every frame before the host's bones are built (cl_body update): IK weight and its bone callback.
 function M.Prepare(ent, st, now)
 	if not ent.tifIKCb then ent.tifIKCb = ent:AddCallback("BuildBonePositions", ik_cb) end
 	local want, wantR = 0, 0
@@ -390,12 +366,11 @@ function M.Prepare(ent, st, now)
 	local ok = cvIK:GetBool() and gi and not st.hideGun and (st.slingW or 0) < 0.01
 		and ent:GetPos():DistToSqr(EyePos()) < IK_RANGE * IK_RANGE
 	local hgl = IsValid(st.gun) and st.gun.tifHold and st.gun.tifHold.gripL
-	-- (Not while the left hand holds the handheld flashlight: MW19's alert flashlight set, st.handLight.)
+
 	if ok and (gi.gripL or gi.gripV or hgl) and not st.pistol and not st.handLight then
 		want = math.min(clip_ik(st.magClip, st.magU), clip_ik(st.actClipCur, st.actU), clip_ik(st.switchClip, st.switchU))
 	end
-	-- Right hand: only where the gun follows the clip's gun bone (in the hand otherwise: nothing to fix), and
-	-- only while the clip has the hand on the grip (st.rikW, cl_body) and its notetracks don't take it off.
+
 	local hold = IsValid(st.gun) and st.gun.tifHold
 	if ok and hold and hold.jgun and (st.jgunW or 0) > 0.01 then
 		wantR = (st.rikW or 0) * math.min(clip_ik(st.magClip, st.magU, "right"), clip_ik(st.actClipCur, st.actU, "right"),
@@ -405,7 +380,6 @@ function M.Prepare(ent, st, now)
 	st.ikRW = math.Approach(st.ikRW or 0, wantR, FrameTime() * 8)
 end
 
--- After the gun is placed (cl_body update): the primary on the sling while the sidearm is out.
 local function post_launcher(ent, st)
 	local cls = ent:GetNW2String("tif_launcher", "")
 	local need = cls ~= "" and cls ~= (st.wclass or "") and not st.hideGun and not st.slung
@@ -431,7 +405,7 @@ end
 function M.Post(ent, st)
 	post_launcher(ent, st)
 	local primary = ent:GetNW2String("tif_primary", "")
-	-- (Only with another gun in hand: captives, the surrendered and the downed have none, and showed a rifle slung.)
+
 	local need = primary ~= "" and (st.wclass or "") ~= "" and primary ~= st.wclass and not st.hideGun
 	if not need then
 		if IsValid(st.backGun) then st.backGun:Remove() end
@@ -451,5 +425,3 @@ function M.Post(ent, st)
 		g:InvalidateBoneCache()
 	end
 end
-
--- (Dropped guns: the server's ENT:TIFDropWeapon. 0.18.0 dropped a client copy here too, so two guns fell.)

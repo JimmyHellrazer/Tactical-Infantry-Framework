@@ -1,8 +1,3 @@
--- AI scheduler and per-tick budgets.
--- All soldier thinking runs from one Tick hook: round-robin, each soldier at its tier's rate,
--- stopping when the per-tick time budget is spent. Expensive operations (sight traces, path
--- computes) draw from per-tick budgets so a busy fight can't spike a single tick.
-
 local TIF = TIF
 local Prof = TIF.Prof
 
@@ -17,7 +12,6 @@ local cvPaths = CreateConVar("tif_path_budget", "3", FCVAR_ARCHIVE, "Max path co
 local cvCoverTraces = CreateConVar("tif_cover_trace_budget", "150", FCVAR_ARCHIVE, "Max cover-search traces per server tick")
 local cvCoverSearches = CreateConVar("tif_cover_search_budget", "2", FCVAR_ARCHIVE, "Max cover searches started per server tick")
 
--- Frozen by our own switch or GMod's "Disable thinking" (ai_disabled).
 local cvGmodDisabled
 function TIF.AIDisabled()
 	if cvDisabled:GetBool() then return true end
@@ -25,7 +19,6 @@ function TIF.AIDisabled()
 	return cvGmodDisabled ~= nil and cvGmodDisabled:GetBool()
 end
 
--- Seconds between thinks per tier. 0 = fighting near a player ... 3 = idle and far away.
 S.TIER_INTERVAL = { [0] = 0.1, [1] = 0.25, [2] = 0.75, [3] = 3 }
 S.TIER_NAMES = { [0] = "combat-near", [1] = "combat-far/alert", [2] = "routine-near", [3] = "dormant" }
 

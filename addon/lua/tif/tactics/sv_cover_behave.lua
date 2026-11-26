@@ -1,9 +1,3 @@
--- Fighting from cover with GTA's cover animations.
---   move -> enter -> idle/peek -> aim_in -> aim (fire) -> aim_out -> idle ...
---   idle -> reload, switch sides, blind_in -> blind -> blind_out, or leave (flanked/exposed).
--- "l"/"r" follow GTA: side l faces along the wall at (wall normal yaw - 90) and leans around
--- the edge in that direction; r is the mirror.
-
 local TIF = TIF
 local Act = TIF.Action
 local Cover = TIF.Cover
@@ -26,7 +20,6 @@ end
 
 local function face_yaw(cov) return cov.side == "l" and cov.ny - 90 or cov.ny + 90 end
 
--- Clip name prefixes for the soldier's weapon (2-handed set by default).
 local function prefixes(npc)
 	local def = npc.tifWep and npc.tifWep.def
 	local set = def and istable(def.cover) and def.cover.set or "cw2_"
@@ -70,7 +63,6 @@ local function names(npc, cov, kind)
 	return {}
 end
 
--- Which side to face: toward the threat along the wall, and toward an edge for high cover.
 local function pick_side(pt, threat)
 	local dir = threat - pt.pos
 	dir.z = 0
@@ -85,7 +77,6 @@ local function pick_side(pt, threat)
 	return side
 end
 
--- With tif_debug 1, cover decisions are written to the console (and console.log with -condebug).
 local cvDebug
 local function dlog(npc, ...)
 	cvDebug = cvDebug or GetConVar("tif_debug")
@@ -113,19 +104,19 @@ function CB.Leave(npc, reason)
 	local cov = npc.tifCov
 	if not cov then return end
 	dlog(npc, "left cover (", tostring(reason), ") in phase ", tostring(cov.phase))
-	-- Where he was settled (MW19 cover): a new spot further along the same wall is reached by shuffling (CB.MW).
+
 	local settled = { idle = true, look = true, twitch = true }
 	if cov.mw and cov.origin and settled[cov.phase] then
 		npc.tifLastCov = { origin = cov.origin, ny = cov.ny, t = cov.t, hy = cov.hy, time = CurTime() }
 	end
-	-- A spot that turned out to be seen or flanked isn't offered again from the cache.
+
 	if (reason == "exposed" or reason == "flanked") and cov.pt and cov.pt.key then Cover.Cache[cov.pt.key] = nil end
 	Act.Clear(npc)
 	Cover.Release(npc)
 	caim(npc, false)
 	npc.tifCov = nil
 	npc.tifBlind = false
-	-- MW19 cover state (anchored lean aim): released with the cover.
+
 	npc.tifAimAt, npc.tifAimFree, npc.tifMuzzle = nil, nil, nil
 	if npc:GetNW2Float("tif_aim_yaw", 0) ~= 0 then npc:SetNW2Float("tif_aim_yaw", 0) end
 	npc.tifHitboxPose = nil
@@ -133,8 +124,6 @@ function CB.Leave(npc, reason)
 	npc.tifCoverLeaveReason = reason
 end
 
--- Calm exit (fight over): play GTA's step-out clip, then leave. Returns true while still exiting.
--- Urgent exits (flanked, exposed) use CB.Leave directly and don't wait for an animation.
 function CB.Exit(npc, reason)
 	local cov = npc.tifCov
 	if not cov then return false end
@@ -178,11 +167,8 @@ local function want_cover(npc, now)
 	return (npc.tifCoverRoll or 1) < arch.coverUse + supp * 0.5
 end
 
--- Shared with the MW19 cover (tactics/sv_cover_mw.lua): soldiers on the MW19 body fight from cover with its
--- clips through CB.MW; everything else here is the GTA cover.
 CB.SetPhase, CB.Caim, CB.PickSide, CB.WantCover = set_phase, caim, pick_side, want_cover
 
--- Weapons without GTA cover clips can't use cover (checked once per soldier).
 local function has_cover_clips(npc)
 	if CB.MW and CB.MW.Use(npc) then return true end
 	if npc.tifHasCoverClips == nil then
@@ -193,10 +179,9 @@ local function has_cover_clips(npc)
 	return npc.tifHasCoverClips
 end
 
--- Look for cover and start moving there. Returns true if a point was taken.
 function CB.Seek(npc, threat, now, opts)
 	if now < (npc.tifNextCoverSearch or 0) or not has_cover_clips(npc) then return false end
-	-- Only a couple of searches start per tick; the rest try again on their next think.
+
 	if not TIF.Budget.Take("cover_search", 1) then return false end
 	npc.tifNextCoverSearch = now + math.Rand(2.5, 4)
 	local avoid = {}
@@ -205,11 +190,11 @@ function CB.Seek(npc, threat, now, opts)
 	end
 	opts = opts or { radius = 650, maxTravel = 900 }
 	opts.avoid = avoid
-	-- Squad maneuver: look for cover around the bound / flank goal instead of where we stand.
+
 	if npc.tifRole == "maneuver" and npc.tifCoverCenter then
 		opts.center, opts.radius, opts.maxTravel = npc.tifCoverCenter, 380, 1600
 	end
-	-- Squad leash: look for cover around the hold point / leader if the soldier has strayed.
+
 	local leashC, leashR = TIF.Squad.Leash(npc)
 	if leashC and npc:GetPos():DistToSqr(leashC) > (leashR * 0.6) ^ 2 then opts.center = leashC end
 	local pt, stats = Cover.Find(npc, threat, opts)
@@ -237,7 +222,7 @@ local function start_idle(npc, cov, now)
 	local n = clip_name(npc, names(npc, cov, "idle"))
 	if n then Act.Loop(npc, n) end
 	local p = npc.tifArch.coverPause
-	-- Base of fire spends less time hidden.
+
 	local roleK = npc.tifRole == "base" and 0.6 or 1
 	cov.nextAim = now + math.Rand(p[1], p[2]) * roleK * (1 + (npc.tifSupp or 0) * 1.5)
 end
@@ -247,8 +232,6 @@ local function snap_home(npc, cov)
 	npc:SetAngles(Angle(0, face_yaw(cov), 0))
 end
 
--- One think of cover fighting. Returns true when it is controlling the soldier.
--- c may be a contact that's visible, recently lost, or only heard.
 function CB.Update(npc, c, now)
 	local cov = npc.tifCov
 	local f = npc.tifFire
@@ -268,7 +251,6 @@ function CB.Update(npc, c, now)
 	npc.tifBlind = false
 	local phase = cov.phase
 
-	-- Ordered to maneuver and this cover is far from the goal: break cover and move on.
 	if npc.tifRole == "maneuver" and npc.tifCoverCenter and cov.origin:DistToSqr(npc.tifCoverCenter) > 360 * 360
 		and (phase == "idle" or phase == "peek" or phase == "aim" or phase == "move") then
 		CB.Leave(npc, "maneuver")
@@ -278,7 +260,7 @@ function CB.Update(npc, c, now)
 	end
 
 	if phase == "exit" then
-		-- A fight restarted mid step-out: finish the clip, then decide again.
+
 		if now >= cov.phaseEnd then
 			CB.Leave(npc, cov.exitReason)
 			Prof.End()
@@ -298,13 +280,13 @@ function CB.Update(npc, c, now)
 		else
 			npc.tifFace = nil
 		end
-		-- The navmesh can't always reach the exact spot by the wall; the enter clip closes the gap.
+
 		local d2 = npc:GetPos():DistToSqr(cov.origin)
 		local pathDone = m.goal == nil and m.result == "arrived" and d2 < 64 * 64
 		if d2 < 40 * 40 or pathDone then
 			Move.Stop(npc)
 			npc.tifFace = nil
-			-- Enter variant whose built-in turn best matches the turn needed.
+
 			local need = math.AngleDifference(face, npc:GetAngles().y)
 			local P = prefixes(npc)
 			local best, bestErr
@@ -319,11 +301,11 @@ function CB.Update(npc, c, now)
 			cov.phaseEnd = now + (best and Act.Play(npc, best, { to = { pos = cov.origin, yaw = face }, rate = 1.15 }) or 0)
 			set_phase(npc, cov, "enter", now)
 		else
-			-- Sprint to far cover, aimed walk to near cover (TIF.Move.CombatGait).
+
 			local accepted = Move.SetGoal(npc, cov.origin, Move.CombatGait(npc, cov.origin), "cover")
 			local failed = m.goal == nil and (m.result == "fail" or m.result == "stuck" or m.result == "timeout")
 			if not accepted or failed then
-				-- Remember the spot so the next search doesn't pick it again straight away.
+
 				npc.tifBadCover = npc.tifBadCover or {}
 				table.insert(npc.tifBadCover, { pos = cov.origin, time = now })
 				if #npc.tifBadCover > 8 then table.remove(npc.tifBadCover, 1) end
@@ -345,7 +327,7 @@ function CB.Update(npc, c, now)
 		npc.tifStance = cov.high and A.STANCE_STAND or A.STANCE_CROUCH
 		npc.tifHitboxPose = cov.high and "aim" or "crouch"
 		local threat = c and c.pos
-		-- Flanked or seen? Leave and let the brain find something better.
+
 		if threat and now > (cov.nextCheck or 0) then
 			cov.nextCheck = now + STILL_GOOD_EVERY
 			local ok, why = Cover.StillGood(cov.pt, threat)
@@ -360,7 +342,7 @@ function CB.Update(npc, c, now)
 		if w and w.ammo < w.clip * 0.35 and not Weapon.Reloading(npc) then
 			local n = clip_name(npc, names(npc, cov, "reload"))
 			if n then
-				-- GTA's cover reloads only animate the upper body: keep the cover idle on the legs.
+
 				cov.phaseEnd = now + (Act.Play(npc, n, { to = { pos = cov.origin, yaw = face },
 					base = clip_name(npc, names(npc, cov, "idle")) }) or 2)
 				Weapon.StartReload(npc)
@@ -397,9 +379,7 @@ function CB.Update(npc, c, now)
 			elseif canPop and supp < 0.7 then
 				local n = clip_name(npc, names(npc, cov, "intro"))
 				if n then
-					-- The step-out plays whole (its legs rise with its arms); aiming starts when it
-					-- ends (aim phase). Turning tif_caim on here put the standing aim overlay on
-					-- the upper body while the legs were still coming up out of the crouch.
+
 					cov.phaseEnd = now + (Act.Play(npc, n, { root = true }) or 0.4)
 					caim(npc, false)
 					set_phase(npc, cov, "aim_in", now)
@@ -407,11 +387,10 @@ function CB.Update(npc, c, now)
 					return true
 				end
 			end
-			-- Can't shoot from here: just watch.
+
 			cov.nextAim = now + 1.5
 		end
-		-- High cover peeks around the edge and stays hidden; low cover peeking means rising
-		-- above the wall, so only take short looks: ~1 s every 3-5 s.
+
 		local wantPeek = c and not c.visible and lost < arch.loseContact + 4
 		if wantPeek and not cov.high then
 			if now > (cov.peekUntil or 0) and now > (cov.nextPeek or 0) then
@@ -422,7 +401,7 @@ function CB.Update(npc, c, now)
 		end
 		local idleName = clip_name(npc, names(npc, cov, "idle"))
 		local loopName = wantPeek and clip_name(npc, names(npc, cov, "peek")) or idleName
-		-- Peeks are upper-body clips too: the idle stays on the legs.
+
 		if loopName then Act.Loop(npc, loopName, loopName ~= idleName and { base = idleName } or nil) end
 		cov.phase = wantPeek and "peek" or "idle"
 		npc.tifAction = "cover: " .. cov.phase
@@ -444,7 +423,7 @@ function CB.Update(npc, c, now)
 			local aim = c.ent:WorldSpaceCenter() + Vector(0, 0, 6)
 			npc.tifFace, f.want, f.aimPos, f.target = aim, true, aim, c.ent
 		elseif c and (lost < 1 or (npc.tifRole == "base" and lost < 6)) then
-			-- Base of fire keeps the enemy's last position under fire (suppressive fire).
+
 			npc.tifFace, f.want, f.aimPos = c.pos + UP40, true, c.pos + UP40
 			if lost >= 1 and not cov.saidSuppress then
 				cov.saidSuppress = true
@@ -477,7 +456,7 @@ function CB.Update(npc, c, now)
 
 	elseif phase == "switch" then
 		if now >= cov.phaseEnd then
-			-- The switch clip steps along the wall; the new spot becomes home.
+
 			cov.side = cov.switchTo or (cov.side == "l" and "r" or "l")
 			cov.origin = npc:GetPos()
 			npc:SetAngles(Angle(0, face_yaw(cov), 0))
