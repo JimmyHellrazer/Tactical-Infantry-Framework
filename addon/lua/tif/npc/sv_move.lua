@@ -63,9 +63,15 @@ M.SPREAD_EXEMPT = { formation = true, cqb = true, board = true, medic = true, co
 	crawl = true, post = true }
 local SPREAD_UP = Vector(0, 0, 40)
 
+local spreadOut = {}
+local spreadTr = { mask = MASK_NPCSOLID_BRUSHONLY, output = spreadOut }
+
 local function taken(npc, p)
 	local r2 = M.SPREAD_R * M.SPREAD_R
-	for _, o in ipairs(TIF.Soldiers or {}) do
+	local soldiers = TIF.Soldiers
+	if not soldiers then return false end
+	for i = 1, #soldiers do
+		local o = soldiers[i]
 		if IsValid(o) and o ~= npc and not o.tifDead and not o.tifVeh then
 			local g = o.tifMove and o.tifMove.goal
 			if (g and g:DistToSqr(p) < r2) or (not g and o:GetPos():DistToSqr(p) < r2) then return true end
@@ -78,19 +84,19 @@ M.Taken = taken
 local function spread(npc, pos)
 	if not taken(npc, pos) then return pos end
 	local me = npc:GetPos()
-	-- Already close and with room: stay.
 	if me:DistToSqr(pos) < 150 * 150 and not taken(npc, me) then return me end
 	local away = me - pos
 	away.z = 0
 	local a0 = away:LengthSqr() > 1 and math.deg(math.atan2(away.y, away.x)) or math.random(0, 359)
+	local pUp = pos + SPREAD_UP
 	for ring = 1, 2 do
 		local r = 80 * ring + math.random(0, 16)
 		for i = 0, 7 do
 			local a = math.rad(a0 + (i % 2 == 0 and 1 or -1) * math.ceil(i / 2) * 45)
 			local s = M.Snap(pos + Vector(math.cos(a) * r, math.sin(a) * r, 0))
 			if s and math.abs(s.z - pos.z) < 48 and not taken(npc, s) then
-				local tr = util.TraceLine({ start = pos + SPREAD_UP, endpos = s + SPREAD_UP, mask = MASK_NPCSOLID_BRUSHONLY })
-				if not tr.Hit then return s end
+				spreadTr.start, spreadTr.endpos = pUp, s + SPREAD_UP
+				if not util.TraceLine(spreadTr).Hit then return s end
 			end
 		end
 	end
@@ -213,18 +219,20 @@ local function in_lane(lanes, p)
 	return false
 end
 
-local function cost_fn(npc)
+local function cost_fn(npc, now)
 	local loco = npc.loco
 	local step = loco:GetStepHeight() + 6
 	local drop = -loco:GetDeathDropHeight()
 	local threats = npc.tifThreatAreas or {}
 	local lanes = npc.tifFireLanes or {}
-	-- MW19 body: can mantle up ledges (TIF.TraverseMW), so climbs up to its limit are allowed (at a cost).
+	local nThreats, nLanes = #threats, #lanes
 	local climb = TIF.TraverseMW and TIF.TraverseMW.Use(npc) and TIF.TraverseMW.MAX_UP or nil
+	local av = npc.tifMove.avoid
+	local avPos = (av and now < av.untilT) and av.pos or nil
+	local avR2 = M.AVOID_R * M.AVOID_R
 	return function(area, from, ladder, elevator, length)
 		if not IsValid(from) then return 0 end
-		-- GMod passes NULL objects for "no ladder" / "no elevator", and NULL is truthy in Lua:
-		-- IsValid is required, or every connection between areas counts as a ladder.
+		-- GMod passes NULL objects for "no ladder" / "no elevator", and NULL is truthy in Lua.
 		if IsValid(ladder) or IsValid(elevator) then return -1 end
 		if not loco:IsAreaTraversable(area) then return -1 end
 		local dist = length > 0 and length or from:GetCenter():Distance(area:GetCenter())
@@ -237,14 +245,12 @@ local function cost_fn(npc)
 			return -1
 		end
 		if area:HasAttributes(NAV_MESH_AVOID) then cost = cost + dist * 4 end
-		-- (0.38.26) where he just got stuck on a player / prop / corner: steered round for a few seconds
-		local av = npc.tifMove.avoid
-		if av and CurTime() < av.untilT and area:GetCenter():DistToSqr(av.pos) < M.AVOID_R * M.AVOID_R then
+		if avPos and area:GetCenter():DistToSqr(avPos) < avR2 then
 			cost = cost + dist * 6
 		end
 		if area:HasAttributes(NAV_MESH_CROUCH) then cost = cost + dist * 0.5 end
-		if #lanes > 0 and in_lane(lanes, area:GetCenter()) then cost = cost + dist * 3 end
-		for i = 1, #threats do
+		if nLanes > 0 and in_lane(lanes, area:GetCenter()) then cost = cost + dist * 3 end
+		for i = 1, nThreats do
 			if threats[i]:IsPotentiallyVisible(area) then
 				cost = cost + dist * EXPOSURE_COST
 				break
@@ -336,6 +342,9 @@ local function tif_body(e)
 	return IsValid(e) and (e.TIFSoldier or (e.GetClass and e:GetClass() == "tif_civilian")) and not e.tifDead
 end
 
+local unstickOut = {}
+local unstickHull = { mins = SIDE_MIN, maxs = SIDE_MAX, mask = MASK_NPCSOLID, output = unstickOut }
+
 local function unstick(npc, m, now)
 	local me = npc:GetPos()
 	local fwd = npc.loco:GetVelocity()
@@ -353,25 +362,24 @@ local function unstick(npc, m, now)
 		m.watch = nil
 		return
 	end
-	local sides
+	local s1
 	if IsValid(b) then
-		-- Step around him, on the side away from where he stands.
 		local lat = (b:GetPos() - me):Dot(right)
-		sides = lat > 0 and { -1, 1 } or { 1, -1 }
+		s1 = lat > 0 and -1 or 1
 	else
-		sides = math.random() < 0.5 and { 1, -1 } or { -1, 1 }
+		s1 = math.random() < 0.5 and 1 or -1
 	end
 	local bestP, bestF
-	for _, sgn in ipairs(sides) do
+	unstickHull.start, unstickHull.filter = me, npc
+	for k = 1, 2 do
+		local sgn = k == 1 and s1 or -s1
 		local to = me + right * (sgn * 44) + fwd * 12
-		local tr = util.TraceHull({ start = me, endpos = to, mins = SIDE_MIN, maxs = SIDE_MAX, filter = npc,
-			mask = MASK_NPCSOLID })
+		unstickHull.endpos = to
+		local tr = util.TraceHull(unstickHull)
 		if tr.Fraction > 0.9 then bestP = to break end
 		if not bestF or tr.Fraction > bestF then bestP, bestF = me + (to - me) * tr.Fraction, tr.Fraction end
 	end
-	-- Hemmed in on both sides: back off instead (far enough that the next path can bend round it).
 	if bestF and bestF < 0.3 then bestP = me - fwd * M.BACKOFF end
-	-- (not on a TIF body: his next paths steer round where this happened for a while)
 	if not tif_body(b) then
 		m.avoid = { pos = IsValid(b) and b:GetPos() or (me + fwd * 40), untilT = now + M.AVOID_T }
 	end
@@ -449,7 +457,7 @@ function M.Step(npc)
 	if m.goal and m.needCompute then
 		if Budget.Take("path", 1) then
 			Prof.Begin("path")
-			local ok = npc.tifPath:Compute(npc, m.goal, cost_fn(npc))
+			local ok = npc.tifPath:Compute(npc, m.goal, cost_fn(npc, now))
 			Prof.End()
 			m.needCompute = false
 			if not ok or not npc.tifPath:IsValid() then
@@ -586,6 +594,7 @@ end
 
 -- Facing, every tick. npc.tifFace = position to keep the body pointed at (aiming / looking),
 -- or nil to let the path turn the body toward travel.
+local FACE_ANG = Angle and Angle(0, 0, 0)
 function M.Face(npc, dt)
 	-- Seated (angles are local to the vehicle) or mid get-out clip (the clip turns the body).
 	if npc.tifVeh or npc.tifLeaving then return end
@@ -628,5 +637,8 @@ function M.Face(npc, dt)
 		and TIF.TransMW.Turn(npc, want) then return end
 	local rate = prone and TIF.ProneB.TURN_RATE or npc.tifArch.turnRate
 	local new = math.ApproachAngle(cur, want, rate * dt)
-	if math.abs(math.AngleDifference(new, cur)) > 0.01 then npc:SetAngles(Angle(0, new, 0)) end
+	if math.abs(math.AngleDifference(new, cur)) > 0.01 then
+		FACE_ANG.y = new
+		npc:SetAngles(FACE_ANG)
+	end
 end

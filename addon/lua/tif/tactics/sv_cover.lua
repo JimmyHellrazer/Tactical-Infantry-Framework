@@ -30,9 +30,18 @@ C.Reserved = C.Reserved or {}   -- key -> { npc, pos }
 C.Recent = C.Recent or {}       -- evaluated points, for the debug overlay
 C.RecentRays = C.RecentRays or {} -- obstacle-finding rays: kind 1 counts, 2 faces the threat, 0 missed
 
-local tr = {}
+local tr, hullOut = {}, {}
 local trace = { output = tr, mask = C.MASK }
-local hull = { mask = C.MASK, mins = Vector(-13, -13, 4), maxs = Vector(13, 13, 46) }
+local hull = { output = hullOut, mask = C.MASK, mins = Vector(-13, -13, 4), maxs = Vector(13, 13, 46) }
+
+local VEC_WAIST = Vector(0, 0, C.WAIST)
+local VEC_CHEST = Vector(0, 0, C.CHEST)
+local VEC_HEAD = Vector(0, 0, C.HEAD)
+local VEC_24, VEC_34, VEC_40, VEC_56, VEC_60, VEC_62, VEC_64, VEC_120 =
+	Vector(0, 0, 24), Vector(0, 0, 34), Vector(0, 0, 40), Vector(0, 0, 56),
+	Vector(0, 0, 60), Vector(0, 0, 62), Vector(0, 0, 64), Vector(0, 0, 120)
+
+local math_floor, math_abs, math_max, math_min = math.floor, math.abs, math.max, math.min
 
 local function line(a, b)
 	trace.start, trace.endpos = a, b
@@ -40,14 +49,10 @@ local function line(a, b)
 	return tr
 end
 
--- Fractions are relative to line length, so long lines made a prop right beside the soldier look
--- like it was "at the end of the line". These use absolute distances instead.
--- Blocked at least `margin` units before reaching b?
 local function blocked_before(a, b, margin)
 	local t = line(a, b)
 	return t.Hit and (1 - t.Fraction) * a:Distance(b) > margin
 end
--- Reaches b, or gets within `margin` units of it?
 local function reaches(a, b, margin)
 	local t = line(a, b)
 	return not t.Hit or (1 - t.Fraction) * a:Distance(b) < margin
@@ -66,36 +71,37 @@ end
 
 local function cell_key(p, threat)
 	local yaw = (threat - p):Angle().y
-	local d = p:Distance(threat)
-	local band = d < 600 and 0 or (d < 1500 and 1 or 2)
-	return string.format("%d:%d:%d:%d:%d", math.floor(p.x / 40), math.floor(p.y / 40), math.floor(p.z / 64),
-		math.floor(((yaw + 360) % 360) / 22.5), band)
+	local d2 = p:DistToSqr(threat)
+	local band = d2 < 360000 and 0 or (d2 < 2250000 and 1 or 2)
+	return math_floor(p.x / 40) .. ":" .. math_floor(p.y / 40) .. ":" .. math_floor(p.z / 64) .. ":"
+		.. math_floor(((yaw + 360) % 360) / 22.5) .. ":" .. band
 end
 
 local function record(pt)
+	if not TIF.Dev then return end
 	local r = C.Recent
 	r[#r + 1] = pt
 	if #r > 160 then table.remove(r, 1) end
 end
 
--- Classify one candidate. Returns a point table (rejected ones have .reject = reason).
--- traces: a counter table { n } shared across the search.
+local function spend(traces, n)
+	traces.n = traces.n + n
+	return Budget.Take("cover_trace", n)
+end
+
 local function evaluate(p, threat, threatEye, traces)
 	local pt = { probe = p, time = CurTime() }
 	local dir = flat(threat - p)
-	local function spend(n)
-		traces.n = traces.n + n
-		return Budget.Take("cover_trace", n)
-	end
 
-	if not spend(1) then pt.reject = "budget" return pt end
-	local w = line(p + Vector(0, 0, C.WAIST), p + Vector(0, 0, C.WAIST) + dir * 90)
-	local wallOk = w.Hit and not w.HitSky and math.abs(w.HitNormal.z) <= 0.55
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	local pWaist = p + VEC_WAIST
+	local w = line(pWaist, pWaist + dir * 90)
+	local wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
 	if not wallOk then
-		-- Raised obstacles (desks, tables, railings) are open underneath: try chest height too.
-		if not spend(1) then pt.reject = "budget" return pt end
-		w = line(p + Vector(0, 0, C.CHEST), p + Vector(0, 0, C.CHEST) + dir * 90)
-		wallOk = w.Hit and not w.HitSky and math.abs(w.HitNormal.z) <= 0.55
+		if not spend(traces, 1) then pt.reject = "budget" return pt end
+		local pChest = p + VEC_CHEST
+		w = line(pChest, pChest + dir * 90)
+		wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
 	end
 	if not wallOk then pt.reject = "no wall" return pt end
 	local n = flat(w.HitNormal)
@@ -106,47 +112,45 @@ local function evaluate(p, threat, threatEye, traces)
 	pt.ent = IsValid(w.Entity) and w.Entity or nil
 
 	local origin = w.HitPos + n * C.HUG
-	if not spend(1) then pt.reject = "budget" return pt end
-	local g = line(origin + Vector(0, 0, 24), origin - Vector(0, 0, 64))
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	local g = line(origin + VEC_24, origin - VEC_64)
 	if not g.Hit then pt.reject = "no ground" return pt end
 	origin = Vector(g.HitPos)
 	pt.pos = origin
 	if not IsValid(navmesh.GetNearestNavArea(origin, false, 72, false, true)) then pt.reject = "off navmesh" return pt end
 
-	if not spend(1) then pt.reject = "budget" return pt end
-	hull.start, hull.endpos, hull.output = origin, origin, nil
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	hull.start, hull.endpos = origin, origin
 	local h = util.TraceHull(hull)
 	if h.Hit or h.StartSolid then pt.reject = "no room" return pt end
 
-	if not spend(1) then pt.reject = "budget" return pt end
-	local head = line(origin + Vector(0, 0, C.HEAD), origin + Vector(0, 0, C.HEAD) - n * (C.HUG + 24))
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	local oHead = origin + VEC_HEAD
+	local wallBack = n * (C.HUG + 24)
+	local head = line(oHead, oHead - wallBack)
 	pt.high = head.Hit
-	-- Chest-high (a wall at chest height, none at head height): MW19's stand cover, hidden crouched, firing over it
-	-- standing (TIF.CoverBehave.MW type st). Low walls stay crouch cover.
 	if not pt.high then
-		if not spend(1) then pt.reject = "budget" return pt end
-		pt.mid = line(origin + Vector(0, 0, C.CHEST), origin + Vector(0, 0, C.CHEST) - n * (C.HUG + 24)).Hit
+		if not spend(traces, 1) then pt.reject = "budget" return pt end
+		local oChest = origin + VEC_CHEST
+		pt.mid = line(oChest, oChest - wallBack).Hit
 	end
 
-	-- Edges: walking along the wall, does it end within a step?
 	local tL, tR = yaw_dir(pt.ny - 90), yaw_dir(pt.ny + 90)
-	local probeZ = Vector(0, 0, pt.high and C.HEAD or C.WAIST)
-	if not spend(2) then pt.reject = "budget" return pt end
-	local eL = line(origin + tL * C.EDGE_STEP + probeZ, origin + tL * C.EDGE_STEP + probeZ - n * (C.HUG + 24))
-	pt.edgeL = not eL.Hit
-	local eR = line(origin + tR * C.EDGE_STEP + probeZ, origin + tR * C.EDGE_STEP + probeZ - n * (C.HUG + 24))
-	pt.edgeR = not eR.Hit
+	local probeZ = pt.high and VEC_HEAD or VEC_WAIST
+	if not spend(traces, 2) then pt.reject = "budget" return pt end
+	local sL = origin + tL * C.EDGE_STEP + probeZ
+	pt.edgeL = not line(sL, sL - wallBack).Hit
+	local sR = origin + tR * C.EDGE_STEP + probeZ
+	pt.edgeR = not line(sR, sR - wallBack).Hit
 
-	-- Hidden from the threat while in cover?
-	if not spend(1) then pt.reject = "budget" return pt end
-	pt.protected = blocked_before(threatEye, origin + Vector(0, 0, pt.high and 56 or 34), 6)
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	pt.protected = blocked_before(threatEye, origin + (pt.high and VEC_56 or VEC_34), 6)
 	if not pt.protected then pt.reject = "exposed" return pt end
 
-	-- Can it shoot from the pop-out spot? Low: over the top. High: around an edge facing the threat.
-	if not spend(1) then pt.reject = "budget" return pt end
-	local target = threat + Vector(0, 0, 40)
+	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	local target = threat + VEC_40
 	if not pt.high then
-		pt.canShoot = reaches(origin + Vector(0, 0, 62), target, 40)
+		pt.canShoot = reaches(origin + VEC_62, target, 40)
 		pt.shootFrom = "over"
 	else
 		local side = tL:Dot(dir) >= tR:Dot(dir) and "l" or "r"
@@ -157,7 +161,7 @@ local function evaluate(p, threat, threatEye, traces)
 		end
 		if edge then
 			local t = side == "l" and tL or tR
-			pt.canShoot = reaches(origin + t * 40 + Vector(0, 0, 60), target, 40)
+			pt.canShoot = reaches(origin + t * 40 + VEC_60, target, 40)
 			pt.shootFrom = side
 		else
 			pt.canShoot = false
@@ -260,15 +264,14 @@ function C.Find(npc, threat, opts)
 			local hit = Vector(h.HitPos)
 			local face = flat(h.HitNormal)
 			local toThreatHere = flat(threat - hit)
-			-- Only faces turned away from the threat count: the obstacle is between us and it.
-			local solid = h.Hit and not h.StartSolid and not h.HitSky and math.abs(h.HitNormal.z) < 0.55 and h.Fraction > 0.02
+			local solid = h.Hit and not h.StartSolid and not h.HitSky and math_abs(h.HitNormal.z) < 0.55 and h.Fraction > 0.02
 			local ok = solid and face:Dot(toThreatHere) <= 0.1
-			local rays = C.RecentRays
-			rays[#rays + 1] = { a = Vector(start), b = hit, kind = ok and 1 or (solid and 2 or 0), time = CurTime() }
-			if #rays > 300 then table.remove(rays, 1) end
+			if TIF.Dev then
+				local rays = C.RecentRays
+				rays[#rays + 1] = { a = Vector(start), b = hit, kind = ok and 1 or (solid and 2 or 0), time = now }
+				if #rays > 300 then table.remove(rays, 1) end
+			end
 			if ok then
-				-- Behind the hit point on the line from the threat. (Props also get a probe behind
-				-- their centre from the direct lookup below.)
 				add_probe(hit - toThreatHere * (C.HUG - 4), origin.z)
 			end
 		end
@@ -370,10 +373,9 @@ end
 -- Re-check one point against a (moved) threat. Cheap: 1-2 traces.
 function C.StillGood(pt, threat)
 	if not Budget.Take("trace", 1) then return true end
-	if not blocked_before(threat + Vector(0, 0, 60), pt.pos + Vector(0, 0, pt.high and 56 or 34), 6) then
+	if not blocked_before(threat + VEC_60, pt.pos + (pt.high and VEC_56 or VEC_34), 6) then
 		return false, "exposed"
 	end
-	-- Flanked: threat too far round the side of the wall.
 	local dir = flat(threat - pt.pos)
 	if pt.normal:Dot(-dir) < 0.25 then return false, "flanked" end
 	return true

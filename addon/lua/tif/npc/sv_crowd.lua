@@ -44,41 +44,68 @@ local function vel_of(e)
 	return Vector(v.x, v.y, 0)
 end
 
--- Everyone who can be in the way, shared for 0.1 s: TIF soldiers and civilians, players, other NPCs.
-local list, listT = {}, -1
+local list, bodyPool, listT = {}, {}, -1
 function C.Bodies(now)
 	if now - listT < 0.1 then return list end
-	listT, list = now, {}
+	listT = now
+	local count = 0
 	local function add(e, tif)
-		list[#list + 1] = { e = e, pos = e:GetPos(), vel = vel_of(e), tif = tif }
+		count = count + 1
+		local b = bodyPool[count]
+		if not b then b = { vel = Vector() } bodyPool[count] = b end
+		local v = (e.loco and e.loco:GetVelocity()) or e:GetVelocity()
+		b.e = e
+		b.pos = e:GetPos()
+		b.vel.x, b.vel.y, b.vel.z = v.x, v.y, 0
+		b.tif = tif
+		list[count] = b
 	end
-	for _, s in ipairs(TIF.Soldiers or {}) do
-		if IsValid(s) and not s.tifDead and not s.tifVeh then add(s, true) end
+	local soldiers = TIF.Soldiers
+	if soldiers then
+		for i = 1, #soldiers do
+			local s = soldiers[i]
+			if IsValid(s) and not s.tifDead and not s.tifVeh then add(s, true) end
+		end
 	end
 	if TIF.Civ and TIF.Civ.List then
-		for _, c in ipairs(TIF.Civ.List()) do if not c.gone and not c.dead then add(c, true) end end
+		local civs = TIF.Civ.List()
+		for i = 1, #civs do
+			local c = civs[i]
+			if not c.gone and not c.dead then add(c, true) end
+		end
 	end
-	for _, p in ipairs(player.GetAll()) do
+	local players = player.GetAll()
+	for i = 1, #players do
+		local p = players[i]
 		if p:Alive() and p:GetMoveType() ~= MOVETYPE_NOCLIP then add(p, false) end
 	end
-	for _, n in ipairs(TIF.NPCs or {}) do if IsValid(n) and n:Health() > 0 then add(n, false) end end
+	local npcs = TIF.NPCs
+	if npcs then
+		for i = 1, #npcs do
+			local n = npcs[i]
+			if IsValid(n) and n:Health() > 0 then add(n, false) end
+		end
+	end
+	for i = #list, count + 1, -1 do list[i] = nil end
 	return list
 end
 function C.Invalidate() listT = -1 end
 
 local SIDE_MIN, SIDE_MAX = Vector(-12, -12, 8), Vector(12, 12, 56)
+local sideOut = {}
+local sideHull = { mins = SIDE_MIN, maxs = SIDE_MAX, mask = MASK_NPCSOLID, output = sideOut }
 local function open_frac(ent, from, to)
-	local tr = util.TraceHull({ start = from, endpos = to, mins = SIDE_MIN, maxs = SIDE_MAX, filter = ent, mask = MASK_NPCSOLID })
-	return tr.Fraction
+	sideHull.start, sideHull.endpos, sideHull.filter = from, to, ent
+	return util.TraceHull(sideHull).Fraction
 end
 
--- The open spot dist to the side of ent (sgn 1 = its right of fwd; nil: either, the opener first), or nil.
 function C.SidePoint(ent, fwd, dist, sgn)
 	local me = ent:GetPos()
 	local right = Vector(fwd.y, -fwd.x, 0)
-	local order = sgn and { sgn, -sgn } or (math.random() < 0.5 and { 1, -1 } or { -1, 1 })
+	local s1 = sgn or (math.random() < 0.5 and 1 or -1)
 	local best, bf
-	for _, s in ipairs(order) do
+	for k = 1, 2 do
+		local s = k == 1 and s1 or -s1
 		local to = me + right * (s * dist) + fwd * 10
 		local f = open_frac(ent, me, to)
 		if f > 0.9 then return to end
@@ -87,9 +114,6 @@ function C.SidePoint(ent, fwd, dist, sgn)
 	return (bf and bf > 0.4) and best or nil
 end
 
--- Steer: called by a mover each step with where it's heading (fwd, flat unit), its pace and its goal. Returns the
--- pace to use (kept behind someone walking ahead) and, when easing past someone, a point to blend in
--- (loco:Approach(p, C.WEIGHT) after the path's update). Looks again every SCAN_T.
 function C.Steer(ent, fwd, want, goal, now)
 	if not cv:GetBool() or not fwd then return want, nil end
 	local st = ent.tifCrowd
@@ -99,17 +123,23 @@ function C.Steer(ent, fwd, want, goal, now)
 		prof("crowd")
 		st.cap, st.sgn = nil, nil
 		local me = ent:GetPos()
-		local right = Vector(fwd.y, -fwd.x, 0)
-		local goalD = goal and Vector(goal.x - me.x, goal.y - me.y, 0):Length() or math.huge
+		local rx, ry = fwd.y, -fwd.x
+		local goalD = math.huge
+		if goal then
+			local gx, gy = goal.x - me.x, goal.y - me.y
+			goalD = math.sqrt(gx * gx + gy * gy)
+		end
 		local best, bestA, bestLat
 		local reach = C.LOOK + 30
-		for _, b in ipairs(C.Bodies(now)) do
+		local reach2 = reach * reach
+		local bodies = C.Bodies(now)
+		for i = 1, #bodies do
+			local b = bodies[i]
 			if b.e ~= ent then
 				local dx, dy = b.pos.x - me.x, b.pos.y - me.y
-				if dx * dx + dy * dy < reach * reach and math.abs(b.pos.z - me.z) < 60 then
+				if dx * dx + dy * dy < reach2 and math.abs(b.pos.z - me.z) < 60 then
 					local ahead = dx * fwd.x + dy * fwd.y
-					local lat = dx * right.x + dy * right.y
-					-- (in my lane, ahead of me, and not past where I'm stopping anyway)
+					local lat = dx * rx + dy * ry
 					if ahead > 4 and ahead < C.LOOK and math.abs(lat) < C.LANE and ahead < goalD + 10
 						and (not bestA or ahead < bestA) then
 						best, bestA, bestLat = b, ahead, lat
@@ -118,19 +148,17 @@ function C.Steer(ent, fwd, want, goal, now)
 			end
 		end
 		if best then
-			local along = best.vel:Dot(fwd)
+			local along = best.vel.x * fwd.x + best.vel.y * fwd.y
 			if along > C.FOLLOW then
-				-- Walking my way: keep behind at his pace once close (no passing in a file).
 				if bestA < 60 and along < want then st.cap = math.max(along, 30) end
 			else
-				-- Standing, crossing or coming at me: past on my right, or my left if he's already to my right.
 				local sgn = bestLat > 6 and -1 or 1
 				local p = C.SidePoint(ent, fwd, C.SIDE, sgn)
 				if p then
-					st.sgn = (p - me):Dot(right) >= 0 and 1 or -1
+					st.sgn = ((p.x - me.x) * rx + (p.y - me.y) * ry) >= 0 and 1 or -1
 					st.fwd = Vector(fwd)
 				elseif bestA < 40 then
-					st.cap = math.min(want, 30)   -- (nowhere to go: slow, the stuck check does the rest)
+					st.cap = math.min(want, 30)
 				end
 				if along < -C.FOLLOW and bestA < 40 then st.cap = math.min(st.cap or want, want * 0.6) end
 			end
@@ -247,23 +275,32 @@ function C.Unstack(e, now)
 	return true
 end
 
+local TIFS_BUF, NEAR_BUF = {}, {}
 function C.Tick(now)
 	local on = cv:GetBool()
 	prof("crowd")
-	local tifs = {}
-	for _, b in ipairs(C.Bodies(now)) do if b.tif and IsValid(b.e) then tifs[#tifs + 1] = b end end
-	local near = {}
+	local bodies = C.Bodies(now)
+	local n = 0
+	for i = 1, #bodies do
+		local b = bodies[i]
+		if b.tif and IsValid(b.e) then
+			n = n + 1
+			TIFS_BUF[n] = b
+		end
+	end
+	for i = #TIFS_BUF, n + 1, -1 do TIFS_BUF[i] = nil end
+	for k in pairs(NEAR_BUF) do NEAR_BUF[k] = nil end
 	if on then
-		for i = 1, #tifs do
-			local a = tifs[i]
-			for j = i + 1, #tifs do
-				local b = tifs[j]
+		for i = 1, n do
+			local a = TIFS_BUF[i]
+			for j = i + 1, n do
+				local b = TIFS_BUF[j]
 				local dx, dy, dz = math.abs(a.pos.x - b.pos.x), math.abs(a.pos.y - b.pos.y), math.abs(a.pos.z - b.pos.z)
 				if dx < C.APART and dy < C.APART and dz < 60 then
-					near[a.e], near[b.e] = true, true
+					NEAR_BUF[a.e], NEAR_BUF[b.e] = true, true
 					if dx < C.OVERLAP and dy < C.OVERLAP then
-						local ov = a.e.tifCrowdOv or {}
-						a.e.tifCrowdOv = ov
+						local ov = a.e.tifCrowdOv
+						if not ov then ov = {} a.e.tifCrowdOv = ov end
 						ov[b.e] = ov[b.e] or now
 						if now - ov[b.e] >= C.GHOST_AFTER or root_clip(a.e) or root_clip(b.e) then
 							ghost(a.e, now)
@@ -283,11 +320,11 @@ function C.Tick(now)
 			end
 		end
 	end
-	for _, b in ipairs(tifs) do
-		local e = b.e
-		if not near[e] then e.tifCrowdOv = nil end
+	for i = 1, n do
+		local e = TIFS_BUF[i].e
+		if not NEAR_BUF[e] then e.tifCrowdOv = nil end
 		local g = e.tifCrowdGhost
-		if g and (not on or (not near[e] and now - g.t >= C.GHOST_MIN)) then unghost(e) end
+		if g and (not on or (not NEAR_BUF[e] and now - g.t >= C.GHOST_MIN)) then unghost(e) end
 	end
 	unprof()
 end

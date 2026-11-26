@@ -8,15 +8,22 @@ local AW = TIF.AWARE
 local Budget = TIF.Budget
 local Prof = TIF.Prof
 
+local CurTime, IsValid, Vector = CurTime, IsValid, Vector
+local math_sqrt, math_min, math_max, math_clamp = math.sqrt, math.min, math.max, math.Clamp
+local math_cos, math_sin, math_rad, math_rand = math.cos, math.sin, math.rad, math.Rand
+local pairs = pairs
+
 TIF.Perception = TIF.Perception or {}
 local P = TIF.Perception
 
-local MAX_CHECKS = 3          -- sight checks per think (nearest candidates first)
-local TOUCH_RANGE = 140       -- spotted instantly this close, in any direction
-local SUSPICIOUS_AT = 0.35    -- detection meter level that makes a soldier look
-local MEMORY = 240            -- seconds before an unseen, unheard contact is forgotten
-local SHARE_RANGE = 1300      -- allies this close hear a callout (squads replace this in Phase 3)
-local STALE_SIGHT = 0.6       -- a sighting older than this no longer counts as "visible"
+local MAX_CHECKS = 3
+local TOUCH_RANGE = 140
+local TOUCH_RANGE_SQR = TOUCH_RANGE * TOUCH_RANGE
+local SUSPICIOUS_AT = 0.35
+local MEMORY = 240
+local SHARE_RANGE = 1300
+local SHARE_RANGE_SQR = SHARE_RANGE * SHARE_RANGE
+local STALE_SIGHT = 0.6
 
 function P.Init(npc)
 	npc.tifK = { contacts = {} }
@@ -65,7 +72,8 @@ local function rand2d(scale)
 	return Vector(math.cos(a) * r, math.sin(a) * r, 0)
 end
 
-local traceData = { mask = MASK_BLOCKLOS, filter = {} }
+local traceOut = {}
+local traceData = { mask = MASK_BLOCKLOS, filter = {}, output = traceOut }
 local function line_clear(from, to, a, b)
 	traceData.start, traceData.endpos = from, to
 	traceData.filter[1], traceData.filter[2] = a, b
@@ -110,26 +118,42 @@ function P.Engage(npc, e)
 	return worst
 end
 
+local CAND_OUT, CAND_POOL = {}, {}
+local function by_d2(a, b) return a.d2 < b.d2 end
+
 local function candidates(npc, eye, maxD2)
-	local out = {}
+	local count = 0
 	local filtered = next(P.Filters) ~= nil
-	-- (2026-11-25: distance first, a horde of addon NextBots can be hundreds long)
+	local hostile = TIF.REL_HOSTILE
+	local isLive, relation = TIF.IsLiveCombatant, TIF.Relation
 	local function consider(e)
 		if e == npc then return end
 		local d2 = eye:DistToSqr(e:GetPos())
-		if d2 < maxD2 and TIF.IsLiveCombatant(e) and TIF.Relation(npc, e) == TIF.REL_HOSTILE
+		if d2 < maxD2 and isLive(e) and relation(npc, e) == hostile
 			and not (filtered and P.Engage(npc, e) == "ignore") then
-			out[#out + 1] = { ent = e, d2 = d2 }
+			count = count + 1
+			local slot = CAND_POOL[count]
+			if not slot then slot = {} CAND_POOL[count] = slot end
+			slot.ent, slot.d2 = e, d2
+			CAND_OUT[count] = slot
 		end
 	end
 	for _, ply in player.Iterator() do consider(ply) end
-	for _, s in ipairs(TIF.Soldiers) do if IsValid(s) then consider(s) end end
-	-- HL2 / addon NPCs with a side (compat/sv_hl2npc.lua, 0.38.15)
-	if TIF.NPCs and TIF.HL2NPCsOn and TIF.HL2NPCsOn() then
-		for _, e in ipairs(TIF.NPCs) do if IsValid(e) then consider(e) end end
+	local soldiers = TIF.Soldiers
+	for i = 1, #soldiers do
+		local s = soldiers[i]
+		if IsValid(s) then consider(s) end
 	end
-	table.sort(out, function(a, b) return a.d2 < b.d2 end)
-	return out
+	if TIF.NPCs and TIF.HL2NPCsOn and TIF.HL2NPCsOn() then
+		local npcs = TIF.NPCs
+		for i = 1, #npcs do
+			local e = npcs[i]
+			if IsValid(e) then consider(e) end
+		end
+	end
+	for i = #CAND_OUT, count + 1, -1 do CAND_OUT[i] = nil end
+	if count > 1 then table.sort(CAND_OUT, by_d2) end
+	return CAND_OUT, count
 end
 
 function P.Update(npc, dt, now)
@@ -139,25 +163,30 @@ function P.Update(npc, dt, now)
 	local aware = npc.tifAware or AW.UNAWARE
 	local prof = P.Profile(npc, now)
 	local fov = aware >= AW.ALERTED and arch.fov or (arch.fovUnaware + prof.fov)
-	local cosHalf = math.cos(math.rad(fov * 0.5))
+	local cosHalf = math_cos(math_rad(fov * 0.5))
 	local heightened = (npc.tifHeightenedUntil or 0) > now
-	-- tif_forget blinds soldiers briefly so the loss of contact can be observed.
 	local blind = (npc.tifBlindUntil or 0) > now
 	local vd = arch.viewDist * TIF.ViewScale() * prof.view
-	local detectK = math.max(0.05, cvDetect:GetFloat()) * prof.detect
-	local cand = blind and {} or candidates(npc, eye, vd * vd)
+	local detectK = math_max(0.05, cvDetect:GetFloat()) * prof.detect
+	local cand, candN
+	if blind then
+		candN = 0
+	else
+		cand, candN = candidates(npc, eye, vd * vd)
+	end
 
 	local checked = 0
-	for _, cd in ipairs(cand) do
+	for i = 1, candN do
+		local cd = cand[i]
 		local e = cd.ent
 		local c = K.contacts[e]
 		local isPrimary = npc.tifPrimary == e
 		if checked >= MAX_CHECKS and not isPrimary then break end
-		local dist = math.sqrt(cd.d2)
 		local to = e:WorldSpaceCenter() - eye
 		to:Normalize()
-		local inView = dist < TOUCH_RANGE or to:Dot(fwd) >= cosHalf
-		if inView then
+		local dotFwd = to:Dot(fwd)
+		local touch = cd.d2 < TOUCH_RANGE_SQR
+		if touch or dotFwd >= cosHalf then
 			checked = checked + 1
 			local vis = P.CanSee(npc, eye, e)
 			if vis == nil then
@@ -165,13 +194,14 @@ function P.Update(npc, dt, now)
 			elseif vis then
 				c = c or contact(npc, e)
 				c.lastCheck = now
+				local dist = math_sqrt(cd.d2)
 				local speed = e:GetVelocity():Length2D()
 				local moveF = speed > 150 and 1.5 or (speed > 30 and 1.0 or 0.7)
-				local periph = to:Dot(fwd) > 0.85 and 1 or 0.55
+				local periph = dotFwd > 0.85 and 1 or 0.55
 				local awareF = aware >= AW.ALERTED and 2.2 or (heightened and 1.6 or (aware == AW.SUSPICIOUS and 1.3 or 0.8))
-				local distF = math.Clamp(prof.ref / math.max(dist, 1), 0.15, 3) ^ 0.8
+				local distF = math_clamp(prof.ref / math_max(dist, 1), 0.15, 3) ^ 0.8
 				local rate = (1 / arch.detectTime) * distF * stance_factor(e) * moveF * periph * awareF * detectK
-				c.meter = dist < TOUCH_RANGE and 1 or math.min(1, c.meter + rate * dt)
+				c.meter = touch and 1 or math_min(1, c.meter + rate * dt)
 				if c.meter >= 1 then
 					if not c.confirmed or (now - c.seenAt) > 3 then c.reacquired = now end
 					c.confirmed = true
@@ -183,7 +213,6 @@ function P.Update(npc, dt, now)
 					c.lostAt = nil
 					c.source = "sight"
 				else
-					-- Half-seen: a rough position to look at.
 					c.suspectPos = e:GetPos() + rand2d((1 - c.meter) * 180)
 					c.suspectAt = now
 				end
@@ -333,9 +362,12 @@ end
 function P.Share(npc, c)
 	local now = CurTime()
 	local pos = npc:GetPos()
-	for _, ally in ipairs(TIF.Soldiers) do
-		if ally ~= npc and IsValid(ally) and not ally.tifDead and ally:GetTIFFaction() == npc:GetTIFFaction()
-			and pos:DistToSqr(ally:GetPos()) < SHARE_RANGE * SHARE_RANGE then
+	local fac = npc:GetTIFFaction()
+	local soldiers = TIF.Soldiers
+	for i = 1, #soldiers do
+		local ally = soldiers[i]
+		if ally ~= npc and IsValid(ally) and not ally.tifDead and ally:GetTIFFaction() == fac
+			and pos:DistToSqr(ally:GetPos()) < SHARE_RANGE_SQR then
 			local ac = contact(ally, c.ent)
 			if not ac.visible then
 				ac.confirmed = true

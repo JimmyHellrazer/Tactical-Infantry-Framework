@@ -129,7 +129,7 @@ check(not TIF.IsLiveCombatant(combine), "tif_hl2_npcs 0: not combatants")
 cv.tif_hl2_npcs = "1"
 -- perception scans them
 local src = io.open(ROOT .. "tif/npc/sv_perception.lua"):read("*a")
-check(src:find("for _, e in ipairs(TIF.NPCs) do if IsValid(e) then consider(e) end end", 1, true) ~= nil, "perception considers NPCs")
+check(src:find("if TIF.NPCs and TIF.HL2NPCsOn and TIF.HL2NPCsOn() then", 1, true) ~= nil and src:find("consider(e)", 1, true) ~= nil, "perception considers NPCs")
 -- 2026-11-25: old faction ids as aliases (militia -> insurgents, pmc -> usmc)
 do
 	TIF.Factions.insurgents = { side = "enemy" } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
