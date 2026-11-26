@@ -180,6 +180,7 @@ if SERVER then
 				builtin = TIF.BuiltinFactions[id] ~= nil }
 		end
 		local data = util.Compress(util.TableToJSON(list))
+		if not data or #data == 0 then return end
 		net.Start("tif_factions")
 		net.WriteUInt(#data, 20)
 		net.WriteData(data, #data)
@@ -190,27 +191,32 @@ if SERVER then
 
 	net.Receive("tif_faction_save", function(_, ply)
 		if not admin(ply) then return end
-		local raw = util.Decompress(net.ReadData(net.ReadUInt(20))) or ""
+		local len = math.min(net.ReadUInt(20), 65536)
+		if len <= 0 then return end
+		local raw = util.Decompress(net.ReadData(len)) or ""
 		local def, err = FE.Sanitize(util.JSONToTable(raw) or {})
-		if not def then ply:ChatPrint("[TIF] Faction not saved: " .. err) return end
+		if not def then
+			if IsValid(ply) then ply:ChatPrint("[TIF] Faction not saved: " .. err) end
+			return
+		end
 		file.CreateDir(FE.DIR)
 		file.Write(path(def.id), util.TableToJSON(def, true))
 		FE.Register(def)
 		FE.Send()
-		ply:ChatPrint("[TIF] Faction '" .. def.id .. "' saved (" .. #def.models .. " model(s)). New soldiers use it.")
+		if IsValid(ply) then ply:ChatPrint("[TIF] Faction '" .. def.id .. "' saved (" .. #def.models .. " model(s)). New soldiers use it.") end
 	end)
 
 	net.Receive("tif_faction_delete", function(_, ply)
 		if not admin(ply) then return end
-		local id = net.ReadString()
-		if not file.Exists(path(id), "DATA") then return end
+		local id = string.gsub(string.lower(net.ReadString() or ""), "[^%w_%-]", "")
+		if id == "" or not file.Exists(path(id), "DATA") then return end
 		file.Delete(path(id))
 		if TIF.BuiltinFactions[id] then
 			TIF.Factions[id] = table.Copy(TIF.BuiltinFactions[id])
-			ply:ChatPrint("[TIF] '" .. id .. "' is back to its defaults")
+			if IsValid(ply) then ply:ChatPrint("[TIF] '" .. id .. "' is back to its defaults") end
 		else
 			TIF.Factions[id] = nil
-			ply:ChatPrint("[TIF] Faction '" .. id .. "' deleted")
+			if IsValid(ply) then ply:ChatPrint("[TIF] Faction '" .. id .. "' deleted") end
 		end
 		if TIF.RefreshSpawnList then TIF.RefreshSpawnList() end
 		FE.Send()

@@ -40,6 +40,10 @@ if SERVER then
 		self.tifLast = CurTime()
 	end
 
+	local ROCKET_MIN, ROCKET_MAX = Vector(-3, -3, -3), Vector(3, 3, 3)
+	local rocketOut = {}
+	local rocketHull = { mins = ROCKET_MIN, maxs = ROCKET_MAX, mask = MASK_SHOT, filter = {}, output = rocketOut }
+
 	function ENT:Think()
 		if self.tifDone then return end
 		local now = CurTime()
@@ -48,14 +52,27 @@ if SERVER then
 		if now >= self.tifDie then self:Burst(self:GetPos()) return end
 
 		local v = self.tifVel or self:GetVelocity()
-		local speed = math.min(self.tifMax or v:Length(), v:Length() + (self.tifAccel or 0) * dt)
-		local d = v:GetNormalized()
-		v = d * speed - Vector(0, 0, (self.tifGrav or 0) * dt)
+		local len = v:Length()
+		local speed = math.min(self.tifMax or len, len + (self.tifAccel or 0) * dt)
+		local d = len > 1e-4 and (v / len) or self:GetForward()
+		v = d * speed
+		v.z = v.z - (self.tifGrav or 0) * dt
 
 		local pos = self:GetPos()
-		local tr = util.TraceHull({ start = pos, endpos = pos + v * math.max(dt, FrameTime()),
-			mins = Vector(-3, -3, -3), maxs = Vector(3, 3, 3), mask = MASK_SHOT, filter = { self, self:GetOwner() } })
-		if tr.Hit then self:Burst(tr.HitPos + tr.HitNormal * 4, tr.HitNormal) return end
+		rocketHull.start = pos
+		rocketHull.endpos = pos + v * math.max(dt, FrameTime())
+		rocketHull.filter[1], rocketHull.filter[2] = self, self:GetOwner()
+		local tr = util.TraceHull(rocketHull)
+		if tr.Hit then
+			if tr.HitSky then
+				self.tifDone = true
+				self:StopSound("weapons/rpg/rocket1.wav")
+				SafeRemoveEntityDelayed(self, 0)
+			else
+				self:Burst(tr.HitPos + tr.HitNormal * 4, tr.HitNormal)
+			end
+			return
+		end
 		self.tifVel = v
 		self:SetLocalVelocity(v)
 		self:SetAngles(v:Angle())
@@ -80,7 +97,7 @@ if SERVER then
 		util.Effect("Explosion", ed, true, true)
 		normal = normal or Vector(0, 0, 1)
 		util.Decal("Scorch", pos + normal * 8, pos - normal * 32, self)
-		util.BlastDamage(self, owner, pos, cvRadius:GetFloat(), cvDamage:GetFloat())
+		util.BlastDamage(self, owner, pos, math.max(1, cvRadius:GetFloat()), math.max(0, cvDamage:GetFloat()))
 		util.ScreenShake(pos, 8, 150, 1, 1400)
 		SafeRemoveEntityDelayed(self, 0)
 	end
@@ -96,9 +113,13 @@ else
 
 	function ENT:Think()
 		local em = self.tifEmitter
+		if not em then
+			em = ParticleEmitter(self:GetPos())
+			self.tifEmitter = em
+		end
 		if not em then return end
 		local now = CurTime()
-		if now >= self.tifNextPuff then
+		if now >= (self.tifNextPuff or 0) then
 			self.tifNextPuff = now + 0.015
 			local back = self:GetPos() - self:GetForward() * 14
 			local p = em:Add("particle/particle_smokegrenade", back)
@@ -123,13 +144,14 @@ else
 			dl.pos = self:GetPos() - self:GetForward() * 12
 			dl.r, dl.g, dl.b = 255, 170, 80
 			dl.brightness = 2
-			dl.Decay = 1000
-			dl.Size = 160
-			dl.DieTime = CurTime() + 0.1
+			dl.decay = 1000
+			dl.size = 160
+			dl.dietime = CurTime() + 0.1
 		end
 	end
 
-	function ENT:OnRemove()
+	function ENT:OnRemove(fullUpdate)
+		if fullUpdate then return end
 		if self.tifEmitter then self.tifEmitter:Finish() self.tifEmitter = nil end
 	end
 end

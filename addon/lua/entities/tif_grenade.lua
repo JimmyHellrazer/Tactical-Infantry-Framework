@@ -96,9 +96,13 @@ if SERVER then
 		ed:SetScale(1)
 		util.Effect("Explosion", ed, true, true)
 		util.Decal("Scorch", pos + Vector(0, 0, 8), pos - Vector(0, 0, 32), self)
-		util.BlastDamage(self, owner, pos, cvRadius:GetFloat(), cvDamage:GetFloat())
+		util.BlastDamage(self, owner, pos, math.max(1, cvRadius:GetFloat()), math.max(0, cvDamage:GetFloat()))
 		util.ScreenShake(pos, 6, 120, 0.8, 900)
 	end
+
+	local FLASH_MASK = bit.band(MASK_SOLID, bit.bnot(CONTENTS_GRATE))
+	local flashOut = {}
+	local flashTr = { mask = FLASH_MASK, filter = {}, output = flashOut }
 
 	function ENT:Flash()
 		local pos = self:GetPos() + Vector(0, 0, 6)
@@ -117,11 +121,11 @@ if SERVER then
 			SafeRemoveEntityDelayed(dl, 0.15)
 		end
 
-		if TIF and TIF.FlashAt then
-			TIF.FlashAt(pos, FLASH_R, self, IsValid(self:GetOwner()) and self:GetOwner() or nil)
-		end
-
 		local thrower = IsValid(self:GetOwner()) and self:GetOwner() or nil
+		if TIF and TIF.FlashAt then TIF.FlashAt(pos, FLASH_R, self, thrower) end
+
+		flashTr.start = pos
+		flashTr.filter[1] = self
 		for _, ply in player.Iterator() do
 			if ply:Alive() then
 				local s = TIF and TIF.FlashScale and TIF.FlashScale(thrower, ply) or 1
@@ -129,11 +133,12 @@ if SERVER then
 				local eye = ply:EyePos()
 				local d = eye:Distance(pos)
 				if s > 0 and d < R then
-					local tr = util.TraceLine({ start = pos, endpos = eye, mask = MASK_SOLID - CONTENTS_GRATE, filter = { self, ply } })
-					if not tr.Hit then
+					flashTr.endpos = eye
+					flashTr.filter[2] = ply
+					if not util.TraceLine(flashTr).Hit then
 						local facing = ply:GetAimVector():Dot((pos - eye):GetNormalized())
 						local k = (1 - d / R) * Lerp((facing + 1) / 2, 0.35, 1)
-						ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 255), (0.6 + 3.5 * k) * s, (0.2 + 2.5 * k) * s)
+						ply:ScreenFade(SCREENFADE.IN, color_white, (0.6 + 3.5 * k) * s, (0.2 + 2.5 * k) * s)
 						if k > 0.25 and s >= 0.5 then ply:SetDSP(37, false) end
 					end
 				end

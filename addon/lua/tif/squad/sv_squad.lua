@@ -86,10 +86,14 @@ local function best_leader(sq)
 end
 
 publish = function(sq)
-	for _, m in ipairs(sq.members) do
+	local lead = IsValid(sq.leader) and sq.leader or NULL
+	local orderStr = sq.order.kind .. (sq.formation ~= "wedge" and (" / " .. sq.formation) or "")
+	local members = sq.members
+	for i = 1, #members do
+		local m = members[i]
 		if IsValid(m) then
-			m:SetNW2Entity("tif_sqlead", IsValid(sq.leader) and sq.leader or NULL)
-			m:SetNW2String("tif_order", sq.order.kind .. (sq.formation ~= "wedge" and (" / " .. sq.formation) or ""))
+			if m:GetNW2Entity("tif_sqlead", NULL) ~= lead then m:SetNW2Entity("tif_sqlead", lead) end
+			if m:GetNW2String("tif_order", "") ~= orderStr then m:SetNW2String("tif_order", orderStr) end
 		end
 	end
 end
@@ -120,12 +124,11 @@ function SQ.Remove(npc)
 	if IsValid(npc) then npc:SetNW2Int("tif_squad", 0) end
 	if sq.leader == npc then
 		local nl = best_leader(sq)
-		SQ.SetLeader(sq, nl)
 		if IsValid(nl) then
-
 			if sq.order.kind == "advance" then sq.order = { kind = "hold", pos = nl:GetPos(), time = CurTime() } end
 			TIF.Say(nl, "backup", 0.6)
 		end
+		SQ.SetLeader(sq, nl)
 	end
 	if #SQ.Members(sq) == 0 then drop_squad(sq, "empty (last man removed)") end
 end
@@ -147,7 +150,7 @@ SQ.SIGNAL_CHANCE = 0.7
 
 function SQ.Signal(sq, kind)
 	local L = sq.leader
-	if not is_valid_leader(L) or L.tifAct or L.tifCov or L.tifProne or L.tifVeh or L.tifDowned or L.tifReact then
+	if not is_valid_leader(L) or not L.TIFSoldier or not L.loco or L.tifAct or L.tifCov or L.tifProne or L.tifVeh or L.tifDowned or L.tifReact then
 		return
 	end
 	if not (L.tifHomeHost and TIF.GTG.IsVB(L.tifHomeHost)) or math.random() > SQ.SIGNAL_CHANCE then return end
@@ -228,6 +231,11 @@ local function patrol_lead(npc, sq, o, now)
 		o.i = best
 	end
 	local p = pts[o.i]
+	if not p then
+		o.i = 1
+		p = pts[1]
+		if not p then return false end
+	end
 	if npc:GetPos():DistToSqr(p) < 90 * 90 then
 		o.waitUntil = o.waitUntil or now + math.Rand(2, 5)
 		Move.Stop(npc)
@@ -373,8 +381,12 @@ end
 
 timer.Create("tif_squad_gc", 1, 0, function()
 	for id, sq in pairs(SQ.List) do
-		local alive = SQ.Members(sq)
-		if #alive == 0 and not (IsValid(sq.leader) and sq.leader:IsPlayer()) then
+		local members = sq.members
+		for i = #members, 1, -1 do
+			local m = members[i]
+			if not IsValid(m) or m.tifDead then table.remove(members, i) end
+		end
+		if #members == 0 and not (IsValid(sq.leader) and sq.leader:IsPlayer()) then
 			drop_squad(sq, "empty (all dead or removed)")
 		elseif not is_valid_leader(sq.leader) then
 			local old = sq.leader
