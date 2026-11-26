@@ -23,7 +23,8 @@ function S.Add(npc, amount, srcPos, shooter)
 	local after = math.min(1, before + amount * (1 - resist))
 	npc.tifSupp = after
 	npc.tifSuppAt = CurTime()
-	npc:SetTIFSupp(after)
+	local cur = npc:GetTIFSupp()
+	if math.abs(cur - after) > 0.03 or (after == 1 and cur < 1) then npc:SetTIFSupp(after) end
 	if before < 0.45 and after >= 0.45 then TIF.Say(npc, "swear", 0.5) end
 	-- Rounds snapping past reveal roughly where they came from.
 	if IsValid(shooter) and srcPos and TIF.Perception.OnSuppressed then

@@ -22,6 +22,7 @@ local UP40 = Vector(0, 0, 40)
 local UP60 = Vector(0, 0, 60)
 local HEAD_OFF = Vector(0, 0, 3)
 local CHEST_OFF = Vector(0, 0, 6)
+local SEC_OPT = { secondary = true }
 
 function B.Init(npc)
 	npc.tifAware = AW.UNAWARE
@@ -846,24 +847,17 @@ function B.Think(npc, dt)
 		end
 	end
 
-	-- Primary or secondary: long guns go to the sidearm up close and indoors; anyone draws it
-	-- when the primary runs dry at close range; back to the primary when there's room.
-	-- (Seated soldiers are handled by the drive-by code.)
 	if not npc.tifVeh and not npc.tifBoard and not npc.tifLeaving and not npc.tifDowned and not npc.tifSurrendered then
 		if fighting and c then
 			local indoorsLongGun = npc.tifCQB ~= nil and npc.tifArch.secondaryBelow ~= nil
-			Weapon.Choose(npc, npc:GetPos():Distance(c.pos), now, indoorsLongGun and { secondary = true } or nil)
+			Weapon.Choose(npc, npc:GetPos():Distance(c.pos), now, indoorsLongGun and SEC_OPT or nil)
 		elseif not fighting then
 			Weapon.Choose(npc, nil, now)
 		end
 	end
-	-- Running or sprinting without shooting: gun down (relaxed carry and run legs), not an
-	-- aimed jog. Cover entry, maneuvers and long advances all go through here.
 	local mv = npc.tifMove
-	-- (Not during a covering burst: the gun stays up for those few rounds, TIF.Weapon.CoveringBurst.)
 	local coverFire = npc.tifCoverFire and now < npc.tifCoverFire.untilT
 	if coverFire then npc.tifMode = A.MODE_AIM end
-	-- A sprint never shoots (whatever asked for fire on the way: cover moves, maneuvers).
 	if mv.goal and mv.speed == "sprint" and not coverFire and not exiting and npc.tifStance ~= 2 then
 		npc.tifFire.want = false
 	end
@@ -873,21 +867,18 @@ function B.Think(npc, dt)
 		npc.tifStance = A.STANCE_STAND
 	end
 	low_ready(npc, now, coverFire)
-	npc:SetTIFMode(npc.tifMode)
+	if npc:GetTIFMode() ~= npc.tifMode then npc:SetTIFMode(npc.tifMode) end
 	if npc.tifKeepCrouchUntil then
-		if CurTime() < npc.tifKeepCrouchUntil and npc.tifStance == A.STANCE_STAND and not TIF.CoverBehave.In(npc) then
+		if now < npc.tifKeepCrouchUntil and npc.tifStance == A.STANCE_STAND and not TIF.CoverBehave.In(npc) then
 			npc.tifStance = A.STANCE_CROUCH
-		elseif CurTime() >= npc.tifKeepCrouchUntil then
+		elseif now >= npc.tifKeepCrouchUntil then
 			npc.tifKeepCrouchUntil = nil
 		end
 	end
 	local cur = npc:GetTIFStance()
-	-- Mid stance-change clip (mwk_*): a flip back waits until it's done, or the clip and the idle fought.
 	local a = npc.tifAct
-	-- (only the stance clips: mwk_ also holds the body checks, knockdown falls and recoveries)
-	local inStanceClip = a and (string.sub(a.name, 1, 9) == "mwk_down_" or a.name == "mwk_up_8") and CurTime() - a.t0 < a.dur
+	local inStanceClip = a and (string.sub(a.name, 1, 9) == "mwk_down_" or a.name == "mwk_up_8") and now - a.t0 < a.dur
 	if cur ~= npc.tifStance and not inStanceClip then
-		-- Standing still, stand <-> crouch: MW19's AI stance change instead of the idles cross-fading.
 		if (cur == 0 or cur == 1) and (npc.tifStance == 0 or npc.tifStance == 1) and TIF.TransMW and TIF.TransMW.Stance then
 			TIF.TransMW.Stance(npc, cur, npc.tifStance)
 		end

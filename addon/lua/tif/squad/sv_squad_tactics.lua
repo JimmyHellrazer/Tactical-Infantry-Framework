@@ -70,8 +70,10 @@ end
 local function set_role(m, role, goal)
 	m.tifRole = role
 	m.tifCoverCenter = goal
-	if m:GetNW2String("tif_role", "") ~= (role or "") then m:SetNW2String("tif_role", role or "") end
-	m:SetNW2Vector("tif_mgoal", goal or vector_origin)
+	local r = role or ""
+	if m:GetNW2String("tif_role", "") ~= r then m:SetNW2String("tif_role", r) end
+	local g = goal or vector_origin
+	if m:GetNW2Vector("tif_mgoal", vector_origin):DistToSqr(g) > 16 then m:SetNW2Vector("tif_mgoal", g) end
 end
 
 -- Split members: base keeps firing, maneuver moves. groups A/B alternate for bounding.
@@ -373,7 +375,11 @@ timer.Create("tif_squad_tactics", 1, 0, function()
 		local kind = sq.tactic and sq.tactic.kind or ""
 		if kind ~= sq.lastTacticShown then
 			sq.lastTacticShown = kind
-			for _, m in ipairs(SQ.Members(sq)) do m:SetNW2String("tif_tactic", kind) end
+			local members = SQ.Members(sq)
+			for i = 1, #members do
+				local m = members[i]
+				if m:GetNW2String("tif_tactic", "") ~= kind then m:SetNW2String("tif_tactic", kind) end
+			end
 			if SQ.Log then SQ.Log(sq, "tactic: ", kind == "" and "none" or kind) end
 		end
 	end

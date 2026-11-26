@@ -102,16 +102,13 @@ function Act.Play(npc, name, opts)
 	end
 	npc:SetNW2String("tif_act", name)
 	npc:SetNW2Float("tif_act_t", now)
-	-- opts.reverse: the clip plays backwards (clients read a negative rate). Used to sit back down with a
-	-- stand-up clip; root motion isn't applied backwards, so use it on clips that stay in place.
-	npc:SetNW2Float("tif_act_rate", opts.reverse and -rate or rate)
-	-- opts.base: an upper-body-only clip (GTA cover reloads, peeks). The client keeps this base
-	-- clip on the legs and plays the action through the upper-body slots.
-	npc:SetNW2String("tif_act_base", opts.base or "")
+	local sendRate = opts.reverse and -rate or rate
+	if npc:GetNW2Float("tif_act_rate", 1) ~= sendRate then npc:SetNW2Float("tif_act_rate", sendRate) end
+	local base = opts.base or ""
+	if npc:GetNW2String("tif_act_base", "") ~= base then npc:SetNW2String("tif_act_base", base) end
 	return npc.tifAct.dur
 end
 
--- Loop a clip with no root motion (cover idle, peek).
 function Act.Loop(npc, name, opts)
 	local a = npc.tifAct
 	if a and a.name == name then return a.dur end
@@ -123,7 +120,7 @@ function Act.Clear(npc, force)
 	if npc.tifActLock and not force then return end
 	npc.tifAct = nil
 	npc:SetNW2String("tif_act", "")
-	npc:SetNW2String("tif_act_base", "")
+	if npc:GetNW2String("tif_act_base", "") ~= "" then npc:SetNW2String("tif_act_base", "") end
 end
 
 function Act.Current(npc)
