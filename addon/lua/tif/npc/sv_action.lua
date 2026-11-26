@@ -103,9 +103,15 @@ function Act.Play(npc, name, opts)
 	npc:SetNW2String("tif_act", name)
 	npc:SetNW2Float("tif_act_t", now)
 	local sendRate = opts.reverse and -rate or rate
-	if npc:GetNW2Float("tif_act_rate", 1) ~= sendRate then npc:SetNW2Float("tif_act_rate", sendRate) end
+	if npc.tifActRateSent ~= sendRate then
+		npc.tifActRateSent = sendRate
+		npc:SetNW2Float("tif_act_rate", sendRate)
+	end
 	local base = opts.base or ""
-	if npc:GetNW2String("tif_act_base", "") ~= base then npc:SetNW2String("tif_act_base", base) end
+	if npc.tifActBaseSent ~= base then
+		npc.tifActBaseSent = base
+		npc:SetNW2String("tif_act_base", base)
+	end
 	return npc.tifAct.dur
 end
 
@@ -120,7 +126,10 @@ function Act.Clear(npc, force)
 	if npc.tifActLock and not force then return end
 	npc.tifAct = nil
 	npc:SetNW2String("tif_act", "")
-	if npc:GetNW2String("tif_act_base", "") ~= "" then npc:SetNW2String("tif_act_base", "") end
+	if npc.tifActBaseSent ~= "" then
+		npc.tifActBaseSent = ""
+		npc:SetNW2String("tif_act_base", "")
+	end
 end
 
 function Act.Current(npc)

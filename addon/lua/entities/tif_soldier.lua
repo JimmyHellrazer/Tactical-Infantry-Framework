@@ -397,7 +397,7 @@ function ENT:Think()
 		local look = (fw and fw.want and fw.aimPos) or self.tifAimAt or self.tifFace
 		local sent = self.tifLookSent
 		if look then
-			if not sent or sent:DistToSqr(look) > 1024 then
+			if not sent or sent:DistToSqr(look) > 32 * 32 then
 				if sent then
 					sent.x, sent.y, sent.z = look.x, look.y, look.z
 				else
