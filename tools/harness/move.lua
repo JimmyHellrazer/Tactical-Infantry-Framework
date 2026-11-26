@@ -152,4 +152,51 @@ for _, c in ipairs({ { Vector(500, 0, 0), "f" }, { Vector(0, 500, 0), "l" }, { V
 end
 rg.vel = Vector(40, 0, 0)
 check(M.RunGunDir(rg) == "", "too slow: no run and gun")
+-- 2026-11-25: lying prone with a move goal: he gets up first, never slides along in the prone pose
+do
+	local got = {}
+	TIF.ProneB = { IN = 2, GetUp = function(n) got[n] = true n.tifProne.phase = 3 end }
+	local p = soldier(Vector(8000, 0, 0))
+	p.tifProne = { phase = 2 }
+	M.SetGoal(p, Vector(9000, 0, 0), "run", "maneuver")
+	p.tifMove.needCompute = false
+	p.loco.want, p.approached = 0, nil
+	M.Step(p)
+	check(got[p] and p.loco.want == 0 and p.approached == nil, "prone with a run goal: gets up, doesn't move yet")
+	got[p] = nil
+	M.Step(p)
+	check(not got[p] and p.loco.want == 0, "getting up: still not moving, no second get-up")
+	p.tifProne = nil
+	p.tifMove.needCompute = true
+	M.Step(p)
+	M.Step(p)
+	check(p.loco.want > 0, "up: moves (" .. tostring(p.loco.want) .. ")")
+	local c2 = soldier(Vector(8000, 500, 0))
+	c2.tifProne = { phase = 2 }
+	M.SetGoal(c2, Vector(8100, 500, 0), "crawl", "crawl")
+	c2.tifMove.needCompute = false
+	got = {}
+	M.Step(c2)
+	check(not got[c2], "the last-stand crawl moves lying down")
+	TIF.ProneB = nil
+end
+do
+	local saveDone, saveClear = TIF.Action.Done, TIF.Action.Clear
+	local cleared = {}
+	TIF.Action.Done = function() return false end
+	TIF.Action.Clear = function(n) cleared[n] = true n.tifAct = nil end
+	local i = soldier(Vector(12000, 0, 0))
+	M.SetGoal(i, Vector(12600, 0, 0), "tactical", "search")
+	i.tifMove.needCompute, i.tifMove.fresh = false, nil
+	i.tifAct = { name = "mwe_look_6", clip = { speed = 0, dur = 2 }, t0 = 0, dur = 2, root = true }
+	M.Step(i)
+	check(cleared[i], "a standing look still playing when he sets off: cleared, he doesn't glide in the idle pose")
+	local r = soldier(Vector(13000, 0, 0))
+	M.SetGoal(r, Vector(13600, 0, 0), "run", "maneuver")
+	r.tifMove.needCompute, r.tifMove.fresh = false, nil
+	r.tifAct = { name = "mwh_flinch_run_1", clip = { speed = 180, dur = 1 }, t0 = 0, dur = 1, root = true }
+	M.Step(r)
+	check(not cleared[r], "a running flinch (it travels) keeps playing")
+	TIF.Action.Done, TIF.Action.Clear = saveDone, saveClear
+end
 print(string.format("passed %d, failed %d", pass, fail))

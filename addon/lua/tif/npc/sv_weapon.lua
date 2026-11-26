@@ -14,8 +14,7 @@ local cvDamage = CreateConVar("tif_damage_scale", "1", FCVAR_ARCHIVE, "Multiplie
 local cvDamageFriendly = CreateConVar("tif_damage_friendly", "1", FCVAR_ARCHIVE, "Multiplier on damage dealt by soldiers on the players' side")
 local cvDamageEnemy = CreateConVar("tif_damage_enemy", "1", FCVAR_ARCHIVE, "Multiplier on damage dealt by soldiers not on the players' side")
 function TIF.SideDamageScale(npc)
-	local pf = GetConVar("tif_player_faction")
-	local friendly = TIF.FactionRelation(TIF.FactionOf(npc), pf and pf:GetString() or "") == TIF.REL_ALLY
+	local friendly = TIF.FactionRelation(TIF.FactionOf(npc), TIF.PlayerFaction()) == TIF.REL_ALLY
 	return math.max(0, (friendly and cvDamageFriendly or cvDamageEnemy):GetFloat())
 end
 local cvAccuracy = CreateConVar("tif_accuracy_scale", "1", FCVAR_ARCHIVE, "Higher = more accurate soldiers (divides aim error)")
@@ -123,6 +122,9 @@ function W.Switch(npc, slot, now, opts)
 		local base = slot == "secondary" and "mw_draw_pistol" or "mw_draw_rifle"
 		local name = base .. (npc.tifStance == 1 and "_cr" or "")
 		local c
+		local CBm = not (opts and opts.clip) and TIF.CoverBehave and TIF.CoverBehave.MW
+		local covClip = CBm and CBm.PlaySwitch and CBm.PlaySwitch(npc, slot)
+		if covClip then opts = opts or {} opts.clip = covClip end
 		if opts and opts.clip then
 			c = TIF.GTG.Clip(opts.clip, home)
 			if c then name = opts.clip end
@@ -395,10 +397,11 @@ function W.CoverFiring(npc, now)
 end
 
 local fallCache = setmetatable({}, { __mode = "k" })
-local tracerData = EffectData and EffectData() or nil
+local tracerData
 function W.TracerCallback(npc, inner)
 	return function(att, tr, dmg)
 		if inner then inner(att, tr, dmg) end
+		tracerData = tracerData or (EffectData and EffectData())
 		if not tracerData then return end
 		tracerData:SetEntity(npc)
 		tracerData:SetStart(tr.StartPos)
@@ -626,6 +629,15 @@ function W.Think(npc, now)
 	if not want or not aimPos or now < w.nextShot then
 		if not want then w.burstLeft, w.burstShot = 0, 0 end
 		return
+	end
+	local act = npc.tifAct
+	local low = act and TIFG_GUN_LOW and TIFG_GUN_LOW[act.name]
+	if low then
+		local u = (now - act.t0) / math.max(0.01, act.dur)
+		if u >= low[1] and u <= low[2] then
+			w.burstLeft, w.burstShot = 0, 0
+			return
+		end
 	end
 	-- Moving: at walk pace only short bursts and not at long range; faster, nothing (but a covering burst).
 	local speed = npc.loco:GetVelocity():Length2D()

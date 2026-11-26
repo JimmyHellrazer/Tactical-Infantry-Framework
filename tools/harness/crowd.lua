@@ -13,6 +13,7 @@ V.__mul = function(a, b) if type(a) == "number" then a, b = b, a end return Vect
 function V:Length() return math.sqrt(self.x ^ 2 + self.y ^ 2 + self.z ^ 2) end
 function V:LengthSqr() return self.x ^ 2 + self.y ^ 2 + self.z ^ 2 end
 function V:Length2D() return math.sqrt(self.x ^ 2 + self.y ^ 2) end
+function V:Length2DSqr() return self.x ^ 2 + self.y ^ 2 end
 function V:DistToSqr(o) return (self - o):LengthSqr() end
 function V:Dot(o) return self.x * o.x + self.y * o.y + self.z * o.z end
 function V:Normalize() local l = self:Length() if l > 0 then self.x, self.y, self.z = self.x / l, self.y / l, self.z / l end end
@@ -214,4 +215,45 @@ check(cv:find("Crowd.Steer(self, fwd, speed, pos, now)", 1, true) and cv:find("C
 check(not cv:find("ENT.STUCK_T", cv:find("function ENT:GoTo", 1, true), true) or cv:find("ENT.STUCK_T, ENT.STUCK_MAX", 1, true) > cv:find("return \"ok\"", 1, true), "civ GoTo reads self.STUCK_T at run time")
 local init = io.open(ROOT .. "autorun/tif_init.lua"):read("*a")
 check(init:find('"npc/sv_crowd.lua"', 1, true) ~= nil, "loaded")
+do
+	local saveMove = TIF.Move
+	local set = {}
+	TIF.Move = { Spread = function(e, p) return p + Vector(90, 0, 0) end,
+		SetGoal = function(e, p, sp, tag) set[#set + 1] = { e = e, p = p, tag = tag } e.tifMove.goal, e.tifMove.tag = p, tag return true end }
+	local function soldier(pos, idx)
+		local e = body(pos)
+		e.TIFSoldier, e.tifMove, e.idx = true, {}, idx
+		function e:EntIndex() return self.idx end
+		return e
+	end
+	local u1 = soldier(Vector(0, 900, 0), 11)
+	local u2 = soldier(Vector(6, 904, 0), 12)
+	u1.tifPost = Vector(2, 902, 0)
+	u2.tifPost = Vector(4, 900, 0)
+	TIF.Soldiers = { u1, u2 }
+	C.Invalidate() C.Tick(300)
+	C.Invalidate() C.Tick(300.6)
+	check(#set == 0, "overlapping under a second: not moved yet (ghosted only)")
+	C.Invalidate() C.Tick(301.1)
+	check(#set == 1 and set[1].e == u2 and set[1].tag == "unstack", "two idle soldiers stacked a second: one (the higher index) steps out to a free spot")
+	check(u2.tifPost.x > 50, "his post moves with him (he doesn't walk straight back onto the other)")
+	C.Invalidate() C.Tick(301.4)
+	check(#set == 1, "once per pair, not every tick")
+	local c1 = soldier(Vector(0, 1200, 0), 21)
+	local c2 = soldier(Vector(5, 1203, 0), 22)
+	c2.tifCov = {}
+	c1.tifMove.goal = nil
+	TIF.Soldiers = { c1, c2 }
+	set = {}
+	C.Invalidate() C.Tick(400) C.Invalidate() C.Tick(401.2)
+	check(#set == 1 and set[1].e == c1, "one in cover: the idle one moves, the one in cover stays")
+	local m1 = soldier(Vector(0, 1500, 0), 31)
+	local m2 = soldier(Vector(5, 1502, 0), 32)
+	m1.tifMedic, m2.tifDowned = {}, {}
+	TIF.Soldiers = { m1, m2 }
+	set = {}
+	C.Invalidate() C.Tick(500) C.Invalidate() C.Tick(501.2)
+	check(#set == 0, "a medic kneeling over his casualty isn't moved")
+	TIF.Move = saveMove
+end
 print(string.format("passed %d, failed %d", pass, fail))

@@ -1,3 +1,4 @@
+SysTime = SysTime or os.clock
 -- Offline: cl_gunhold.lua (0.18.0): left-hand two-bone IK, notetrack weights, sling poses. GMod Matrix / Vector
 -- mocked with plain 4x4 math.
 local pass, fail = 0, 0
@@ -104,7 +105,7 @@ local host = {
 	GetPos = function() return Vector() end,
 }
 local gun = { GetModel = function() return "gun" end }
-local st = { gun = gun, ikW = 1 }
+local st = { gun = gun, ikW = 1, writeFrame = 100 }
 TIF = { GTG = { WeaponKind = function() return "rifle" end }, Body = {
 	State = function() return st end,
 	GunInfo = function() return { gripL = target, grip = Vector(), inv = Matrix() } end,
@@ -174,4 +175,12 @@ do
 	check(near(f1:Distance(f11), 1.5), "finger segment length kept: " .. f1:Distance(f11))
 	check(near(f11.x, 3) and near(f11.y, 1.5), "curled 90 degrees: next joint turned with it")
 end
+st.writeFrame = 99
+local sets = 0
+local realSet = host.SetBoneMatrix
+host.SetBoneMatrix = function(...) sets = sets + 1 return realSet(...) end
+cb(host)
+check(sets == 0, "a bone build TIF didn't ask for this frame (shadow / early): no IK")
+host.SetBoneMatrix = realSet
+st.writeFrame = 100
 print(string.format("passed %d, failed %d", pass, fail))

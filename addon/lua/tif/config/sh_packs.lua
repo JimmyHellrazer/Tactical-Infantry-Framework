@@ -161,11 +161,37 @@ TIF.VisualCheck = check_all
 -- A visual model for a new soldier of `def`. ent.tifVariant (set by a spawner) wins over a mode's
 -- override, which wins over the faction's mode. "squad": one variant for everyone of this faction
 -- spawned within 4 s of the first (a squad or a garrison comes out together).
+TIF.VARIETY_WINDOW = 8
+TIF.VarietyBags = TIF.VarietyBags or {}
+function TIF.VarietyPick(facId, key, options)
+	local n = options and #options or 0
+	if n == 0 then return nil end
+	if n == 1 then return options[1] end
+	local now = CurTime()
+	local bag = TIF.VarietyBags[facId or "?"]
+	if not bag or now - bag.t > TIF.VARIETY_WINDOW then
+		bag = { counts = {} }
+		TIF.VarietyBags[facId or "?"] = bag
+	end
+	bag.t = now
+	local used = bag.counts[key]
+	if not used then used = {} bag.counts[key] = used end
+	local best, ties = math.huge, {}
+	for _, o in ipairs(options) do
+		local c = used[o] or 0
+		if c < best then best, ties = c, { o }
+		elseif c == best then ties[#ties + 1] = o end
+	end
+	local pick = ties[math.random(#ties)]
+	used[pick] = (used[pick] or 0) + 1
+	return pick
+end
+
 function TIF.PickVisual(def, ent)
 	local vars = def.variants
 	if not (istable(vars) and #vars > 0) then
 		local list = usable_of(def, def.models)
-		return list[math.random(#list)]
+		return TIF.VarietyPick(def.id, "model", list) or list[math.random(#list)]
 	end
 	local fid = def.id or (IsValid(ent) and ent.GetTIFFaction and ent:GetTIFFaction()) or nil
 	local mode = (IsValid(ent) and ent.tifVariant) or (fid and override_for(fid)) or def.variantMode or "squad"
@@ -185,7 +211,7 @@ function TIF.PickVisual(def, ent)
 	end
 	local models = usable_of(def, v and v.models or def.models)
 	if IsValid(ent) then ent.tifVariantId = v and v.id or nil end
-	return models[math.random(#models)]
+	return TIF.VarietyPick(fid, "model", models) or models[math.random(#models)]
 end
 
 -- Packs that loaded before TIF (queued in TIF_CONTENT): last, so the helpers above exist.

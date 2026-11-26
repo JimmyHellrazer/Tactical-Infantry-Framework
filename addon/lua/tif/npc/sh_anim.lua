@@ -105,6 +105,10 @@ function A.Legs(hostId)
 		local tw = {}
 		for i = 1, 9 do if clips["mwp_twitch_" .. i] then tw[#tw + 1] = clips["mwp_twitch_" .. i] end end
 		L.prone.twitches = #tw > 0 and tw or nil
+		if clips.mwp_pstl_idle then
+			L.prone.pistol = { idle = clips.mwp_pstl_idle, aim = clips.mwp_pstl_aim, up = clips.mwp_pstl_up,
+				crawl8 = clips.mwp_pstl_crawl_8_loop }
+		end
 	end
 	-- MW19 body with a pistol: its own aim / crouch / calm / alert sets (crouch walking reuses the rifle's).
 	if clips.pstl_idle then

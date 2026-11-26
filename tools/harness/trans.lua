@@ -1,3 +1,5 @@
+math.Clamp = math.Clamp or function(v, a, b) return math.max(a, math.min(b, v)) end
+CurTime = CurTime or function() return 0 end
 istable = istable or function(v) return type(v) == "table" end
 -- Offline run of tactics/sv_trans_mw.lua + sv_search_mw.lua with real clip data, mock path and box world.
 local pass, fail = 0, 0
@@ -86,6 +88,16 @@ TIF.Action = {
 }
 for _, f in ipairs({ "tif/tactics/sv_trans_mw.lua", "tif/tactics/sv_search_mw.lua" }) do
 	assert(loadfile(ROOT .. f))()
+end
+local G = TIF.GTG
+G.ClipCurve = G.ClipCurve or function(clip, frame, axis)
+	local c = clip.curve
+	local n = #c / 3
+	local fi = frame / 3
+	if fi <= 0 then return c[axis] end
+	if fi >= n - 1 then return c[(n - 1) * 3 + axis] end
+	local i = math.floor(fi)
+	return c[i * 3 + axis] + (c[i * 3 + 3 + axis] - c[i * 3 + axis]) * (fi - i)
 end
 local T, S, AW = TIF.TransMW, TIF.SearchMW, TIF.AWARE
 local function last() return played[#played] end
@@ -318,4 +330,33 @@ check(T.Turn(pn, 170) and last() == "mwp_turn_l" and math.abs(lastOpts.to.yaw) <
 pn.tifAct = nil
 pn.tifBipod = true
 check(not T.Turn(pn, 90), "prone on the bipod: no shimmy")
+local startClip = { dur = 1.4, frames = 43, curve = {} }
+for i = 0, 14 do local x = i * 6.5 startClip.curve[#startClip.curve + 1] = x startClip.curve[#startClip.curve + 1] = 0 startClip.curve[#startClip.curve + 1] = 0 end
+local v = T.ExitVel(startClip, 0)
+check(v and math.abs(v.x - 65) < 3 and math.abs(v.y) < 0.5, "a start's exit speed from its last root samples (65 u/s forward)")
+local v90 = T.ExitVel(startClip, 90)
+check(v90 and math.abs(v90.y - 65) < 3 and math.abs(v90.x) < 0.5, "turned by the yaw he started at")
+check(T.ExitVel({ dur = 1, frames = 31, curve = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }, 0) == nil, "a start that doesn't travel hands nothing")
+local stopClip = { dur = 2.0, frames = 61, curve = {} }
+for i = 0, 20 do
+	local x = math.min(i, 8) * 5
+	stopClip.curve[#stopClip.curve + 1] = x stopClip.curve[#stopClip.curve + 1] = 0 stopClip.curve[#stopClip.curve + 1] = 0
+end
+local su = T.SettleU(stopClip)
+check(math.abs(su - 24 / 60) < 0.02, "a stop settles where its root motion ends (frame 24 of 60), not at the clip's end: " .. tostring(su))
+check(T.SettleU({ dur = 1, frames = 31, curve = { 0, 0, 0, 10, 0, 0, 20, 0, 0, 30, 0, 0, 40, 0, 0, 50, 0, 0, 60, 0, 0, 70, 0, 0, 80, 0, 0, 90, 0, 0, 100, 0, 0 } }) == 1, "a stop still moving at its end plays out")
+local trs = io.open(ROOT .. "tif/tactics/sv_trans_mw.lua"):read("*a")
+check(select(2, trs:gsub("\n\tsettle_stop%(npc, name%)", "")) == 2, "both stop paths settle early")
+check(trs:find("a.warpU = u", 1, true) ~= nil, "the stop's landing warp completes at the settle point")
+local act = io.open(ROOT .. "tif/npc/sv_action.lua"):read("*a")
+check(act:find("if a.stopU and u >= a.stopU and npc.tifAct == a then Act.Clear(npc) end", 1, true) ~= nil, "cleared a moment after settling")
+local mv = io.open(ROOT .. "tif/npc/sv_move.lua"):read("*a")
+check(mv:find("if now >= ex.doneAt - 0.1 and now < ex.doneAt + 0.4 then npc.loco:SetVelocity(ex.vel) end", 1, true) ~= nil, "the start's speed is handed to the locomotion only when it played through")
+do
+	local e = { tifHomeHost = "mw_male", tifAware = TIF.AWARE.ENGAGED }
+	local calmGuy = { tifHomeHost = "mw_male", tifAware = TIF.AWARE.ALERTED }
+	check(T.FightStopSet(e, "run") == "jog", "engaged, stopping from a sprint: the gun-up jog stops")
+	check(T.FightStopSet(calmGuy, "run") == "run", "not in a fight: the sprint arrival as before")
+	check(T.FightStopSet(e, "pstlrun") == "pstlrun" and T.FightStopSet(e, "walk") == "walk", "other sets unchanged (pistol stops: fire held while low instead)")
+end
 print(string.format("passed %d, failed %d", pass, fail))

@@ -49,7 +49,7 @@ TIF = {
 		Clip = function() return nil end },
 	Say = function() end, Warn = print,
 	Perception = { Filters = {} },
-	FactionRelation = function() return 0 end, FactionOf = function() return "x" end, REL_ALLY = 1,
+	FactionRelation = function() return 0 end, FactionOf = function() return "x" end, PlayerFaction = function() return "usmc" end, REL_ALLY = 1,
 	Soldiers = {}, Squads = {},
 }
 assert(loadfile(ROOT .. "tif/npc/sv_weapon.lua"))()
@@ -139,4 +139,37 @@ check(not W.CoveringBurst(c, 101), "not again within 3 s")
 local n = soldier("rifle")
 n.tifPrimaryC = { pos = Vector(600, 0, 0), seenAt = 90 }
 check(not W.CoveringBurst(n, 100), "no covering burst without a recent sighting")
+
+local tr0 = soldier("rifle")
+run(tr0, 300, 2)
+local b = tr0.lastBullet
+check(b and b.Tracer == 0 and b.TracerName == nil, "no engine tracer from the server's estimated muzzle")
+check(b and type(b.Callback) == "function", "a bullet callback (falloff + muzzle tracer)")
+local sent = {}
+EffectData = function() local d = {} function d:SetEntity(e) d.e = e end function d:SetStart(v) d.s = v end function d:SetOrigin(v) d.o = v end return d end
+util = util or {}
+util.Effect = function(name, d) sent[#sent + 1] = { name = name, e = d.e, s = d.s, o = d.o } end
+local cb = TIF.Weapon.TracerCallback(tr0, nil)
+cb(tr0, { StartPos = Vector(1, 2, 3), HitPos = Vector(400, 0, 0) }, nil)
+check(#sent == 1 and sent[1].name == "tif_tracer" and sent[1].e == tr0 and sent[1].o.x == 400, "each bullet sends tif_tracer with the soldier and the hit point (clients start it at their muzzle)")
+do
+	TIFG_GUN_LOW = { mwt_stop_run_l_8 = { 0.1, 0.6 } }
+	local g = soldier("rifle")
+	g.tifAct = { name = "mwt_stop_run_l_8", t0 = 100, dur = 1 }
+	g.tifFire = { want = true, aimPos = Vector(300, 0, 40) }
+	g.shots = {}
+	local t = 100.15
+	while t < 100.55 do W.Think(g, t) t = t + 0.01 end
+	check(#g.shots == 0, "no shots while the stop clip has the gun lowered (" .. #g.shots .. ")")
+	while t < 101 do W.Think(g, t) t = t + 0.01 end
+	check(#g.shots > 0, "shoots again once the gun is back up")
+	local h = soldier("rifle")
+	h.tifAct = { name = "mwt_stop_jog_l_8", t0 = 100, dur = 1 }
+	h.tifFire = { want = true, aimPos = Vector(300, 0, 40) }
+	h.shots = {}
+	t = 100.15
+	while t < 100.55 do W.Think(h, t) t = t + 0.01 end
+	check(#h.shots > 0, "a gun-up stop doesn't hold fire")
+	TIFG_GUN_LOW = nil
+end
 print(string.format("passed %d, failed %d", pass, fail))

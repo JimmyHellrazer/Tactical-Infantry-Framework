@@ -82,7 +82,7 @@ for i = 1, 16 do many[i] = { soldier(Vector(100 + i, 0, 0)), st(0, { footW = 1 }
 for _, x in ipairs(many) do F.Prepare(x[1], x[2], 0, 0.05) end
 local on = 0
 for _, x in ipairs(many) do if x[2].footW >= 0.99 then on = on + 1 end end
-check(on == 12, "at most tif_foot_ik_max (12) soldiers a frame (" .. on .. ")")
+check(on == 8, "at most tif_foot_ik_max (8) soldiers a frame (" .. on .. ")")
 
 local r, sr = soldier(Vector(100, 0, 0)), st(220)
 for i = 1, 20 do

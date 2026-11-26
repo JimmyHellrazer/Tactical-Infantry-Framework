@@ -305,6 +305,7 @@ Bd.HipTurn = hip_turn
 
 -- Whether a clip moves the gun out of the hand itself somewhere (its j_gun lets go: TIFG_JGUN_HOLD r > 0.5 at any
 -- sample), cached per source clip.
+Bd.CARRY_R = 0.35
 local carryCache = {}
 function Bd.ClipCarriesGun(clip)
 	local src = clip.from or clip.seq or ""
@@ -314,7 +315,7 @@ function Bd.ClipCarriesGun(clip)
 	local U, H = TIFG_JGUN_UNDRIVEN, TIFG_JGUN_HOLD
 	local e = U and not U[src] and H and H[src]
 	if e and e.r then
-		for _, r in ipairs(e.r) do if r > 0.5 then v = true break end end
+		for _, r in ipairs(e.r) do if r > Bd.CARRY_R then v = true break end end
 	end
 	if H then carryCache[src] = v end
 	return v
@@ -896,7 +897,7 @@ local function compose(ent, st, dt, now)
 	-- scratching and stretching keep it in the right hand: its gun bone stays on the hand.)
 	local mwxAct = string.match(actName, "^mwx_(%a+)_")
 	local slingAct = st.vb and ((mwxAct == "smoke" or mwxAct == "phone" or mwxAct == "water") or string.find(actName, "_grenade", 1, true) ~= nil
-		or string.sub(actName, 1, 4) == "mwg_" or string.sub(actName, 1, 10) == "mwls_help_"
+		or string.sub(actName, 1, 4) == "mwg_" or string.sub(actName, 1, 10) == "mwls_help_" or string.sub(actName, 1, 5) == "mwbr_"
 		or (string.sub(actName, 1, 8) == "mws_sit_" and string.sub(actName, 1, 11) ~= "mws_sit_gun"))
 	-- (0.38.9, user: on smoking / phone the gun followed the sling bone in the middle but "will start and end with
 	-- the gun phasing onto the defined chest area". carried was decided per frame (jgunW > 0.5): while the clip's
@@ -929,10 +930,30 @@ local function compose(ent, st, dt, now)
 		-- MW19 prone: get down / get up from the server's phase start, else idle or the 8-way crawl.
 		local t0 = ent:GetNW2Float("tif_prone_t", now)
 		local tr = st.vbProne == 1 and PR.down or (st.vbProne == 3 and PR.up or nil)
+		local PRp = st.pistol and PR.pistol or nil
+		if PRp and st.vbProne == 3 and PRp.up then tr = PRp.up end
+		local BPd = st.wkind == "lmg" and PR.bipod
+		if tr and BPd then
+			if st.vbProne == 1 then
+				if st.bipodDownT ~= t0 then
+					st.bipodDownT = t0
+					st.bipodDown = ent:GetTIFMode() == 1 and BPd.into ~= nil
+				end
+				if st.bipodDown then tr = BPd.into end
+			elseif st.vbProne == 3 then
+				if st.bipodUpT ~= t0 then
+					st.bipodUpT = t0
+					st.bipodUp = st.bipod == "set" and BPd.out ~= nil
+				end
+				if st.bipodUp then tr = BPd.out end
+			end
+		end
 		if tr then
-			st.legCycle[tr] = math.Clamp((now - t0) / math.max(0.05, tr.dur), 0, 1)
+			local span = ((tr == (BPd and BPd.out) or tr == (PRp and PRp.up)) and PR.up) and PR.up.dur or tr.dur
+			st.legCycle[tr] = math.Clamp((now - t0) / math.max(0.05, span), 0, 1)
 			LT = { [tr] = 1 }
 			st.bipod = nil
+			if st.bipodDown and st.vbProne == 1 then st.bipodWantT = now end
 		else
 			LT = {}
 			local moveK = PR.crawl and math.Clamp(speed / 12, 0, 1) or 0
@@ -953,17 +974,12 @@ local function compose(ent, st, dt, now)
 				-- and the other way round.
 				if want then st.bipodWantT = now
 				elseif ru >= 1 and moveK < 0.5 and st.bipodWantT and now - st.bipodWantT < Bd.BIPOD_HOLD then want = true end
-				local OUTK = 1.8   -- (packing up plays at x1.8: the server may already be crawling off)
-				if want and not st.bipod then st.bipod, st.bipodT = "in", now
-				elseif want and st.bipod == "out" then
-					local uo = math.Clamp((now - st.bipodT) * OUTK / math.max(0.05, BP.out.dur), 0, 1)
-					st.bipod, st.bipodT = "in", now - (1 - uo) * BP.into.dur
-				elseif st.bipod == "in" and now - st.bipodT >= BP.into.dur then st.bipod, st.bipodT = "set", now
-				elseif not want and st.bipod == "in" then
-					local ui = math.Clamp((now - st.bipodT) / math.max(0.05, BP.into.dur), 0, 1)
-					st.bipod, st.bipodT = "out", now - (1 - ui) * BP.out.dur / OUTK
-				elseif not want and st.bipod == "set" then st.bipod, st.bipodT = "out", now
-				elseif st.bipod == "out" and (now - st.bipodT) * OUTK >= BP.out.dur then st.bipod = nil end
+				if st.bipodDown then
+					st.bipodDown = nil
+					if want then st.bipod, st.bipodT = "set", now end
+				end
+				if want and st.bipod ~= "set" then st.bipod, st.bipodT = "set", now
+				elseif not want and st.bipod then st.bipod = nil end
 			else
 				st.bipod = nil
 			end
@@ -972,18 +988,14 @@ local function compose(ent, st, dt, now)
 				st.magClip, st.magU, st.magKey = RL, st.legCycle[RL], rs
 				add(LT, RL, 1)
 				st.aim9 = nil
-			elseif st.bipod == "in" or st.bipod == "out" then
-				local c = st.bipod == "in" and BP.into or BP.out
-				local k = st.bipod == "out" and 1.8 or 1
-				st.legCycle[c] = math.Clamp((now - st.bipodT) * k / math.max(0.05, c.dur), 0, 1)
-				add(LT, c, 1)
-				st.aim9 = nil
 			elseif st.bipod == "set" then
 				st.aim9 = BP.aim.aim9
 				add(LT, BP.aim, 1)
 			else
 				-- Lying still with the weapon up: MW19's prone aim blend (pitch from TIF's aim pitch).
-				st.aim9 = still and PR.aim.aim9 or nil
+				local AIMc = (PRp and PRp.aim) or PR.aim
+				local IDLEc = (PRp and PRp.idle) or PR.idle
+				st.aim9 = still and AIMc.aim9 or nil
 				-- Lying still, weapon down: now and then one of MW19's AI prone twitches (each client times its own;
 				-- cosmetic).
 				local tw = st.proneTw
@@ -999,12 +1011,16 @@ local function compose(ent, st, dt, now)
 					st.legCycle[tw] = math.Clamp((now - st.proneTwT) / tw.dur, 0, 1)
 					add(LT, tw, 1 - moveK)
 				else
-					add(LT, still and PR.aim or PR.idle, 1 - moveK)
+					add(LT, still and AIMc or IDLEc, 1 - moveK)
 				end
 				if moveK > 0 then
-					local a, b, k = A.PickDir(PR.crawl, relAng)
-					add(LT, a, moveK * (1 - k))
-					add(LT, b, moveK * k)
+					if PRp and PRp.crawl8 and math.abs(relAng) < 35 then
+						add(LT, PRp.crawl8, moveK)
+					else
+						local a, b, k = A.PickDir(PR.crawl, relAng)
+						add(LT, a, moveK * (1 - k))
+						add(LT, b, moveK * k)
+					end
 				end
 			end
 		end
@@ -1570,8 +1586,19 @@ local function prone_tilt(ent, st, dt, now, weight, target)
 	end
 end
 
+local LOD_PARTS = { "gun", "backGun", "launcherGun", "prop" }
+local function hide_placed(st)
+	for _, k in ipairs(LOD_PARTS) do
+		local e = st[k]
+		if IsValid(e) then e:SetNoDraw(true) end
+	end
+end
+Bd.HidePlaced = hide_placed
+
 local function update(ent, st, dt, now)
+	Prof.Begin("cl_parts")
 	ensure_parts(ent, st)
+	Prof.End()
 	local dormant = ent:IsDormant()
 	-- Knocked down (sv_hits_mw H.Knockdown): his ragdoll is what shows; the soldier and his parts are hidden.
 	local knocked = ent:GetNW2Bool("tif_knocked", false)
@@ -1634,12 +1661,31 @@ local function update(ent, st, dt, now)
 		st.lastPos, st.vel = nil, nil
 		st.nextSlotCheck = 0
 	end
+	local L = Bd.LOD
+	local off = st.vb and L.on and not L.OnScreen(ent, st) and not ent:GetNW2Bool("tif_light", false)
+	if off then
+		st.lodN = (st.lodN or 0) + 1
+		if st.lodN < L.every and not woke then
+			st.lodDt = (st.lodDt or 0) + dt
+			Bd.Stats.lodSkipped = (Bd.Stats.lodSkipped or 0) + 1
+			hide_placed(st)
+			return
+		end
+	end
+	dt = dt + (st.lodDt or 0)
+	st.lodN, st.lodDt = 0, 0
+	st.offScreen = off
 	ent:SetPlaybackRate(0)
 	st.magClip, st.magU, st.magKey = nil, nil, nil
 	st.actClipCur, st.actU, st.switchClip, st.switchU = nil, nil, nil, nil
+	Prof.Begin("cl_compose")
 	compose(ent, st, dt, now)
+	Prof.End()
 	-- MW19 foley off the clips' notetracks (footsteps, gear, landings, body falls: cl_foley)
+	Prof.Begin("cl_foley")
 	if st.vb and TIF.FoleyCL then TIF.FoleyCL.Update(ent, st, now) end
+	Prof.End()
+	Prof.Begin("cl_pose")
 	if not check_slots(ent, st, now) then
 		-- Layer slots didn't reach this client: show the dominant leg clip as the main sequence.
 		Bd.Stats.missingSlots = Bd.Stats.missingSlots + 1
@@ -1661,8 +1707,15 @@ local function update(ent, st, dt, now)
 		end
 		prone_tilt(ent, st, dt, now, w, "host")
 	end
+	Prof.End()
 	st.writeFrame = FrameNumber()
 	ent:InvalidateBoneCache()
+	if off then
+		Bd.Stats.lodOff = (Bd.Stats.lodOff or 0) + 1
+		hide_placed(st)
+		return
+	end
+	Prof.Begin("cl_bones")
 	-- GTA body (vehicles, GTA-only actions) with a baked MW gun: held from the faction model's right hand.
 	if not st.vb and freeGun and IsValid(st.follower) then
 		st.follower:SetupBones()
@@ -1686,12 +1739,63 @@ local function update(ent, st, dt, now)
 		if not (IsValid(st.gun)) then ent:SetupBones() end
 		TIF.Props.Update(ent, st, now)
 	end
+	Prof.End()
+end
+
+local cvLOD = CreateClientConVar("tif_anim_lod", "1", true, false, "Soldiers out of view animate cheaply (no bone build, fewer updates)", 0, 1)
+local cvLODEvery = CreateClientConVar("tif_anim_lod_every", "4", true, false, "Soldiers out of view update every this many frames", 1, 16)
+Bd.LOD = Bd.LOD or {}
+local L = Bd.LOD
+L.NEAR, L.RADIUS, L.MARGIN, L.OFF_AFTER = 160, 64, 12, 0.3
+L.on, L.every = true, 4
+L.eye, L.fwd, L.half = Vector(), Vector(1, 0, 0), math.pi
+L.view = nil
+hook.Add("RenderScene", "tif_body_lod", function(origin, angles, fov)
+	L.view = { pos = Vector(origin), fwd = angles:Forward(), fov = fov, t = RealTime() }
+end)
+function L.Frame()
+	L.on = cvLOD:GetBool()
+	L.every = math.max(1, cvLODEvery:GetInt())
+	local v = L.view
+	if not L.on or not v or RealTime() - v.t > 0.5 then
+		L.live = false
+		return
+	end
+	L.live = true
+	L.eye, L.fwd = v.pos, v.fwd
+	local ply = LocalPlayer()
+	local fov = math.max(v.fov or 0, IsValid(ply) and ply.GetFOV and ply:GetFOV() or 0)
+	if fov <= 0 then fov = 90 end
+	local aspect = ScrW() / math.max(1, ScrH())
+	local th = math.tan(math.rad(math.min(fov, 170)) / 2) * aspect * 0.75
+	local tv = th / aspect
+	L.half = math.atan(math.sqrt(th * th + tv * tv)) + math.rad(L.MARGIN)
+end
+local function in_cone(ent)
+	local d = ent:WorldSpaceCenter() - L.eye
+	local dist = d:Length()
+	if dist < L.NEAR then return true end
+	local a = L.half + math.asin(math.min(1, L.RADIUS / dist))
+	if a >= math.pi then return true end
+	return d:Dot(L.fwd) >= dist * math.cos(a)
+end
+function L.OnScreen(ent, st)
+	if not L.live then return true end
+	if in_cone(ent) then
+		if st then st.lodOutT = nil end
+		return true
+	end
+	if not st then return false end
+	local now = RealTime()
+	st.lodOutT = st.lodOutT or now
+	return now - st.lodOutT < L.OFF_AFTER
 end
 
 -- Every frame, after interpolation and right before the scene is drawn.
 hook.Add("PreRender", "tif_body", function()
 	if next(States) == nil then return end
 	Prof.Begin("cl_anim")
+	L.Frame()
 	local dt, now = FrameTime(), CurTime()
 	local n, missing = 0, 0
 	for ent, st in pairs(States) do
@@ -1767,7 +1871,7 @@ end
 
 function Bd.MuzzleWorld(ent)
 	local st = States[ent]
-	if not st or not IsValid(st.gun) or ent:IsDormant() then return nil end
+	if not st or st.offScreen or not IsValid(st.gun) or ent:IsDormant() then return nil end
 	return muzzle_world(st.gun)
 end
 
@@ -1776,7 +1880,7 @@ hook.Add("PostDrawTranslucentRenderables", "tif_body_flash", function(depth, sky
 	if sky or next(States) == nil then return end
 	local now = CurTime()
 	for ent, st in pairs(States) do
-		if st.flashAt and now - st.flashAt < FLASH_TIME and IsValid(st.gun) and IsValid(ent) and not ent:IsDormant() then
+		if st.flashAt and not st.offScreen and now - st.flashAt < FLASH_TIME and IsValid(st.gun) and IsValid(ent) and not ent:IsDormant() then
 			local at = muzzle_world(st.gun)
 			if at then
 				local s = math.Rand(10, 16)

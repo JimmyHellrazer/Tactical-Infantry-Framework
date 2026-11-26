@@ -203,6 +203,35 @@ check(not H.Pain(p, dmg(Vector(-1000, 0, 0), 60)), "cooldown: no second stagger 
 local q = soldier()
 q.tifCov = {}
 check(not H.Pain(q, dmg(Vector(-1000, 0, 0), 60)), "no stagger in cover (cover has its own flinch)")
+do
+	local saveClip = TIF.GTG.Clip
+	TIF.GTG.Clip = saveClip or function(n) return clips[n] end
+	local w = soldier()
+	w.vel = 90
+	w.tifLastHitGroup = HITGROUP_CHEST
+	local stopped, acted = false, 0
+	local saveStop = TIF.Move.Stop
+	TIF.Move.Stop = function() stopped = true end
+	for i = 1, 20 do
+		w.tifNextPain, w.tifAct, w.tifPainUntil = 0, nil, nil
+		if H.Pain(w, dmg(Vector(-1000, 0, 0), 60)) then acted = acted + 1 end
+	end
+	check(acted == 0 and not stopped, "walking: no standing stagger, he keeps moving (" .. acted .. " / 20)")
+	local r = soldier()
+	r.vel = 250
+	r.tifLastHitGroup = HITGROUP_CHEST
+	local flinch, other = 0, 0
+	for i = 1, 20 do
+		r.tifNextPain, r.tifAct, r.tifPainUntil = 0, nil, nil
+		local before = #played
+		if H.Pain(r, dmg(Vector(-1000, 0, 0), 60)) then
+			if played[#played]:find("^mwh_flinch_") then flinch = flinch + 1 else other = other + 1 end
+		end
+	end
+	check(other == 0 and not stopped, "running: only the running flinches, never a stop-and-stagger (" .. flinch .. " flinches)")
+	TIF.Move.Stop = saveStop
+	TIF.GTG.Clip = saveClip
+end
 
 
 -- Explosion deaths only for real blasts; bans; recent list.

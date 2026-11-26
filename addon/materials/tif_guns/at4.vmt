@@ -3,8 +3,6 @@
     "$basetexture" "tif_guns/at4/at4_rgb"
     "$bumpmap" "tif_guns/at4/at4_n"
     "$phongexponenttexture" "tif_guns/at4/at4_e"
-    "$color2" "[0 0 0]"                                     
-    "$blendtintbybasealpha" "1"       
     "$phong" "1"
     "$phongboost" "1"
     "$phongalbedotint" "1"

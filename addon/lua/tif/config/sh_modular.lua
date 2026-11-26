@@ -271,7 +271,8 @@ if SERVER then
 				end
 			end
 			local use = #fit > 0 and fit or (#free > 0 and free or list)
-			for k, v in pairs(use[math.random(#use)]) do if k ~= "tifArch" then pick[k] = v end end
+			local combo = (TIF.VarietyPick and TIF.VarietyPick(def.id, "combo", use)) or use[math.random(#use)]
+			for k, v in pairs(combo) do if k ~= "tifArch" then pick[k] = v end end
 		end
 		local chance = istable(mod.chance) and mod.chance or {}
 		local slots = {}
@@ -281,7 +282,12 @@ if SERVER then
 		for _, slot in ipairs(slots) do
 			local l = mod.slots[slot]
 			if #l > 0 then
-				local i = pick[slot] or math.random(#l)
+				local i = pick[slot]
+				if not i then
+					local idx = {}
+					for x = 1, #l do idx[x] = x end
+					i = (TIF.VarietyPick and TIF.VarietyPick(def.id, "slot#" .. slot, idx)) or math.random(#l)
+				end
 				local worn = slot == main or pick[slot] ~= nil or math.random() < (chance[slot] or 1)
 				local m = i > 0 and l[i] or nil
 				if m and worn then

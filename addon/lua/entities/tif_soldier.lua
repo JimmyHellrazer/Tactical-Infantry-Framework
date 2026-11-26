@@ -73,6 +73,10 @@ end
 --   noBlank = true                            never pick an empty option (no helmet, no gear...)
 local function random_look(model, fac)
 	local info = model_info(model)
+	local fid = fac and fac.id
+	local function pick(key, fit)
+		return (TIF.VarietyPick and TIF.VarietyPick(fid, key, fit)) or fit[math.random(#fit)]
+	end
 	local allowed = istable(fac and fac.bodygroups) and fac.bodygroups or {}
 	local noBlank = fac and fac.noBlank
 	local digits, byName = {}, {}
@@ -86,12 +90,12 @@ local function random_look(model, fac)
 			for _, x in ipairs(ok) do
 				if isnumber(x) and usable(x) then fit[#fit + 1] = x end
 			end
-			v = #fit > 0 and fit[math.random(#fit)] or 0
+			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
 		elseif g.num > 1 and name ~= "body" then
 			-- Keep the base body; randomise gear, heads, headwear.
 			local fit = {}
 			for x = 0, g.num - 1 do if usable(x) then fit[#fit + 1] = x end end
-			v = #fit > 0 and fit[math.random(#fit)] or 0
+			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
 		end
 		digits[i] = v
 		byName[name] = i
@@ -101,7 +105,9 @@ local function random_look(model, fac)
 		local gi, ni = byName[string.lower(tostring(r[1]))], byName[string.lower(tostring(r[2]))]
 		if gi and ni and digits[ni] == 0 then digits[gi] = 0 end
 	end
-	return math.random(0, info.skins - 1), table.concat(digits, " ")
+	local skins = {}
+	for x = 0, math.max(0, info.skins - 1) do skins[#skins + 1] = x end
+	return pick(model .. "#skin", skins) or 0, table.concat(digits, " ")
 end
 
 -- The spawn menu's entries (tif/config/sh_spawnlist.lua) give faction and role as key-values,
@@ -299,7 +305,11 @@ end
 
 function ENT:RunBehaviour()
 	while true do
-		if not self.tifDead and not TIF.AIDisabled() then TIF.Move.Step(self) end
+		if not self.tifDead and not TIF.AIDisabled() then
+			TIF.Prof.Begin("move")
+			TIF.Move.Step(self)
+			TIF.Prof.End()
+		end
 		coroutine.yield()
 	end
 end

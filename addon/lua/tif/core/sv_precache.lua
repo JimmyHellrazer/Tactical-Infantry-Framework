@@ -19,8 +19,7 @@ local function precache()
 	-- Content-pack factions (dozens of camo models) only when in use: the players' faction, or one
 	-- an addon names through hook "TIF_PrecacheFactions" (tbl) by setting tbl[id] = true (DTW: its sides).
 	local want = {}
-	local pf = GetConVar("tif_player_faction")
-	if pf then want[pf:GetString()] = true end
+	want[TIF.PlayerFaction()] = true
 	hook.Run("TIF_PrecacheFactions", want)
 	for id, fac in pairs(TIF.Factions or {}) do
 		if not fac.pack or want[id] then

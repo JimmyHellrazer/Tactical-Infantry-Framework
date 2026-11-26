@@ -149,7 +149,7 @@ TIF.REL_ALLY = 1
 TIF.Relation = function(a, b) return (a.side or "a") == (b.side or "a") and 1 or 0 end
 TIF.Squad = { Members = function(sq) return sq.members end, Log = function() end }
 TIF.CoverBehave = { In = function() return false end }
-TIF.ProneB = { Is = function() return false end }
+TIF.ProneB = { Is = function(n) return n and n.tifProne ~= nil or false end }
 TIF.Say = function() end
 TIF.Morale = { Add = function() end }
 TIF.AIDisabled = function() return false end
@@ -177,6 +177,8 @@ local function man(pos, side, opts)
 	function s:GetTIFWeapon() return self.wep or "rifle" end
 	function s:SetTIFWeapon(w) self.wep = w end
 	function s:SetNW2Bool() end function s:SetNW2Float() end
+	function s:SetNW2Int(k, v) self.nwi = self.nwi or {} self.nwi[k] = v end
+	function s:GetNW2Int(k, d) return (self.nwi and self.nwi[k]) or d end
 	function s:EntIndex() return 1 end
 	function s:SetPos(p) self.pos = p end
 	function s:TakeDamageInfo(d) dmgTaken[#dmgTaken + 1] = { npc = self, d = d } self.tifDead = true end
@@ -211,6 +213,22 @@ CAS.Down(a1, nil)
 local d = a1.tifDowned
 check(d and d.ls and d.ls.phase == "fall" and sq.nextDown and sq.nextDown > now, "down: crumples first, squad cooldown set")
 check(a1.wep == "", "gun put away")
+check(last():find("^mwld_st_[a-z]+_enter$") ~= nil, "goes down with MW19's long-death fall (standing set), not a death clip: " .. tostring(last()))
+do
+	local saveNext = sq.nextDown
+	local cr = man(Vector(50, 50, 0), "a", { stance = 1 })
+	cr.GetTIFStance = function() return 1 end
+	cr.tifSquad = sq
+	CAS.Down(cr, nil)
+	check(last():find("^mwld_cr_[a-z]+_enter$") ~= nil, "crouched: the crouched fall: " .. tostring(last()))
+	local pr = man(Vector(80, 80, 0), "a")
+	pr.tifSquad = sq
+	pr.tifProne = { phase = 2 }
+	CAS.Down(pr, nil)
+	check(pr.tifDowned.wasProne and pr.tifDowned.ls.phase == "lying" and last() == "mwls_idle", "already prone: straight to lying wounded, no fall")
+	CAS.Downed[cr], CAS.Downed[pr] = nil, nil
+	sq.nextDown = saveNext
+end
 now = d.ls.untilT + 0.01
 LS.Think(a1, d, now)
 check(d.ls.phase == "lying" and last() == "mwls_idle", "then lying wounded")

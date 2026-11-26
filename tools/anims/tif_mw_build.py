@@ -413,7 +413,7 @@ def additive_on(base, delta, rest_quat):
             "bones": bones, "notes": []}
 
 
-def shot_slice(res, n, w, back):
+def shot_slice(res, n, w, back, still=()):
     """One shot of an AI firing clip as a recoil kick (TIF 0.36.0): frames n (the fire note) .. n + w, then `back`
     frames easing every bone back to frame n's pose, so the delta (QC: subtract frame 0) starts and ends at nothing.
     Works on the baked SMD frames (ValveBiped locals: position + euler)."""
@@ -429,11 +429,12 @@ def shot_slice(res, n, w, back):
         r = prep.matrix_to_euler(prep.quat_to_matrix(prep.slerp(qa, qb, t)))
         return [a[i] + (b[i] - a[i]) * t for i in range(3)] + list(r)
 
-    out = [(i, {b: list(v) for b, v in fr[f][1].items()}) for i, f in enumerate(range(n, end + 1))]
+    held = {i for i, (nm, _) in enumerate(res.nodes) if nm in still}
+    out = [(i, {b: list(base[b] if b in held else v) for b, v in fr[f][1].items()}) for i, f in enumerate(range(n, end + 1))]
     for j in range(1, back + 1):
         t = j / back
         t = t * t * (3 - 2 * t)
-        out.append((len(out), {b: mix(last[b], base[b], t) for b in base}))
+        out.append((len(out), {b: list(base[b]) if b in held else mix(last[b], base[b], t) for b in base}))
     res.frames = out
     return len(out)
 
@@ -669,6 +670,8 @@ def main():
                 chest = prep.read_seanim(src_path(m, opts["overlay_chest"]))
                 mask = (mask or set()) | {"j_spine4"}
             anim_override = overlay_pose(prep.read_seanim(src_path(m, clip)), prep.read_seanim(src_path(m, opts["overlay"])), mask, chest)
+            if "j_gun" in anim_override["bones"] and (mask is None or "j_gun" in mask):
+                anim_override["bones"].pop("j_gun_adjust", None)
         if opts.get("additive_on") and anim_override is None:
             # an additive clip (clip) played on a base pose (opts["additive_on"]), every frame: additive_on()
             key = seq_name = seq_name or f"{clip}_on_{opts['additive_on']}"
@@ -697,7 +700,7 @@ def main():
             n, w, back = opts["shot"]
             if need:
                 anim, res, root, frames, shift = build_clip(ctx, clip, smd, False, False)
-                frames = shot_slice(res, n, w, back)
+                frames = shot_slice(res, n, w, back, opts.get("still", ()))
                 prep.write_smd(smd, res)
             else:
                 res = prep.read_smd(smd)

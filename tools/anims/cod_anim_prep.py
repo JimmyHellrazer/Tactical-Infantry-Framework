@@ -161,6 +161,12 @@ MP_GUN_FIT = {"parent": "j_clavicle_ri", "rest_adjust": [5.77, 0.11, -0.09], "re
 # 34 MWII rifle / LMG reloads (stand + crouch, 17 guns) + the stand idle pose: gun rotation in the right hand within
 # 0-4 deg (belt-fed / bullpup lifts aside), origin within ~0.2-2 u. A clip read with anim["rig"] = "iw9" uses it.
 MP_GUN_RIGS = {"iw9": {"parent": "j_clavicle_ri", "rest_adjust": [5.16, 0.04, 0.39], "rest_gun": [-2.86, 1.01, 1.61]}}
+AI_CHAIN_GUN = {"parent": "j_clavicle_ri", "rest_adjust": [5.77, 0.11, -0.09], "rest_gun": [0.05, -0.06, -0.135]}
+
+
+def is_chain_gun(anim):
+    b = anim["bones"]
+    return bool(b.get("j_gun_adjust", {}).get("rot")) and "j_gun" in b and len(b["j_gun"].get("rot", [])) <= 1
 
 # CoD procedural bones the animations have no tracks for (the game computes them at runtime). Each one moves with
 # the named bone as if parented to it (weight 1 = fully), keeping its own pivot. Both must share a parent.
@@ -527,7 +533,7 @@ def seanim_to_smd(anim, target, mapping, proc_follow=True, loc_scale=CM_TO_INCH,
     weapons = []  # (smd index, keys, rest position)
     mp_gun = None  # (smd index, j_gun keys, j_gun_adjust keys) for the MP chain
     adj = anim["bones"].get("j_gun_adjust", {})
-    gun_fit = (MP_GUN_RIGS.get(anim.get("rig")) or MP_GUN) if MP_GUN else None
+    gun_fit = (MP_GUN_RIGS.get(anim.get("rig")) or MP_GUN) if MP_GUN else (AI_CHAIN_GUN if AI_CHAIN_GUN and is_chain_gun(anim) else None)
     if gun_fit and adj.get("rot") and "j_gun" in anim["bones"] and "j_gun" not in body_index:
         parent = body_index.get(mapping.get(gun_fit["parent"], gun_fit["parent"]))
         if parent is not None:

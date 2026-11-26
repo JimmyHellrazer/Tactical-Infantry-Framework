@@ -31,6 +31,9 @@ function CreateClientConVar(_, d) return { GetBool = function() return d ~= "0" 
 function IsValid(x) return x ~= nil end
 local me = { GetPos = function() return Vector(0, 0, 0) end }
 function LocalPlayer() return me end
+local frame, frameStep = 1, true
+function FrameNumber() if frameStep then frame = frame + 1 end return frame end
+function EyePos() return Vector(0, 0, 0) end
 
 local hooks, civList = {}, {}
 hook = { Add = function(ev, id, fn) hooks[ev .. ":" .. id] = fn end }
@@ -193,5 +196,22 @@ do
 		check(st >= 2, "civilian walking: concrete walk steps (" .. st .. ")")
 		check(cl > 0 and rat == 0, "civilian: cloth gear, no weapon rattle (" .. cl .. " cloth, " .. rat .. " rattle)")
 	end
+end
+do
+	local C = TIF.FoleyCL
+	frameStep = false
+	frame = frame + 1
+	local n0 = #played
+	local near = setmetatable({ pos = Vector(100, 0, 0) }, { __index = ent })
+	for i = 1, 30 do C.Play(near, "tif/foley/x.ogg", 72, 0.7) end
+	check(#played - n0 == C.MAX_PER_FRAME, "at most " .. C.MAX_PER_FRAME .. " foley sounds a frame (" .. (#played - n0) .. ")")
+	frame = frame + 1
+	n0 = #played
+	local far = setmetatable({ pos = Vector(1800, 0, 0) }, { __index = ent })
+	C.Play(far, "tif/foley/x.ogg", 62, 0.3)
+	check(#played == n0, "a quiet gear rustle 1800 away isn't played")
+	C.Play(far, "tif/foley/x.ogg", 75, 0.9)
+	check(#played == n0 + 1, "a sprint step 1800 away is")
+	frameStep = true
 end
 print(string.format("passed %d, failed %d", pass, fail))

@@ -33,6 +33,8 @@ C.APART = 28         -- back to normal collisions once nobody is this close
 C.GHOST_AFTER = 0.5
 C.GHOST_MIN = 0.6
 C.GHOST_GROUP = COLLISION_GROUP_NPC_SCRIPTED
+C.UNSTACK_AFTER = 1.0
+C.UNSTACK_GAP = 2.0
 
 local function prof(n) if Prof then Prof.Begin(n) end end
 local function unprof() if Prof then Prof.End() end end
@@ -221,6 +223,30 @@ hook.Add("Tick", "tif_crowd_way", function()
 end)
 
 -- Every 0.25 s: overlapping TIF pairs, how long, ghosting and un-ghosting.
+local function idle_soldier(e)
+	if not (e.TIFSoldier and not e.tifDead) then return false end
+	if e.tifCov or e.tifProne or e.tifVeh or e.tifDowned or e.tifSurrendered or e.tifAct or e.tifMedic or e.tifBipod
+		or e.tifCQB or e.tifBoarding or e.tifLeaving then return false end
+	if e.tifMove and e.tifMove.goal then return false end
+	return e.loco and e.loco:GetVelocity():Length2DSqr() < 15 * 15
+end
+C.IdleSoldier = idle_soldier
+
+local function unstacking(e) return e.tifMove and e.tifMove.goal and e.tifMove.tag == "unstack" end
+
+function C.Unstack(e, now)
+	if now < (e.tifNextUnstack or 0) then return false end
+	e.tifNextUnstack = now + C.UNSTACK_GAP
+	local Mv = TIF.Move
+	if not (Mv and Mv.Spread and Mv.SetGoal) then return false end
+	local me = e:GetPos()
+	local spot = Mv.Spread(e, me)
+	if not spot or spot:DistToSqr(me) < 20 * 20 then return false end
+	if not Mv.SetGoal(e, spot, "walk", "unstack") then return false end
+	if e.tifPost and e.tifPost:DistToSqr(me) < 100 * 100 then e.tifPost = spot end
+	return true
+end
+
 function C.Tick(now)
 	local on = cv:GetBool()
 	prof("crowd")
@@ -242,6 +268,11 @@ function C.Tick(now)
 						if now - ov[b.e] >= C.GHOST_AFTER or root_clip(a.e) or root_clip(b.e) then
 							ghost(a.e, now)
 							ghost(b.e, now)
+						end
+						if now - ov[b.e] >= C.UNSTACK_AFTER and not unstacking(a.e) and not unstacking(b.e) then
+							local ia, ib = idle_soldier(a.e), idle_soldier(b.e)
+							local mover = (ia and ib) and (a.e:EntIndex() > b.e:EntIndex() and a.e or b.e) or (ia and a.e) or (ib and b.e)
+							if mover then C.Unstack(mover, now) end
 						end
 					elseif a.e.tifCrowdOv then
 						a.e.tifCrowdOv[b.e] = nil

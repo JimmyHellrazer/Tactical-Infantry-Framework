@@ -105,6 +105,23 @@ CAS.Down(a1, nil)
 local d = a1.tifDowned
 check(d and d.ls and d.ls.phase == "fall" and sq.nextDown and sq.nextDown > now, "down: crumples first, squad cooldown set")
 check(a1.wep == "", "gun put away")
+check(last():find("^mwld_st_[a-z]+_enter$") ~= nil, "goes down with MW19's long-death fall (standing set), not a death clip: " .. tostring(last()))
+do
+	local saveNext = sq.nextDown
+	local cr = man(Vector(50, 50, 0), "a", { stance = 1 })
+	cr.GetTIFStance = function() return 1 end
+	cr.tifSquad = sq
+	CAS.Down(cr, nil)
+	check(last():find("^mwld_cr_[a-z]+_enter$") ~= nil, "crouched: the crouched fall: " .. tostring(last()))
+	local pr = man(Vector(80, 80, 0), "a")
+	pr.tifSquad = sq
+	pr.tifProne = { phase = 2 }
+	local before = #played
+	CAS.Down(pr, nil)
+	check(pr.tifDowned.wasProne and pr.tifDowned.ls.phase == "lying" and last() == "mwls_idle", "already prone: straight to lying wounded, no fall")
+	CAS.Downed[cr], CAS.Downed[pr] = nil, nil
+	sq.nextDown = saveNext
+end
 now = d.ls.untilT + 0.01
 LS.Think(a1, d, now)
 check(d.ls.phase == "lying" and last() == "mwls_idle", "then lying wounded")

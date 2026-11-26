@@ -71,12 +71,12 @@ hook.Add("EntityFireBullets", "tif_suppression", function(shooter, data)
 	local rounds = math.Clamp(data.Num or 1, 1, 8)
 	local dmg = data.Damage and data.Damage > 0 and math.Clamp(data.Damage / 25, 0.5, 2) or 1
 	for _, npc in ipairs(TIF.Soldiers) do
-		if npc ~= shooter and IsValid(npc) and not npc.tifDead and TIF.Relation(npc, shooter) ~= TIF.REL_ALLY then
+		if npc ~= shooter and IsValid(npc) and not npc.tifDead then
 			local v = npc:WorldSpaceCenter() - src
 			local t = v:Dot(dir)
 			if t > 60 and t < maxD then
 				local perp = (v - dir * t):Length()
-				if perp < NEAR then
+				if perp < NEAR and TIF.Relation(npc, shooter) ~= TIF.REL_ALLY then
 					S.Add(npc, (1 - perp / NEAR) * PER_ROUND * dmg * math.sqrt(rounds), src, shooter)
 					-- A close one: sometimes MW19's whizby flinch (standing, free, not in cover).
 					if perp < NEAR * 0.5 and S.Whizby then S.Whizby(npc, CurTime()) end

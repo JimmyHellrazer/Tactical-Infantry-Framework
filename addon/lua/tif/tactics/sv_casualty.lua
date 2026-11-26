@@ -89,7 +89,14 @@ function CAS.Down(npc, dmg)
 	CAS.Downed[npc] = true
 	if npc.tifSquad then npc.tifSquad.nextDown = now + CAS.SQUAD_COOLDOWN end
 	if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "downed") end
-	if TIF.ProneB.Is(npc) then npc.tifProne = nil end
+	if TIF.ProneB.Is(npc) then
+		npc.tifDowned.wasProne = true
+		npc.tifProne = nil
+	end
+	if npc:GetNW2Int("tif_prone", 0) ~= 0 then
+		npc:SetNW2Int("tif_prone", 0)
+		npc:SetNW2Float("tif_prone_t", now)
+	end
 	Move.Stop(npc)
 	npc.tifFire.want = false
 	npc.tifDownedWeapon = npc:GetTIFWeapon()
@@ -216,6 +223,15 @@ function CAS.MedicThink(npc, c, now)
 	local pos = p:GetPos()
 	npc.tifFire.want = false
 	if npc:GetPos():DistToSqr(pos) > 60 * 60 then
+		local CBh = TIF.CoverBehave
+		if CBh and CBh.In(npc) then
+			local MWc = CBh.MW
+			if MWc and MWc.ExitTo and MWc.ExitTo(npc, pos, "medic") then
+				npc.tifAction = "leaving cover for the casualty"
+				return true
+			end
+			if CBh.In(npc) then CBh.Leave(npc, "medic") end
+		end
 		npc.tifAction = "to the casualty"
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil

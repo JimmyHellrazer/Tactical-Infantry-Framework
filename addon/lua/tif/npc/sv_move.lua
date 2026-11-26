@@ -58,7 +58,7 @@ local LEASH_EXEMPT = { formation = true, hold = true, advance = true, post = tru
 -- took the exact same coordinate and walked into one another. A goal another soldier is already heading to or
 -- standing on moves to a free, reachable spot around it, on this soldier's side; one already near it and not
 -- crowding anyone stays where he is. Moves that are meant to be shared or are placed already are left alone.
-M.SPREAD_R = 56
+M.SPREAD_R = 72
 M.SPREAD_EXEMPT = { formation = true, cqb = true, board = true, medic = true, cover = true, flee = true,
 	crawl = true, post = true }
 local SPREAD_UP = Vector(0, 0, 40)
@@ -84,7 +84,7 @@ local function spread(npc, pos)
 	away.z = 0
 	local a0 = away:LengthSqr() > 1 and math.deg(math.atan2(away.y, away.x)) or math.random(0, 359)
 	for ring = 1, 2 do
-		local r = 64 * ring + math.random(0, 16)
+		local r = 80 * ring + math.random(0, 16)
 		for i = 0, 7 do
 			local a = math.rad(a0 + (i % 2 == 0 and 1 or -1) * math.ceil(i / 2) * 45)
 			local s = M.Snap(pos + Vector(math.cos(a) * r, math.sin(a) * r, 0))
@@ -490,6 +490,11 @@ function M.Step(npc)
 		if not (m.fresh and string.sub(npc.tifAct.name, 1, 9) == "mwt_turn_") then return end
 		TIF.Action.Clear(npc)
 	end
+	local ex = npc.tifStartExit
+	if ex then
+		npc.tifStartExit = nil
+		if now >= ex.doneAt - 0.1 and now < ex.doneAt + 0.4 then npc.loco:SetVelocity(ex.vel) end
+	end
 	if not path:IsValid() then
 		m.goal, m.result = nil, "arrived"
 		return
@@ -541,7 +546,7 @@ function M.Step(npc)
 	local a = npc.tifAct
 	if a and not a.trans and not npc.tifDowned and not npc.tifProne and not a.keepMoving
 		and npc:GetNW2String("tif_act_base", "") == ""
-		and (Act_Done(npc, now) or (a.loop and (a.clip.speed or 0) < 1)) then
+		and (Act_Done(npc, now) or (a.clip.speed or 0) < 1) then
 		TIF.Action.Clear(npc)
 	end
 	-- (0.38.18) Someone in the way ahead: behind him at his pace, or eased past (TIF.Crowd, sv_crowd.lua).

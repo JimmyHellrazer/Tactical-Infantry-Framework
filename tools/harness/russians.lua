@@ -21,7 +21,7 @@ for _, m in ipairs(F and F.models or {}) do
 	if m:find("soldier_d") or m:find("recon_c") then blue = true end
 end
 check(not blue, "no sib (blue) models")
-local RU_SOF = { ak_warsaw_sup = 1, ak_warsaw_grip = 1, an94 = 1, asval = 1, svd_plague = 1, pkm_sof = 1, bizon = 1, sykov = 1, rpg7 = 1 }
+local RU_SOF = { ak_warsaw_sup = 1, ak_warsaw_grip = 1, an94 = 1, asval = 1, svd_plague = 1, pkm_sof = 1, bizon = 1, sykov = 1, rpg7 = 1, ak74u = 1, oden = 1 }
 local seen = {}
 for arch, l in pairs(F and F.loadouts or {}) do
 	for _, slot in ipairs({ "primary", "secondary", "launcher" }) do
@@ -36,4 +36,8 @@ end
 for id in pairs(RU_SOF) do check(seen[id], id .. " used by some role") end
 for _, v in ipairs(F and F.voices or {}) do check(exists(ADDON .. "sound/vo/" .. v .. "/") or true, v) end
 check(TIF.Factions.insurgents and TIF.Factions.usmc, "starter factions still there")
+local function has(list, c) for _, x in ipairs(list or {}) do if x == c then return true end end return false end
+check(F and has(F.loadouts.assault.primary, "weapon_tifmw_ak74u"), "assault carries the AK-74u")
+check(F and has(F.loadouts.rifleman.primary, "weapon_tifmw_oden"), "riflemen carry the Oden")
+check(F and not has(F.loadouts.default.primary, "weapon_tifmw_oden"), "other roles keep the default rifles")
 print(string.format("passed %d, failed %d", pass, fail))

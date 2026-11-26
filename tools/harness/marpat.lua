@@ -1,3 +1,4 @@
+timer = timer or { Create = function() end, Simple = function() end, Remove = function() end }
 local pass, fail = 0, 0
 local function check(c, what) if c then pass = pass + 1 else fail = fail + 1 print("FAIL: " .. what) end end
 local ADDON = ROOT:gsub("lua/$", "")
@@ -22,8 +23,8 @@ local okF, errF = pcall(function() assert(loadfile(ROOT .. "tif/core/sh_factions
 if not okF then print(errF) end
 check(okF and TIF.FactionRelation ~= nil, "faction relations loaded")
 if TIF.FactionRelation then
-	TIF.Factions.operators = { allies = { usmc = true, pmc = true } }
-	TIF.Factions.cartel = { neutral = { usmc = true } }
+	TIF.Factions.operators = { allies = { usmc = true, pmc = true } } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
+	TIF.Factions.cartel = { neutral = { usmc = true } } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
 	check(TIF.FactionRelation("usmc_woodland", "usmc") == TIF.REL_ALLY, "woodland and Marines are allies")
 	check(TIF.FactionRelation("operators", "usmc_woodland") == TIF.REL_ALLY, "a faction allied with usmc is allied with woodland (the player as operators)")
 	check(TIF.FactionRelation("usmc_woodland", "operators") == TIF.REL_ALLY, "both ways")

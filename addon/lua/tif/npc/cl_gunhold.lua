@@ -62,6 +62,9 @@ local function frame_pose(gi, grip, barrel, up)
 	return grip - off, ang
 end
 
+M.DISPOSABLE_LIFT = 5
+M.BACK_DIST = 6.5
+
 local function kind_of(st, class)
 	if class then return G.WeaponKind(class) end
 	return st.pistol and "pistol" or (st.wkind or "rifle")
@@ -85,7 +88,9 @@ function M.SlingPose(src, st, gi, class)
 	if not c then return nil end
 	if kind == "rpg" then
 		-- Across the back, muzzle up past the right shoulder, sights facing out.
-		local grip = c - fwd * 9 - up * 8
+		local def = class and G.WeaponDef(class)
+		local lift = (def and def.disposable) and M.DISPOSABLE_LIFT or 0
+		local grip = c - fwd * M.BACK_DIST - up * (8 - lift)
 		return frame_pose(gi, grip, up * 0.8 - left * 0.45 - fwd * 0.1, -fwd)
 	end
 	-- Long guns on a front sling: muzzle down to his left, stock up toward the right shoulder, the gun's side
@@ -280,11 +285,12 @@ local TURN = Matrix({ { 0, -1, 0, 0 }, { 1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0
 local LH = Matrix({ { 0.8743, 0.1756, 0.4524, 0 }, { 0.4463, -0.6573, -0.6072, 0 }, { 0.1908, 0.7329, -0.6531, 0 },
 	{ 0, 0, 0, 1 } })
 
+M.FINGER_RANGE = 700
 local R_NEAR, R_FAR = 12, 20  -- right hand: the clip's hand this close to the grip, full IK; this far, none
 
-local function ik_cb(e)
+local function ik_solve(e)
 	local st = Bd.State and Bd.State(e)
-	if not st or not IsValid(st.gun) then return end
+	if not st or not IsValid(st.gun) or st.writeFrame ~= FrameNumber() then return end
 	local la = arm(e, "L")
 	local lm = la and e:GetBoneMatrix(la.h)
 	local wR0, wL0 = st.ikRW or 0, st.ikW or 0
@@ -355,10 +361,22 @@ local function ik_cb(e)
 		handRot = rot_of(LerpAngle(w, mH:GetAngles(), full:GetAngles()))
 	end	solve_arm(e, a, LerpVector(w, C, target), handRot)
 	-- The gun's own MW19 grip for the fingers (handguard, or the foregrip's).
-	if hold and hold.fingers and w > 0.5 then apply_fingers(e, hold.fingers) end
+	if hold and hold.fingers and w > 0.5 and e:GetPos():DistToSqr(EyePos()) < M.FINGER_RANGE * M.FINGER_RANGE then
+		apply_fingers(e, hold.fingers)
+	end
 end
 M.RotBetween = rot_between
 M.SolveTwoBone = solve_arm
+
+local function ik_cb(e)
+	local t0 = SysTime()
+	ik_solve(e)
+	local Prof = TIF.Prof
+	if Prof then
+		Prof.Count("cl_ik_us", (SysTime() - t0) * 1e6)
+		Prof.Count("cl_ik_n", 1)
+	end
+end
 
 -- Every frame before the host's bones are built (cl_body update): IK weight and its bone callback.
 function M.Prepare(ent, st, now)

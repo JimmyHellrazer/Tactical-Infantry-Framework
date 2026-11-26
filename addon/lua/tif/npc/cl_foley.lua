@@ -14,7 +14,7 @@ local F = TIF.Foley
 
 local cvOn = CreateClientConVar("tif_foley", "1", true, false, "MW19 movement sounds on soldiers: footsteps, gear, body falls (1/0)")
 local cvVol = CreateClientConVar("tif_foley_volume", "1", true, false, "Volume of the soldiers' movement sounds (0-2)")
-C.RANGE = 2500
+C.RANGE = 2000
 C.SURF_EVERY = 0.25
 C.RATTLE_CHANCE = 0.3
 -- per gait: footstep volume, sound level, the gear set's gait
@@ -119,15 +119,32 @@ local function gait_of(ent, st, clip)
 	return "sprint"
 end
 
+C.MAX_PER_FRAME = 10
+local frameNo, played = -1, 0
+function C.HearDist(lvl)
+	if lvl >= 75 then return 2000 end
+	if lvl >= 70 then return 1400 end
+	if lvl >= 66 then return 1000 end
+	return 700
+end
+
 local function play(ent, snd, lvl, vol, pitch)
 	if not snd then return end
 	vol = vol * cvVol:GetFloat()
 	if vol <= 0.01 then return end
+	local fn = FrameNumber()
+	if fn ~= frameNo then frameNo, played = fn, 0 end
+	if played >= C.MAX_PER_FRAME then return end
+	local hd = C.HearDist(lvl) * math.sqrt(math.min(1, vol) + 0.25)
+	if ent:GetPos():DistToSqr(EyePos()) > hd * hd then return end
+	played = played + 1
 	ent:EmitSound(snd, lvl, pitch or math.random(96, 104), math.min(1, vol), CHAN_AUTO)
 end
+C.Play = play
 
 -- One sound point of the playing clip.
 function C.Fire(ent, st, e, clip, now)
+	if FrameNumber() == frameNo and played >= C.MAX_PER_FRAME then return end
 	local kind = e[2]
 	local row = F.ROW[surface(ent, st, now)] or F.ROW.concrete
 	local g = GAIT[gait_of(ent, st, clip)]

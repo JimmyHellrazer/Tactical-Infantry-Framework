@@ -37,6 +37,40 @@ local function curve_end(c)
 	return cv[#cv - 2], cv[#cv - 1], cv[#cv]
 end
 
+T.SETTLE_TAIL = 0.2
+local settleOf = {}
+function T.SettleU(c)
+	if not c then return 1 end
+	local v = settleOf[c]
+	if v then return v end
+	local cv = c.curve
+	local n = cv and math.floor(#cv / 3) or 0
+	if n < 3 or not c.frames or c.frames < 4 then
+		settleOf[c] = 1
+		return 1
+	end
+	local ex, ey, er = cv[(n - 1) * 3 + 1], cv[(n - 1) * 3 + 2], cv[(n - 1) * 3 + 3]
+	local k = n - 1
+	for i = n - 1, 0, -1 do
+		local dx, dy = cv[i * 3 + 1] - ex, cv[i * 3 + 2] - ey
+		if dx * dx + dy * dy > 4 or math.abs(cv[i * 3 + 3] - er) > 3 then break end
+		k = i
+	end
+	v = math.Clamp(k * 3 / (c.frames - 1), 0.05, 1)
+	settleOf[c] = v
+	return v
+end
+local function settle_stop(npc, name)
+	local a = npc.tifAct
+	if not a then return end
+	local c = TIF.GTG.Clip(name, npc.tifHomeHost)
+	local u = T.SettleU(c)
+	if u >= 1 then return end
+	a.warpU = u
+	a.stopU = math.min(1, u + T.SETTLE_TAIL / math.max(0.1, a.dur or (c and c.dur) or 1))
+end
+T.SettleStop = settle_stop
+
 -- Per host: { turn = { set = { {name, yaw, dur} } }, start = { set = { {name, dir, dist, yaw} } }, stop = ... }
 local cache = {}
 local function sets(host)
@@ -121,6 +155,13 @@ local function move_set(npc, speed)
 	return nil
 end
 T.MoveSet = move_set
+
+T.FIGHT_STOP = { run = "jog" }
+function T.FightStopSet(npc, set)
+	local alt = set and T.FIGHT_STOP[set]
+	if alt and npc.tifAware == TIF.AWARE.ENGAGED and sets(npc.tifHomeHost).stop[alt] then return alt end
+	return set
+end
 
 local function mark(npc) if npc.tifAct then npc.tifAct.trans = true end end
 
@@ -256,10 +297,28 @@ function T.Start(npc, m)
 	-- Off by too much, or the leg is shorter than the clip travels (a corner comes first): just walk.
 	if not best or bd > 30 or best.dist + 20 > len then return false end
 	-- Calm / alert starts turn the body onto the path: aim the clip's end straight down the leg.
+	local yaw0 = npc:GetAngles().y
 	local d = Act.Play(npc, best.name, { root = true, clear = true })
 	if not d then return false end
 	mark(npc)
+	local v = T.ExitVel(TIF.GTG.Clip(best.name, npc.tifHomeHost), yaw0)
+	npc.tifStartExit = v and { vel = v, doneAt = CurTime() + d } or nil
 	return true
+end
+
+function T.ExitVel(c, yaw0, u)
+	if not c or not c.curve or #c.curve < 9 or not c.frames or c.frames < 4 then return nil end
+	local G = TIF.GTG
+	local f = math.max(3, math.floor(math.Clamp(u or 1, 0, 1) * (c.frames - 1)))
+	local dx = G.ClipCurve(c, f, 1) - G.ClipCurve(c, f - 3, 1)
+	local dy = G.ClipCurve(c, f, 2) - G.ClipCurve(c, f - 3, 2)
+	local dt = 3 * c.dur / f
+	if dt <= 0 then return nil end
+	local r = math.rad(yaw0)
+	local cs, sn = math.cos(r), math.sin(r)
+	local v = Vector((dx * cs - dy * sn) / dt, (dx * sn + dy * cs) / dt, 0)
+	if v:Length2DSqr() < 25 * 25 then return nil end
+	return v
 end
 
 -- Stance --------------------------------------------------------------------------------------------------------
@@ -382,7 +441,7 @@ end
 function T.Stop(npc, m)
 	if prone_ready(npc) then return prone_stop(npc, m, false) end
 	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] or not m.goal then return nil end
-	local set = move_set(npc, m.speed)
+	local set = T.FightStopSet(npc, move_set(npc, m.speed))
 	local list = set and sets(npc.tifHomeHost).stop[set]
 	if not list then return nil end
 	-- Cheap out until the end is near.
@@ -403,6 +462,7 @@ function T.Stop(npc, m)
 	local d = Act.Play(npc, name, { root = true, to = { pos = Vector(m.goal.x, m.goal.y, npc:GetPos().z), yaw = endYaw }, clear = true })
 	if not d then return nil end
 	mark(npc)
+	settle_stop(npc, name)
 	return d
 end
 
@@ -414,7 +474,7 @@ function T.StopHere(npc, m)
 	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] then return false end
 	local v = npc.loco:GetVelocity()
 	if v:Length2DSqr() < 30 * 30 then return false end
-	local set = move_set(npc, m.speed)
+	local set = T.FightStopSet(npc, move_set(npc, m.speed))
 	local list = set and sets(npc.tifHomeHost).stop[set]
 	if not list then return false end
 	local yaw = npc:GetAngles().y
@@ -428,5 +488,6 @@ function T.StopHere(npc, m)
 		a.warp = { dx = 0, dy = 0, dyaw = math.AngleDifference(endYaw, yaw + best.yaw) }
 	end
 	mark(npc)
+	settle_stop(npc, name)
 	return true
 end

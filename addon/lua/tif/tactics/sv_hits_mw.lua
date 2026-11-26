@@ -462,6 +462,8 @@ end
 
 -- Pains ------------------------------------------------------------------------------------------------------
 -- Called from ENT:OnInjured. A short stagger when the soldier isn't busy with something else.
+H.MOVE_PAIN_MIN = 40
+
 function H.Pain(npc, dmg)
 	if not H.Use(npc) or npc.tifDead then return false end
 	-- Down already (knocked): no pain on top. A blast that doesn't kill: knocked down.
@@ -511,8 +513,10 @@ function H.Pain(npc, dmg)
 		or npc.tifSurrendered or npc.tifPassiveBusy or npc.tifReact then return false end
 	local chance = math.Clamp(dmg:GetDamage() / 30, 0.35, 0.9)
 	if math.random() > chance then return false end
+	local moveSpeed = npc.loco:GetVelocity():Length2D()
+	local moving = moveSpeed > H.MOVE_PAIN_MIN and not npc.tifProne
 	-- A heavy hit in the open: sometimes stunned for a moment (MW22 pain shock).
-	if R22 and R22.Shock(npc, dmg, now) then
+	if not moving and R22 and R22.Shock(npc, dmg, now) then
 		npc.tifPainUntil = now + 1
 		npc.tifNextPain = now + 4 + H.PAIN_COOLDOWN
 		return true
@@ -524,7 +528,7 @@ function H.Pain(npc, dmg)
 		local v = npc.loco:GetVelocity():Length2D()
 		local g = v > 230 and "sprint" or (v > 160 and "run" or "jog")
 		local n = "mwh_flinch_" .. g .. "_" .. math.random(1, 2)
-		if TIF.GTG.Clip(n, npc.tifHostId) and math.random() < 0.7 then
+		if TIF.GTG.Clip(n, npc.tifHostId) then
 			local d = Act.Play(npc, n, { root = true, clear = true })
 			if d then
 				npc.tifPainUntil = now + d * 0.4
@@ -537,7 +541,10 @@ function H.Pain(npc, dmg)
 	-- Lying down: no stagger. The prone pains sit 27 units forward like the deaths, and the client's prone
 	-- composition doesn't show actions anyway (the soldier just stopped shooting for a second).
 	if sit == "prone" then return false end
+	if sit == "run" then return false end
 	if sit == "explode" then sit = "stand" end
+	local cqbMoving = sit == "stand" and npc:GetNW2Bool("tif_cqb", false) and moveSpeed > 30
+	if moving and not cqbMoving then return false end
 	local region = REGION[npc.tifLastHitGroup] or "torso"
 	-- The pools to try (MW19 AI pain sets): a pistol's own, the long staggers for a heavy hit, CQB moving pains,
 	-- then the situation's.

@@ -23,6 +23,7 @@ function TIF.RegisterFaction(id, def)
 		for _, v in ipairs(def.variants or {}) do flag(v.models) end
 	end
 	TIF.Factions[id] = def
+	if TIF.ClearRelationCache then TIF.ClearRelationCache() end
 	return def
 end
 
@@ -145,7 +146,8 @@ TIF.RegisterFaction("russians", {
 	weapons = mw({ "ak_warsaw_grip", "ak_warsaw_sup", "an94" }),
 	loadouts = {
 		default = { primary = mw({ "ak_warsaw_grip", "ak_warsaw_grip", "ak_warsaw_sup", "an94", "an94" }), secondary = mw({ "sykov" }) },
-		assault = { primary = mw({ "asval", "bizon", "ak_warsaw_grip" }), secondary = mw({ "sykov" }) },
+		rifleman = { primary = mw({ "oden", "oden", "ak_warsaw_grip", "ak_warsaw_sup", "an94" }), secondary = mw({ "sykov" }) },
+		assault = { primary = mw({ "ak74u", "ak74u", "asval", "bizon", "ak_warsaw_grip" }), secondary = mw({ "sykov" }) },
 		guard = { primary = mw({ "ak_warsaw_sup", "bizon" }), secondary = mw({ "sykov" }) },
 		support = { primary = mw({ "pkm_sof" }), secondary = mw({ "bizon" }) },
 		marksman = { primary = mw({ "svd_plague" }), secondary = mw({ "sykov" }) },

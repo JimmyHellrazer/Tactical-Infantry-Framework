@@ -1,4 +1,4 @@
--- Offline (0.38.22): bipod order - prone set only after lying still AND aiming 2.9 s (hold 1.2 s through aim drops),
+-- Offline (0.38.22, 0.38.58): bipod order - prone set only after lying still AND aiming 0.4 s (hold 1.2 s through aim drops),
 -- a wall set-up asked to pack up finishes first, client prone bipod reverses mid-clip instead of restarting.
 local pass, fail = 0, 0
 local function check(c, what) if c then pass = pass + 1 else fail = fail + 1 print("FAIL: " .. what) end end
@@ -26,8 +26,9 @@ for t = 0, 10, 0.5 do B.Set(npc, t) end
 check(not B.Set(npc, 10), "lying still unaimed: not set (the client hasn't set it up)")
 -- aiming from t=10: set at 12.9
 mode = 1
-check(not B.Set(npc, 10) and not B.Set(npc, 12.5), "aiming: not yet during the set-up")
-check(B.Set(npc, 13.0), "aiming 2.9 s+: set")
+check(not B.Set(npc, 10) and not B.Set(npc, 10.3), "aiming: not during the shift onto the bipod")
+check(B.Set(npc, 10.5), "aiming 0.4 s+: set (already prone: a shift, not the stand-to-bipod clip)")
+check(B.Set(npc, 13.0), "still set while aiming")
 -- the aim drops for a moment between bursts: still set
 mode = 0
 check(B.Set(npc, 13.8), "aim drops 0.8 s: still set (hold)")
@@ -38,12 +39,12 @@ mode = 0
 B.Set(npc, 14.5) B.Set(npc, 16.0)
 mode = 1
 check(not B.Set(npc, 16.1), "aim gone 1.5 s+: needs setting up again")
-check(B.Set(npc, 19.1), "...set again 2.9 s later")
+check(B.Set(npc, 16.6), "...set again 0.4 s later")
 -- crawling: reset
 vel = Vector(40, 0, 0)
 B.Set(npc, 19.2)
 vel = Vector()
-check(not B.Set(npc, 20), "crawled: set up again")
+check(not B.Set(npc, 19.4) and B.Set(npc, 19.7), "crawled: shifts back onto the bipod")
 
 -- wall bipod: a move order mid set-up waits for it to finish, then packs up from the set pose
 local w = { tifAct = { name = "mwb_stand_in" }, GetPos = function() return Vector() end, GetAngles = function() return Angle() end,
@@ -59,7 +60,8 @@ local src = io.open(ROOT .. "tif/npc/sv_weapon.lua"):read("*a")
 check(src:find("if not braced and not covering and npc.tifProne and npc.tifProne.phase == 2", 1, true) ~= nil, "prone LMG holds fire through the set-up")
 -- client: reversible prone set-up / pack-up, hold through aim drops
 local cl = io.open(ROOT .. "tif/npc/cl_body.lua"):read("*a")
-check(cl:find("st.bipod, st.bipodT = \"out\", now - (1 - ui) * BP.out.dur / OUTK", 1, true) ~= nil, "client: set-up turned round packs up from the matching point")
-check(cl:find("st.bipod, st.bipodT = \"in\", now - (1 - uo) * BP.into.dur", 1, true) ~= nil, "client: pack-up turned round sets up from the matching point")
+check(cl:find("if st.bipodDown then tr = BPd.into end", 1, true) ~= nil, "client: an LMG gunner getting down from standing plays the stand-to-bipod clip as his get-down")
+check(cl:find("if st.bipodUp then tr = BPd.out end", 1, true) ~= nil, "client: getting up off the bipod plays the bipod-to-stand clip")
+check(cl:find("if want and st.bipod ~= \"set\" then st.bipod, st.bipodT = \"set\", now", 1, true) ~= nil and not cl:find("BP.into.dur", 1, true), "client: already prone, the bipod is a shift (no set-up clip)")
 check(cl:find("now - st.bipodWantT < Bd.BIPOD_HOLD", 1, true) ~= nil and cl:find("Bd.BIPOD_HOLD = 1.2", 1, true) ~= nil and B.PRONE_HOLD == 1.2, "client and server hold the same 1.2 s")
 print(string.format("passed %d, failed %d", pass, fail))

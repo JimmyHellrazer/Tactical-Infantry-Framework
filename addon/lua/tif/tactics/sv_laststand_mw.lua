@@ -1,5 +1,6 @@
 -- MW19 last stand (MW19 body), on top of TIF.Casualty (which decides who goes down, rarely: sv_casualty.lua).
---   Down:     the start of an MW19 death clip (he crumples), blended into lying wounded (mwls_idle), gun gone.
+--   Down:     MW19's long-death fall onto his back or side (standing / crouched set, LS.FallClip), blended into
+--             lying wounded (mwls_idle) as it ends, gun gone; already prone: straight to lying wounded.
 --   Crawl:    once, a short crawl (up to CRAWL_DIST) away from the enemy toward friends, facing the enemy,
 --             8-way crawl clips by direction.
 --   Revive:   a squadmate kneels on the near side and runs MW19's paired revive: his help_in / loop / out, the
@@ -15,7 +16,6 @@ local Move = TIF.Move
 TIF.LastStandMW = TIF.LastStandMW or {}
 local LS = TIF.LastStandMW
 
-LS.FALL_CUT = 0.5        -- how much of the death clip plays before blending to lying wounded
 LS.CRAWL_DIST = 220
 LS.CRAWL_TIME = 7
 LS.LOOP_TIME = 3.5       -- seconds of the revive loop (plus in / out)
@@ -39,15 +39,28 @@ local function chest(npc)
 end
 
 -- Down ---------------------------------------------------------------------------------------------------
+LS.FALL_END = 0.97
+
+function LS.FallClip(npc, dmg)
+	local d = npc.tifDowned
+	if d and d.wasProne then return nil end
+	local st = npc:GetTIFStance() == 1 and "cr" or "st"
+	local side = "back"
+	local f = dmg and dmg.GetDamageForce and dmg:GetDamageForce()
+	if f and f:LengthSqr() > 1 and f:Dot(npc:GetRight()) < 0 then side = "l" end
+	if math.random() < 0.25 then side = side == "l" and "back" or "l" end
+	local name = "mwld_" .. st .. "_" .. side .. "_enter"
+	if has(npc, name) then return name end
+	name = "mwld_" .. st .. "_back_enter"
+	return has(npc, name) and name or nil
+end
+
 function LS.Down(npc, dmg, now)
 	local d = npc.tifDowned
-	-- Crumple: a standing death clip's first half (the same direction logic as deaths), then lying wounded.
-	local P = TIF.HitsMW.Pools(npc.tifHomeHost)
-	local list = P.death and P.death.stand and (P.death.stand.torso or select(2, next(P.death.stand)))
-	local e = list and list[math.random(#list)]
-	local dur = e and Act.Play(npc, e.name, { root = true }) or nil
+	local name = LS.FallClip(npc, dmg)
+	local dur = name and Act.Play(npc, name, { root = true }) or nil
 	if dur then
-		d.ls = { phase = "fall", untilT = now + dur * math.min(LS.FALL_CUT, e.clip.cut or LS.FALL_CUT) }
+		d.ls = { phase = "fall", untilT = now + dur * LS.FALL_END }
 	else
 		Act.Loop(npc, "mwls_idle")
 		d.ls = { phase = "lying", since = now }

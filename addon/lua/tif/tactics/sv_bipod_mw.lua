@@ -23,7 +23,7 @@ B.STANDOFF = 18          -- origin to the rest edge (the gun reaches past the ha
 B.ARC = 70               -- how far off centre the target may go before he packs up and turns
 B.CHECK_EVERY = { 2, 4 }
 B.HOLD_MAX = 30          -- seconds on the bipod before re-deciding anyway
-B.PRONE_SET_AFTER = 2.9  -- client prone set-up time (mwb_prone_in 2.87 s)
+B.PRONE_SET_AFTER = 0.4
 B.PRONE_HOLD = 1.2       -- = cl_body Bd.BIPOD_HOLD: kept set this long after the aim drops
 
 local UP40 = Vector(0, 0, 40)

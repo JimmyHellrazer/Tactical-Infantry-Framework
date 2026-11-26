@@ -179,6 +179,8 @@ local function man(pos, side, opts)
 	function s:GetTIFWeapon() return self.wep or "rifle" end
 	function s:SetTIFWeapon(w) self.wep = w end
 	function s:SetNW2Bool() end function s:SetNW2Float() end
+	function s:SetNW2Int(k, v) self.nwi = self.nwi or {} self.nwi[k] = v end
+	function s:GetNW2Int(k, d) return (self.nwi and self.nwi[k]) or d end
 	function s:EntIndex() return 1 end
 	function s:SetPos(p) self.pos = p end
 	function s:TakeDamageInfo(d) dmgTaken[#dmgTaken + 1] = { npc = self, d = d } self.tifDead = true end

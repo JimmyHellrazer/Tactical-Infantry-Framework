@@ -119,6 +119,7 @@ def textures():
     t = open(os.path.join(src, "MI_1P_AT4.vmt"), encoding="latin1").read()
     t = re.sub(r"//[^\n]*", "", t)
     t = re.sub(r'models\\sandswep\\at4\\MI_1P_AT4_(rgb|n|e)', lambda m: "tif_guns/at4/at4_" + m.group(1), t)
+    t = re.sub(r'\s*"\$(color2|blendtintbybasealpha)"[^\n]*', "", t)
     t = re.sub(r"\n\s*\n+", "\n", t)
     open(os.path.join(ADDON, "materials", "tif_guns", "at4.vmt"), "w", encoding="latin1", newline="\n").write(t)
 

@@ -571,6 +571,85 @@ local function stunned_until(npc)
 end
 MW.StunnedUntil = stunned_until
 
+MW.KEEP_CROUCH = 2
+
+function MW.PlaySwitch(npc, slot)
+	local cov = npc.tifCov
+	if not cov or not cov.mw or not cov.t then return nil end
+	if cov.phase ~= "idle" and cov.phase ~= "look" and cov.phase ~= "twitch" then return nil end
+	local name = "mwc_" .. cov.t .. (slot == "secondary" and "_to_pistol" or "_to_rifle")
+	if not clip_on_body(npc, name) then return nil end
+	local d = Act.Play(npc, name, {})
+	if not d then return nil end
+	local now = CurTime()
+	cov.phaseEnd = now + d
+	set_phase(npc, cov, "switch", now)
+	return name
+end
+
+local function pick_lean_exit(npc, cov, yaw)
+	local want = math.AngleDifference(yaw, npc:GetAngles().y)
+	local best, bestE
+	for _, k in ipairs({ "1", "2", "3", "4", "6", "7", "8", "9" }) do
+		local c = clip_on_body(npc, role(cov, "exit_lean_" .. k))
+		if c and (c.move[1] ~= 0 or c.move[2] ~= 0) then
+			local e = math.abs(math.AngleDifference(math.deg(math.atan2(c.move[2], c.move[1])), want))
+			if not bestE or e < bestE then best, bestE = role(cov, "exit_lean_" .. k), e end
+		end
+	end
+	return best, bestE
+end
+
+function MW.FinishExit(npc, cov)
+	local v, search = cov.exitVel, cov.exitSearch
+	CB.Leave(npc, cov.exitReason)
+	if v and npc.loco then
+		npc.loco:SetVelocity(v)
+		npc.tifStance = A.STANCE_STAND
+		if npc:GetTIFStance() ~= A.STANCE_STAND then
+			npc:SetTIFStance(A.STANCE_STAND)
+			npc:TIFApplyStance()
+		end
+	end
+	if search then npc.tifNextCoverSearch = 0 end
+end
+
+function MW.ExitTo(npc, goal, reason)
+	local cov = npc.tifCov
+	if not cov or not cov.mw or not goal then return false end
+	local now = CurTime()
+	if cov.phase == "exit" then
+		if now < cov.phaseEnd then return true end
+		MW.FinishExit(npc, cov)
+		return false
+	end
+	if cov.phase ~= "idle" and cov.phase ~= "look" and cov.phase ~= "aim" then return false end
+	local d = goal - npc:GetPos()
+	if d:Length2DSqr() < 120 * 120 then return false end
+	local yaw = math.deg(math.atan2(d.y, d.x))
+	local n, e
+	if cov.phase == "aim" then n, e = pick_lean_exit(npc, cov, yaw) end
+	if not n then
+		local sets = { "exit_" }
+		if cqb_style(npc, cov) then sets = { "cfexit_", "cexit_", "exit_" } end
+		n, e = pick_exit(npc, cov, yaw, sets)
+	end
+	if not n then return false end
+	aim_off(npc)
+	local yaw0 = npc:GetAngles().y
+	local dur = Act.Play(npc, n, { root = true })
+	if not dur then return false end
+	local share = (e or 180) <= MW.EXIT_COMMIT and 1 or MW.EXIT_CUT
+	local T = TIF.TransMW
+	cov.exitVel = T and T.ExitVel and T.ExitVel(clip_on_body(npc, n), yaw0, share) or nil
+	cov.exitReason, cov.exitSearch = reason, reason == "maneuver" or nil
+	cov.exitCut = share < 1 or nil
+	cov.phaseEnd = now + dur * share
+	npc.tifFire.want = false
+	set_phase(npc, cov, "exit", now)
+	return true
+end
+
 function MW.Exit(npc, reason)
 	local cov = npc.tifCov
 	if not cov then return false end
@@ -578,8 +657,7 @@ function MW.Exit(npc, reason)
 	if cov.phase == "exit" then
 		if now >= cov.phaseEnd then
 			-- Ended early (MW.PickCalmExit): the clip stops here and his movement picks up from this pose.
-			if cov.exitCut then Act.Clear(npc) end
-			CB.Leave(npc, cov.exitReason)
+			MW.FinishExit(npc, cov)
 			return false
 		end
 		return true
@@ -591,19 +669,13 @@ function MW.Exit(npc, reason)
 		local goal = exit_goal(npc)
 		local gy = cov.ny
 		if goal then local gd = goal - npc:GetPos() gy = math.deg(math.atan2(gd.y, gd.x)) end
-		local want = math.AngleDifference(gy, npc:GetAngles().y)
-		local best, bestE
-		for _, k in ipairs({ "1", "2", "3", "4", "6", "7", "8", "9" }) do
-			local c = clip_on_body(npc, role(cov, "exit_lean_" .. k))
-			if c and (c.move[1] ~= 0 or c.move[2] ~= 0) then
-				local e = math.abs(math.AngleDifference(math.deg(math.atan2(c.move[2], c.move[1])), want))
-				if not bestE or e < bestE then best, bestE = role(cov, "exit_lean_" .. k), e end
-			end
-		end
+		local best, bestE = pick_lean_exit(npc, cov, gy)
+		local yaw0 = npc:GetAngles().y
 		local d = best and Act.Play(npc, best, { root = true })
 		if d then
 			cov.exitReason = reason
 			local share = (goal and bestE <= MW.EXIT_COMMIT) and 1 or MW.EXIT_CUT
+			cov.exitVel = TIF.TransMW and TIF.TransMW.ExitVel and TIF.TransMW.ExitVel(clip_on_body(npc, best), yaw0, share) or nil
 			cov.exitCut = share < 1 or nil
 			cov.phaseEnd = now + d * share
 			set_phase(npc, cov, "exit", now)
@@ -616,6 +688,7 @@ function MW.Exit(npc, reason)
 	end
 	aim_off(npc)
 	local n, share = MW.PickCalmExit(npc, cov)
+	local yaw0 = npc:GetAngles().y
 	local d = n and Act.Play(npc, n, { root = true })
 	if not d then
 		CB.Leave(npc, reason)
@@ -623,6 +696,7 @@ function MW.Exit(npc, reason)
 	end
 	cov.exitReason = reason
 	share = share or 1
+	cov.exitVel = TIF.TransMW and TIF.TransMW.ExitVel and TIF.TransMW.ExitVel(clip_on_body(npc, n), yaw0, share) or nil
 	cov.exitCut = share < 1 or nil
 	cov.phaseEnd = now + d * share
 	set_phase(npc, cov, "exit", now)
@@ -646,7 +720,11 @@ function MW.Update(npc, c, now)
 
 	if npc.tifRole == "maneuver" and npc.tifCoverCenter and cov.origin:DistToSqr(npc.tifCoverCenter) > 360 * 360
 		and (phase == "idle" or phase == "look" or phase == "aim" or phase == "move") then
-		CB.Leave(npc, "maneuver")
+		if phase ~= "move" and MW.ExitTo(npc, npc.tifCoverCenter, "maneuver") then
+			Prof.End()
+			return true
+		end
+		if npc.tifCov then CB.Leave(npc, "maneuver") end
 		npc.tifNextCoverSearch = 0
 		Prof.End()
 		return CB.Update(npc, c, now)
@@ -668,9 +746,16 @@ function MW.Update(npc, c, now)
 		phase = cov.phase
 	end
 
+	if phase == "switch" then
+		f.want = false
+		if now >= cov.phaseEnd then start_hide(npc, cov, now) end
+		Prof.End()
+		return true
+	end
+
 	if phase == "exit" then
 		if now >= cov.phaseEnd then
-			CB.Leave(npc, cov.exitReason)
+			MW.FinishExit(npc, cov)
 			Prof.End()
 			return false
 		end
@@ -824,7 +909,12 @@ function MW.Update(npc, c, now)
 			cov.nextCheck = now + STILL_GOOD_EVERY
 			local ok, why = Cover.StillGood(cov.pt, threat)
 			if not ok then
+				local crouched = npc:GetTIFStance() == A.STANCE_CROUCH
 				CB.Leave(npc, why)
+				if crouched then
+					npc.tifStance = A.STANCE_CROUCH
+					npc.tifKeepCrouchUntil = now + MW.KEEP_CROUCH
+				end
 				npc.tifNextCoverSearch = 0
 				Prof.End()
 				return false

@@ -445,4 +445,75 @@ do
 	check(c8.phase == "aim_in", "low wall with no end near: the normal pop-up (" .. c8.phase .. ")")
 end
 MW.SIDE_CHANCE = 0
+do
+	local saveT = TIF.TransMW
+	local handVel
+	TIF.TransMW = { ExitVel = function(c, y0, u) handVel = { c = c, y0 = y0, u = u } return Vector(140, 0, 0) end }
+	local function soldier(stance)
+		local x = { tifHomeHost = "mw_male", pos = Vector(16, 30, 0), yaw = 90, nw = {}, tifFire = {}, tifMove = {}, stance = stance or 0,
+			tifArch = { coverPause = { 1, 2 }, coverBurst = { 1.5, 2.5 }, loseContact = 6, aggression = 0.6 }, tifWep = { ammo = 30, clip = 30 } }
+		function x:GetPos() return self.pos end
+		function x:SetPos(p) self.pos = p end
+		function x:GetAngles() return Angle(0, self.yaw, 0) end
+		function x:SetAngles(a) self.yaw = a.y end
+		function x:GetNW2Float(k, d) return self.nw[k] or d end
+		function x:GetNW2Bool(k, d) if self.nw[k] ~= nil then return self.nw[k] end return d end
+		function x:SetNW2Float(k, v) self.nw[k] = v end
+		function x:SetNW2Bool(k, v) self.nw[k] = v end
+		function x:GetTIFStance() return self.stance end
+		function x:SetTIFStance(v) self.stance = v end
+		function x:TIFApplyStance() self.applied = true end
+		x.loco = { GetVelocity = function() return Vector(0, 0, 0) end, SetVelocity = function(_, v) x.handed = v end }
+		local p = { pos = Vector(20, 0, 0), ny = 0, normal = Vector(1, 0, 0), high = true, edgeL = false, edgeR = true, canShoot = true }
+		local cv = { pt = p, origin = p.pos, ny = 0, high = true, side = "l", canShoot = true, mw = true }
+		x.tifCov = cv
+		MW.Prepare(x, cv)
+		cv.phase = "idle"
+		return x, cv
+	end
+	local x, cv = soldier(0)
+	local goal = Vector(900, 40, 0)
+	check(MW.ExitTo(x, goal, "maneuver") and cv.phase == "exit", "a maneuver out of settled cover plays an exit clip: " .. tostring(cv.phase))
+	local n = played[#played]
+	check(n and n:find("^mwc_rs_exit_"), "the jog exit (" .. tostring(n) .. ")")
+	local c = TIFG.Clips.mw_male[n]
+	local head = c and math.deg(math.atan2(c.move[2], c.move[1])) + x.yaw
+	check(c and math.abs(math.AngleDifference(head, 0)) <= 60, "it heads toward the maneuver goal (" .. tostring(head) .. ")")
+	check(handVel and handVel.c == c and handVel.y0 == 90, "the exit's own speed is taken at the point it hands over")
+	check(MW.ExitTo(x, goal, "maneuver") == true, "still exiting mid clip")
+	local at = cv.phaseEnd
+	now = at + 0.01
+	check(MW.ExitTo(x, goal, "maneuver") == false and x.tifCov == nil, "done: out of cover")
+	check(x.handed and x.handed.x == 140, "his movement carries on at the clip's speed (no stop / start)")
+	check(x.stance == 0 and x.tifStance == 0, "standing, as the jog exit ends")
+	check(x.tifNextCoverSearch == 0, "a maneuver looks for its next cover at once")
+	local y, cy = soldier(0)
+	cy.phase = "reload"
+	check(MW.ExitTo(y, goal, "maneuver") == false and cy.phase == "reload", "mid reload: no exit clip (the caller leaves)")
+	local z, cz = soldier(0)
+	check(MW.ExitTo(z, z.pos + Vector(60, 0, 0), "medic") == false, "a goal right beside him: no exit clip")
+	local k, ck = soldier(1)
+	TIF.Cover.StillGood = function() return false, "flanked" end
+	k.tifCov.nextCheck = 0
+	local before = #played
+	MW.Update(k, enemy(true), now)
+	TIF.Cover.StillGood = function() return true end
+	local exitPlayed = false
+	for i = before + 1, #played do if played[i]:find("exit") then exitPlayed = true end end
+	check(k.tifCov == nil and not exitPlayed, "flanked: straight out, no exit clip")
+	check(k.tifStance == 1 and k.tifKeepCrouchUntil and k.tifKeepCrouchUntil > now, "flanked while crouched: he stays crouched")
+	local w, cw = soldier(0)
+	check(MW.PlaySwitch(w, "secondary") == "mwc_rs_to_pistol" and cw.phase == "switch", "drawing the pistol in settled cover: the cover switch clip (" .. tostring(played[#played]) .. ")")
+	w.tifFire.want = true
+	check(MW.Update(w, enemy(true), now) == true and w.tifFire.want == false, "holds fire through the switch")
+	now = cw.phaseEnd + 0.01
+	MW.Update(w, enemy(false), now)
+	check(cw.phase ~= "switch", "back to hiding after it (" .. tostring(cw.phase) .. ")")
+	local v, cv2 = soldier(0)
+	check(MW.PlaySwitch(v, "primary") == "mwc_rs_to_rifle", "back to the rifle: the other way round")
+	local u, cu = soldier(0)
+	cu.phase = "aim"
+	check(MW.PlaySwitch(u, "secondary") == nil and cu.phase == "aim", "leaning out aiming: no cover switch clip (the draw plays as before)")
+	TIF.TransMW = saveT
+end
 print(string.format("passed %d, failed %d", pass, fail))

@@ -1,3 +1,4 @@
+timer = timer or { Create = function() end, Simple = function() end, Remove = function() end }
 -- Offline (0.38.15): HL2 / addon NPCs get a side (core/sh_factions.lua) and NPC <-> soldier relationships (compat/sv_hl2npc.lua).
 local pass, fail = 0, 0
 local function check(c, what) if c then pass = pass + 1 else fail = fail + 1 print("FAIL: " .. what) end end
@@ -131,10 +132,11 @@ local src = io.open(ROOT .. "tif/npc/sv_perception.lua"):read("*a")
 check(src:find("for _, e in ipairs(TIF.NPCs) do if IsValid(e) then consider(e) end end", 1, true) ~= nil, "perception considers NPCs")
 -- 2026-11-25: old faction ids as aliases (militia -> insurgents, pmc -> usmc)
 do
-	TIF.Factions.insurgents = { side = "enemy" }
-	TIF.Factions.usmc = { side = "ally" }
+	TIF.Factions.insurgents = { side = "enemy" } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
+	TIF.Factions.usmc = { side = "ally" } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
 	TIF.Factions.chechen = { side = "enemy", allies = { militia = true } }   -- a content pack naming the old id
-	TIF.Factions.contractors = { side = "ally", allies = { pmc = true } }
+	if TIF.ClearRelationCache then TIF.ClearRelationCache() end
+	TIF.Factions.contractors = { side = "ally", allies = { pmc = true } } if TIF.ClearRelationCache then TIF.ClearRelationCache() end
 	TIF.FactionAlias = { militia = "insurgents", pmc = "usmc" }
 	local R = TIF.FactionRelation
 	check(R("militia", "insurgents") == TIF.REL_ALLY and R("pmc", "usmc") == TIF.REL_ALLY, "an alias is its faction")

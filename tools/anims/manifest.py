@@ -1422,7 +1422,10 @@ def recoil_family():
                     nxt = fires[k + 1] if k + 1 < len(fires) else n + KICK_MAX
                     w = max(3, min(KICK_MAX, nxt - n))
                 i += 1
-                out.append((f"mwfk_{kind}_{st}_{i}", clip, {"shot": (n, w, KICK_BACK), "loop": False}))
+                o = {"shot": (n, w, KICK_BACK), "loop": False}
+                if kind == "shotgun":
+                    o["still"] = ("j_gun",)
+                out.append((f"mwfk_{kind}_{st}_{i}", clip, o))
     return out
 
 
@@ -1650,4 +1653,23 @@ def _foot_pairs():
     return out
 
 
-PREFER_SOURCE = _foot_pairs()
+PREFER_SOURCE = {}
+
+
+def pistol_prone_switch_family():
+    out = []
+    add = _adder(out)
+    prone = ("pelvis", "sdr_com_exposed_stand_to_exposed_prone")
+    add("mwp_pstl_idle", "sdr_com_exposed_prone_pstl_idle", {"loop": True, "center": prone})
+    out.append(("mwp_pstl_aim", None, {"loop": True, "blend9": "sdr_com_exposed_prone_pstl_aim_{}", "additive": True, "center": prone}))
+    add("mwp_pstl_up", "sdr_com_exposed_prone_pstl_to_exposed01", {"loop": False, "center": "last"})
+    add("mwp_pstl_crawl_8_loop", "sdr_com_prone_pstl_crawl", {"loop": True, "center": prone})
+    for t, k in (("ls", "left"), ("rs", "right_stand"), ("cr", "crouch"), ("st", "stand"), ("lc", "left_crouch"), ("rc", "right_crouch")):
+        for role, src in (("to_pistol", "ar_to_pistol"), ("to_rifle", "pistol_to_ar")):
+            clip = f"sdr_com_cover_{k}_{src}"
+            if _has(clip):
+                out.append((f"mwc_{t}_{role}", clip, dict(_COVER)))
+    return out
+
+
+FAMILIES["pstlswitch"] = pistol_prone_switch_family()

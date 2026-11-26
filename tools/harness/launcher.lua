@@ -215,4 +215,16 @@ L.Think(stuck, c, now)
 L.Think(stuck, { ent = foe, pos = foe.pos, visible = false }, now + L.LOST + 0.5)
 sw = switched[#switched]
 check(sw.slot == "primary", "target lost: puts the launcher away without firing")
+do
+	local vmt = io.open(ROOT .. "../materials/tif_guns/at4.vmt"):read("*a")
+	check(not vmt:find("$color2", 1, true) and not vmt:find("$blendtintbybasealpha", 1, true), "AT4 material: no tint (DXT1 texture, no alpha: the black $color2 covered the whole tube)")
+	local gh = io.open(ROOT .. "tif/npc/cl_gunhold.lua"):read("*a")
+	check(gh:find("M.DISPOSABLE_LIFT = 5", 1, true) and gh:find("local grip = c - fwd * M.BACK_DIST - up * (8 - lift)", 1, true), "the AT4 rides higher on the back than the RPG-7")
+	check(gh:find("M.BACK_DIST = 6.5", 1, true) ~= nil, "launchers slung closer to the back (6.5 behind the chest, was 9)")
+	local jg = io.open(ROOT .. "tif/gta/clips/zz_jgun.lua"):read("*a")
+	check(jg:find('["sdr_com_exp_stand_rpg_drop_to_exp_stand"] = true', 1, true) and jg:find('["sdr_com_exp_crouch_rpg_drop_to_exp_stand"] = true', 1, true)
+		and jg:find('["sdr_com_exp_stand_rpg_drop_to_exp_stand_pstl"] = true', 1, true), "AT4 drops: the drawn weapon stays in the hand (the gun bone carries the dropped tube away)")
+	local ghp = io.open(ROOT .. "../../tools/guns/gun_holds.py")
+	if ghp then check(ghp:read("*a"):find("|_rpg_drop_to_exp_stand(_pstl)?$", 1, true) ~= nil, "and gun_holds.py keeps them that way") end
+end
 print(string.format("passed %d, failed %d", pass, fail))

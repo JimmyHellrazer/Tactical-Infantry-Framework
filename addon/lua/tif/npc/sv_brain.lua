@@ -867,6 +867,13 @@ function B.Think(npc, dt)
 	end
 	low_ready(npc, now, coverFire)
 	npc:SetTIFMode(npc.tifMode)
+	if npc.tifKeepCrouchUntil then
+		if CurTime() < npc.tifKeepCrouchUntil and npc.tifStance == A.STANCE_STAND and not TIF.CoverBehave.In(npc) then
+			npc.tifStance = A.STANCE_CROUCH
+		elseif CurTime() >= npc.tifKeepCrouchUntil then
+			npc.tifKeepCrouchUntil = nil
+		end
+	end
 	local cur = npc:GetTIFStance()
 	-- Mid stance-change clip (mwk_*): a flip back waits until it's done, or the clip and the idle fought.
 	local a = npc.tifAct

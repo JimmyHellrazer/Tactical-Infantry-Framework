@@ -51,6 +51,8 @@ local SECTIONS = {
 		{ "check", "tif_foot_ik", "Feet on the real ground (slopes, steps)" },
 		{ "slider", "tif_foot_ik_range", "Foot IK range", 300, 4000, 0 },
 		{ "check", "tif_turn_lean", "Runners lean into turns" },
+		{ "check", "tif_anim_lod", "Cheap animation for soldiers out of view" },
+		{ "slider", "tif_anim_lod_every", "Out-of-view soldiers update every N frames", 1, 8, 0 },
 	} },
 }
 -- (The debug overlay's settings only with the local dev addon, which has them: TIF.Dev, 0.38.11.)
@@ -87,6 +89,7 @@ local function build(panel)
 				for _, v in ipairs(s[4]) do box:AddChoice(v) end
 			elseif s[1] == "faction" then
 				local box = panel:ComboBox(s[3], s[2])
+				for _, id in ipairs(TIF and TIF.PlayerSideOrder or {}) do box:AddChoice(id) end
 				for id in pairs(TIF and TIF.Factions or {}) do box:AddChoice(id) end
 			end
 		end

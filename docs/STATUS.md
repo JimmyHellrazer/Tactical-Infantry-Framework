@@ -955,6 +955,223 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.59: a real fall into the downed state (2026-11-26, NOT yet seen in game)
+User: "look for a downed transition because rn it just plays after a death which is wrong sometimes". Going down played
+the first half of a random standing torso death (LS.FALL_CUT 0.5), then blended to lying wounded: a standing death for
+crouched / running / prone soldiers, falling whichever way that death fell.
+- Looked for one: MW19 MP's sdr_mp_laststand_torso_med / head_med (already built as mwls_fall_*, unused) start lying
+  (pelvis 5.9): hit reactions while down, not falls. No AI "into last stand" exists. MW19 SP's long-death entries
+  (mwld_<st|cr>_<kind>_enter, built for long deaths) fall a wounded man from standing / crouched to the ground;
+  measured against the last-stand idle (pose relative to the pelvis): crawl_back_enter (head 1.3, hands 11 / 6) and
+  crawl_l_enter (head 6) end nearly in it; the deaths and the other entries 100-200 off.
+- sv_laststand_mw LS.FallClip / Down: standing -> mwld_st_back_enter, crouched -> mwld_cr_back_enter; hit from his right
+  -> the _l (side) version; 25% the other one for variety. Root motion, played to 97%, then lying wounded. Downed while
+  prone (sv_casualty records tifDowned.wasProne): straight to lying wounded, no fall.
+- Harness stage78 39 (+3: standing fall, crouched fall, prone straight to lying; ProneB mock honours tifProne).
+
+
+### 0.38.60: player faction fallback; BLUFOR / OPFOR / Independent player sides (2026-11-26, NOT yet seen in game)
+User: "regular marines are shooting at me now too". tif_player_faction was "operators" (TIF Faction Pack), and the pack
+(tif_faction_pack, tif_cod_factions) was moved out to K:\TIF TEMP: players were an unknown faction, hostile to all.
+- core/sh_factions TIF.PlayerFaction(): the setting if it's an installed faction or a player side, else usmc (one
+  console warning). Used by FactionOf (players, HL2 player-ally NPCs), SideDamageScale and the precache.
+- User: "add generic blufor, opfor, and independent factions which are just player identifiers". TIF.PlayerSides
+  (not in TIF.Factions: no soldiers, no spawn menu, untouched by the faction editor / packs). Relations: blufor allied
+  with every faction of side "ally", opfor with every faction of side "enemy", independent with none; a faction's own
+  allies / neutral lists naming a side win; the sides are hostile to each other. Settings "Players' side" lists them first.
+- Harness playersides 25 (new), fire 20 (PlayerFaction mock).
+- Bench (user: "make sure bench uses the current models"): tif_bench spawned "militia" vs "pmc", hidden load-time copies
+  of insurgents / usmc (alive counts read 0/0). Now the live factions, tif_bench_a / tif_bench_b (insurgents / usmc);
+  the report lists each side's spawned models, adds the move step (Prof "move" round Move.Step in RunBehaviour, never
+  measured before), crowd and cover_mw buckets, the gun hold arm IK (cl_ik_us / cl_ik_n round cl_gunhold's bone
+  callback), soldiers animated and composes/s; file bench_<count>_<mode>_<version>.txt (before / after kept). Harness
+  gunhold 19 (SysTime mock).
+
+### 0.38.61: client animation LOD; faction relation cache (2026-11-26, NOT yet seen in game)
+Baseline bench (bench_50_battle_0_38_60.txt, gm_construct, 50 soldiers): client 34 fps (29.5 ms frames), cl_anim
+338 ms/s (~11.4 ms a frame, ~32 soldiers updated every frame at ~355 us each), gun hold IK 70 ms/s (74 us a solve),
+feet 11 ms/s; server 2.57 ms a tick (17%), perception the largest share (0.89 ms).
+- Cause: cl_body update ends in ent:SetupBones() for every soldier every frame (to place the gun from the hand): an
+  8-layer bone build plus the IK / feet callbacks, also for soldiers behind the camera the engine would never build.
+- cl_body Bd.LOD (tif_anim_lod 1, tif_anim_lod_every 4): MW19 soldiers outside the view cone (EyePos / EyeAngles, the
+  wider of the player's and the view setup's fov, 16:9 aware, +12 deg and the body's radius; always full within 160;
+  flashlight carriers always full: their beam lights what's on screen) compose every 4th frame with the skipped time
+  carried in (foot phase, footsteps: cl_foley takes the range crossed) and skip the bone build, gun / mag / sling /
+  prop placement. Back in view: the whole update before that frame draws. Their muzzle isn't used (tracers start
+  from the server's point, no flash sprite / light). Settings panel entries.
+- Prof cl_compose / cl_bones split cl_anim; bench reports both and the LOD counts.
+- core/sh_factions: FactionRelation cached per pair (cleared every second and by RegisterFaction). Suppression does
+  the distance maths before the relation.
+- Harness animlod 19 (new), playersides 29 (+4 cache), timer mocks in hl2npc / marpat.
+
+### 0.38.62: no IK on bone builds nobody sees; finer client profile (2026-11-26, NOT yet seen in game)
+Bench 0.38.61 (bench_50_battle_0_38_61.txt): cl_anim 338 -> 268 ms/s, composes 950 -> 647/s, but 28 fps (a different
+fight: server cost +13%, singleplayer shares the frame). Split: compose 30, bone build + gun 131, ~107 ms/s elsewhere
+in the update. Gun hold IK ran 735/s against 647 composes: out-of-view soldiers' bones still get built by someone
+(their shadows, most likely; "earlier in the frame" builds 608 -> 5519), each with the full arm IK.
+- cl_gunhold ik_solve and cl_feet's callback only on the bone build cl_body asked for this frame (st.writeFrame ==
+  FrameNumber()): early builds are thrown away by its InvalidateBoneCache, out-of-view builds show no hands / feet.
+- Finger poses within M.FINGER_RANGE (700) only.
+- Prof cl_parts (ensure_parts), cl_foley, cl_pose (slot check, spine pose, prone tilt): the bench lists them.
+- Harness gunhold 20 (+1: no IK on a build that isn't this frame's write; writeFrame in the mock).
+
+### 0.38.63: LOD view fix, start / stop hand-offs, MW19 stops back, revive fixes, squad variety (2026-11-26, NOT yet seen in game)
+User: "alot of newer bugs ... anims jitter/fail", starts "slide a bit", "some stops still dont carry the right gun
+orientation", "make sure there isnt like a long pause after stops", revives "gun would either go everywhere or be stuck
+to their hand", "revives break sometimes and show as prone", "force as much model and bodygroup variety as possible
+among spawned fireteams/squads", idle activity slings "like the old chest weld" / following the right hand.
+- LOD view: EyePos / EyeAngles in PreRender can be the last view rendered (water reflection, scope / RT cameras):
+  soldiers in front flickered into the cheap update (every 4th frame, gun not placed). Now the main view from
+  RenderScene (origin, angles, fov); none for 0.5 s (another addon overrides it): everyone full. Out of the cone for
+  0.3 s before going cheap; back in it: full at once.
+- Starts: root motion SetPos left the locomotion at 0, the path took over from standing (legs dipped to the idle).
+  T.ExitVel (last root samples, turned by the start yaw) -> npc.tifStartExit -> loco:SetVelocity when it played through.
+- Stops: MW19 sources again (manifest PREFER_SOURCE = {}; the 20 MW22 swaps had no usable gun bone; MW19's l / r stop
+  files are identical, so the stop-foot swap changes nothing on those). Stop tails measured 0.4-1.7 s after the root
+  settles (walk avg 0.93): T.SettleU (root within 2 units / 3 deg of its end), the landing warp ends there (warpU), the
+  clip clears T.SETTLE_TAIL 0.2 s later (Act a.stopU): arrived, free for the next thing.
+- Revives: CAS.Down never reset NW2 tif_prone (only deaths did): downed from prone, the client kept the prone set over
+  the downed / revive clips. Reset there. MP last-stand clips (sdr_mp_laststand_*, the medic's mwls_help_*) had a
+  "carried" gun bone (r 1 all through) that is junk: gun_holds.py MP_UNUSABLE -> undriven -> slung. MW22 buddy revives
+  (mwbr_*, undriven) kept the gun in the hand: slung too (cl_body slingAct).
+- Activities: Bd.CARRY_R 0.5 -> 0.35 (only the seated sleep loop, 0.43, changes: it now carries the gun like its
+  sit-down / wake-up). MW22 activities (hum, radio, look, scratch, stretch) still hold the gun in the right hand: MW22
+  splits the gun's motion over j_gun (position) and j_gun_adjust (rotation, not in TIF's CoD skeleton), not decoded yet.
+- Variety: TIF.VarietyPick (sh_packs): per faction, soldiers spawned within 8 s share a bag; model (PickVisual, pack
+  variants), skin, each bodygroup (random_look) and modular combos / parts (M.Pick) take the least-used option, random
+  among ties.
+- Anim rebuild (mwt_stop_run_*, jog / walk l/r 8 / 6) and gun_holds.py rerun. (A first gun_holds run hit a 590 s
+  timeout and left zz_jgun.lua empty: restored from a backup, rerun without a limit.)
+- Harness: animlod 23 (RenderScene view, hysteresis), trans 76 (+9 exit speed, settle), revive (new), variety 10 (new).
+
+### 0.38.64: MW22 gun decoded, cover exits in combat, gun-down stops, pistol prone, cover weapon switches (2026-11-26, NOT yet seen in game)
+- MW22 gun (user: activities "follow the right hand when they shouldnt"): MW22's AI clips and MW19's MP clips split the
+  gun over j_gun (position, one rotation key) and j_gun_adjust (rotation). The MPM chain (j_clavicle_ri -> j_gun_adjust ->
+  j_gun, MP_GUN_FIT 2026-11-24) with the gun rest moved by its own offset is MW19's AI gun bone: on the one clip both
+  rips share unchanged (sdr_com_exposed_stand_idle01) 0.06 u / 0.1 deg; held MW22 / MP clips keep the wrist 1.1-2 u off
+  MW19's grip spot. cod_anim_prep AI_CHAIN_GUN + is_chain_gun: the bake uses it for any clip with j_gun_adjust rotation
+  and no j_gun rotation (MPM's MP_GUN still wins). gun_holds.py: src_file (same file order as the builder: xanims first),
+  chain clips driven, cod_wrist_in_jgun on the decoded chain; imports the repo's tools/anims (was the SMH baker folder).
+  Full anim rebuild (4316 clips, same roles) + gun_holds. Check: tools/harness/gun_chain_check.py (7).
+- Cover exits (user: "wire them in and make sure they are used appropriately ... if any end with walking/running then
+  make sure to preserve that ... flanked they can not do it but ... if they are crouched thats preserved"): MW.ExitTo
+  (settled / looking / lean-aiming, goal over 120 away): the exit heading best toward the goal (lean exit when aiming,
+  CQB fast / walk exits CQB-style, else jog), played out when within EXIT_COMMIT, else cut at EXIT_CUT; its speed at the
+  hand-off (T.ExitVel at that u) -> loco:SetVelocity, stance standing (MW.FinishExit). Squad maneuvers and medic runs use
+  it; the calm fight-over exits carry their speed too. Flanked / exposed: no clip; crouched stays crouched
+  (tifKeepCrouchUntil, MW.KEEP_CROUCH 2 s, applied in the brain's stance step).
+- Gun-down stops (user: "SOME stop anims will have the gun down shown but still let them shoot"): measured on every stop:
+  sprint arrivals (run) and the pistol jog / run stops drop the barrel below -30 deg for ~the first 60%; calm / alert are
+  gun-down carries (out of fights); walk / jog / crouch stops keep it up. T.FightStopSet: engaged rifle stops from a
+  sprint use the jog stops. gun_holds.py gun_low() writes zz_gunlow.lua (TIFG_GUN_LOW[role] = { from, to }, start / stop
+  clips); W.Think holds fire inside it (root-motion clips read 0 speed, so the moving-fire limit never applied).
+- Russians (user): assault + AK-74u, riflemen (own rifleman entry) + Oden; other roles unchanged.
+- Pistol prone (user: "pistol prones"): mwp_pstl_idle / _aim (blend9 from MW19's 5-point pistol prone aims) / _up /
+  _crawl_8_loop; sh_anim L.prone.pistol; cl_body picks them with a pistol out (get-up stretched to the rifle's PR.up
+  duration the server times; forward crawl within 35 deg, other ways the rifle crawls; get-down stays the rifle's).
+- Cover weapon switches (user: "pistol switching in cover"): mwc_<ls|rs|cr|st|lc|rc>_to_<pistol|rifle> (MW22, crouch
+  also MW19). MW.PlaySwitch from settled cover: the clip as the cover action (phase "switch", no firing, then hiding with
+  the new weapon's set); W.Switch takes its swap / ready timing from that clip's notes.
+- AT4 (user screenshot: "at4 is black and should be a little higher on the back, fire and toss is perfect"): the material
+  kept SandSWEP's "$color2 [0 0 0]" + $blendtintbybasealpha, but our at4_rgb.vtf is DXT1 (no alpha = 1 everywhere): tinted
+  black all over. Both keys dropped (at4.vmt, and at4_build.py strips them). Back pose: disposable launchers ride
+  M.DISPOSABLE_LIFT (5) higher than the RPG-7 (cl_gunhold SlingPose).
+- Harness: test 115 (+18: exits, flank crouch, switches), trans 79, fire 23, russians 115, pistolprone 11 (new), launcher 54.
+- Results: gun_holds 4110 sources, 75 with an unusable gun bone (was 743: ~680 MW22 / MP clips now follow their decoded
+  gun - patrol activities, buddy revives, MP strafes / prone, corner checks, recoveries...; the 12 new cover switches
+  join under the weapon-switch rule; the 56 MP last-stand / revive clips stay, MP_UNUSABLE), 918 where the right hand lets
+  go; zz_gunlow 166 start / stop clips (run, pstljog, pstlrun; calm / alert gun-down carries). Decoded examples: stretch
+  lets go (r 1), scratch keeps it in hand, humming moves it a little (r 0.10); buddy revives let go (r 1: the medic's gun
+  follows MW22's own motion). All 51 harness suites pass (revive 9: buddy revives now decoded), gun_chain_check 7.
+
+### 0.38.65: shotgun pump keeps the gun straight (2026-11-26, NOT yet seen in game)
+User: "the pump is kinda weird, they like pump it up and sideways weirdly". The pump is the shotgun recoil kick
+(mwfk_shotgun_*: MW19's shotgun fire clip, shot + pump, as an additive delta of its first frame). Its j_gun delta (the
+gun rocking through the pump) is added in j_gun's local frame onto whatever the base clip holds, whose gun orientation
+differs from the fire clip's: the same delta turned the gun about other axes, up and sideways.
+- tif_mw_build shot_slice(still=...): listed bones keep the shot frame's pose through the kick (no delta). Manifest:
+  shotgun kicks still = ("j_gun",): the body's recoil and the arms' pump stay, the gun keeps the base clip's orientation.
+  Rebuilt mwfk_shotgun_* (the first build still eased j_gun from the last shot frame back in the 5 ease-back frames:
+  held bones stay put there too now; checked on a built kick: j_gun spread 0, left forearm 0.82).
+- Arm-overlay clips (user screenshot, "alot of clips now have guns like that", gun hanging off to the side): 132 roles
+  (aimed strafe loops mstg_walk / mstg_run, walk / jog starts and stops, crouch turns, stance changes) are MW22 AI legs
+  with MW19's aimed-idle arms + j_gun laid over (AI_ARMS / AI_ARMS_CROUCH). The overlay brought MW19's j_gun (one key) but
+  the MW22 base kept its j_gun_adjust track, so 0.38.64's bake read them as chain clips: MW19's shoulder-relative gun
+  inside MW22's clavicle chain. tif_mw_build: with an overlay that supplies j_gun, the base's j_gun_adjust is dropped
+  (the overlay's gun bakes as before). gun_chain_check 10 (+3: overlay clip off the chain, gun in the hand like the idle
+  within 2 deg, builder line). Rebuilt the 132 roles.
+- Hit reactions while moving (user: "prevent npcs from using idle hurt anims if their moving ... it can kill their
+  momentum"): walking under H.RUN_SPEED counted as standing, so a hit played a standing pain and Move.Stop'd him; running
+  fell through to that 30% of the time; MW22 pain shock could stun him mid-move. sv_hits_mw H.Pain: moving
+  (> H.MOVE_PAIN_MIN 40, not prone): no pain shock, no standing pains; running always takes its running flinch (keeps
+  running) or nothing; CQB walkers keep their moving pain sets; others just get the client's spine flinch. Unaware
+  soldiers hit on patrol still turn toward it (React22). Harness hits 278 (+2).
+- Idles over walks (user: "sometimes a idle will take precedence while a walk is happening, usually during like the
+  search state"): lost contact plays MW19's look-around (mwe_look_*) and investigating plays standing idles, both
+  one-shots; the search / investigate move then starts at once. Move.Step only cleared a standing clip that loops or
+  has finished, so a playing one-shot rode along and he glided in the idle pose. Now any full-body clip that doesn't
+  travel (clip.speed < 1) is cleared once he's being moved (transitions, prone, downed, upper-body acts excepted;
+  travelling clips like the running flinches keep playing). Harness move 26 (+2).
+
+### 0.38.66: footstep sounds culled and capped (2026-11-26, NOT yet seen in game)
+Bench 0.38.65 (bench_50_battle_0_38_65.txt): 44 soldiers alive on average (30-31 in the 0.38.60 / .61 runs), so totals
+aren't comparable straight: per alive soldier the server is flat (AI 5.7 -> 6.0 ms/s) and client animation is down
+about a third (~10.6 -> ~7.0 ms/s, 0.38.61-62 LOD and IK work). Split: compose 41, bone build + gun 145, foley 88,
+parts 11, slots + pose 12 ms/s; arm IK 53 us a solve (was 74-99).
+- Foley was the standout (88 ms/s, ~94 us a soldier a frame): every step, the gear rustle before and after it and the
+  odd rattle is an EmitSound, a few hundred a second with 44 soldiers, most out of earshot (gear plays 6-8 dB under the
+  step). cl_foley play(): C.HearDist by sound level (75+ 2000, 70+ 1400, 66+ 1000, else 700, scaled by volume) from
+  EyePos, at most C.MAX_PER_FRAME (10) a frame (C.Fire skips its surface trace once the frame's budget is used);
+  C.RANGE 2500 -> 2000. Harness foley 20 (+3: cap, quiet far rustle dropped, loud far step kept).
+- Launchers on the back (user: "on both it should be a little closer to the back when slung"): cl_gunhold M.BACK_DIST
+  6.5 behind Spine4 (was 9) for the RPG-7 and the AT4.
+- AT4 drop (user: "the at4's return to rifle anim ... the gun look kinda far forward compared to the hand"): the drop
+  clips (sdr_com_exp_<stand|crouch>_rpg_drop_to_exp_stand[_pstl]) had a "gun leaves the hand" curve: after the
+  dropgun note MW19's j_gun carries the dropped tube away, and the drawn rifle followed it. Now on the weapon-switch rule
+  (gun_holds.py SWITCH): undriven, the weapon in hand all through; zz_jgun.lua patched with the same three entries.
+  Harness launcher 57 (+3).
+- Floating guns (user screenshot: "if an npc goes off my screen their gun can stay in place"): out-of-view soldiers (the
+  0.38.61 LOD) skip placing their hand-placed models, which aren't parented: walking out of view, his gun hung where he
+  left it, still on screen. cl_body hide_placed: gun, slung primary, launcher and the clip prop are hidden on the LOD's
+  skipped frames and cheap composes; shown and placed again the frame he's back in view (0.3 s hysteresis on the way
+  out, so he's well clear first). Harness animlod 26 (+3).
+- Post-fight scrums (user screenshot: "sometimes after fights they still do this converge on a singlepoint ... its the
+  last major bug"): after a fight several soldiers head for the same spot (each solo search starts at the exact last
+  known position; investigating goes to the noise; squad bounds share a goal). Move.Spread spaced those goals only 56
+  apart, under twice the arrival tolerance (30 x sqrt 1.5) plus a hull, so two could stop overlapping; sv_crowd then
+  ghosts overlapping bodies (no collisions until apart) and nothing parted soldiers standing still: the overlap stayed
+  for good and, ghosted, let more walk into the pile.
+  - sv_crowd C.Unstack: two bodies overlapping a second (C.UNSTACK_AFTER) with an idle soldier (no goal, still, not in
+    cover / prone / a clip / a vehicle / downed / surrendered / medic / bipod / room clearing): one of them (the higher
+    index, or the idle one) walks to Move.Spread's free spot (tag "unstack"), his post going with him if he stood at it;
+    never both of a pair, at most every C.UNSTACK_GAP (2 s).
+  - Move.SPREAD_R 56 -> 72, spread rings 64 -> 80 per ring.
+  Harness crowd 43 (+6).
+### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
+User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
+degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like
+actually a start prone animation ... let this anim play when they do it from standing. but if they need to bipod
+while already prone, do like a shift to the bipod idle. dont let it affect how often they bipod".
+- Tracers: FireBullets drew HL2's tracer from the server's shot origin (W.MuzzleSrc: a point estimated beside the body;
+  the gun only exists on clients). Now Tracer = 0 and each bullet's callback sends effect tif_tracer (soldier, start,
+  hit); lua/effects/tif_tracer.lua starts HL2's "Tracer" at the client's real muzzle (Bd.MuzzleWorld, the muzzle
+  flash's lookup), the server point when the gun isn't there. Same effect count as before.
+- Guns in new clips: zz_jgun.lua's TIFG_JGUN_UNDRIVEN (clips whose gun bone isn't usable: MP locomotion) is built by
+  tools/guns/gun_holds.py classify() from the clip table; the new MP clips (crouch starts / stops, prone shimmy) weren't
+  in it, so the gun followed their unkeyed gun bone (90 deg off). classify() re-run with the new clips.
+- Prone bipod: measured: mwb_prone_in (sdr_com_prone_lmg_setup_in) goes from standing (pelvis 36) to the bipod
+  (5.8), mwb_prone_out the reverse. Client: an LMG gunner getting down with his weapon up plays mwb_prone_in as the
+  get-down (2.87 s vs mwp_down 2.93: the server's prone timing is unchanged) and lands on the bipod; getting up off a set
+  bipod plays mwb_prone_out (stretched to the server's get-up). Already prone, set-up / pack-up are a cross-fade between
+  the prone aim and the bipod aim (no clip; the old reversible in / out states are gone). When they bipod is unchanged
+  (lying still and aiming, the 1.2 s hold). sv_bipod_mw B.PRONE_SET_AFTER 2.9 -> 0.4 (braced after the shift).
+- Performance (cl_feet): the pelvis drop and the lean each walked the ~60 bones under the pelvis; now one pass with one
+  combined matrix. The lean counts against the per-frame cap too (it had none), tif_foot_ik_max default 12 -> 8, the
+  callback returns at once for soldiers not in the cap (st.feetOn). TIF.Prof counters cl_feet_us / cl_feet_n; tif_bench
+  (dev tools) prints "Foot IK / turn lean" ms/s and us per soldier.
+- Harness: fire 20 (+2: no engine tracer, tif_tracer per bullet), bipodseq 17 (new prone timing, stand-to-bipod get-down,
+  bipod-to-stand get-up, shift while prone), feet 12 (cap 8). All suites pass.
+
 ### 0.38.57: downed soldiers die in their downed pose (2026-11-25, NOT yet seen in game)
 User: "can you fix deaths during downed state putting them in the prone death pose". Killing a downed soldier skips
 the death clip (sv_hits_mw Death: tifDowned), and the corpse is posed from the server's bones. While downed the

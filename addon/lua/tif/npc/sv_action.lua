@@ -200,4 +200,5 @@ function Act.Tick(npc, now)
 		npc:SetAngles(Angle(0, a.startYaw + r, 0))
 	end
 	if a.finished and a.autoClear and npc.tifAct == a then Act.Clear(npc) end
+	if a.stopU and u >= a.stopU and npc.tifAct == a then Act.Clear(npc) end
 end
