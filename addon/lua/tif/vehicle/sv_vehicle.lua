@@ -190,7 +190,7 @@ function V.Sit(npc, veh, n, settleClip)
 	end
 	npc:SetNW2Entity("tif_veh", veh)
 	npc:SetNW2Int("tif_seat", n)
-	local pod = veh.seats[n]
+	local pod = veh.seats and veh.seats[n]
 	if IsValid(pod) then pod.tifNPC = npc end
 	npc.tifFire.want = false
 end
@@ -251,8 +251,10 @@ local function door_busy(npc, veh, pos)
 	return false
 end
 
+local seenOut = {}
+local seenTr = { mask = MASK_SOLID_BRUSHONLY, output = seenOut }
 local function seen(pos)
-	local tr = { mask = MASK_SOLID_BRUSHONLY }
+	local tr = seenTr
 	for _, ply in player.Iterator() do
 		if ply:Alive() then
 			local eye = ply:EyePos()

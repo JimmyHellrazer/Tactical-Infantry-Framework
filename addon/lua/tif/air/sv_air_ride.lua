@@ -129,6 +129,11 @@ end
 local function dismount(npc, now)
 	local H = npc.tifHeli
 	local heli, man = H.heli, H.man
+	if not IsValid(heli) then
+		npc:SetParent(nil)
+		stand(npc)
+		return
+	end
 	local suffix = pick_exit(npc, man, H.style)
 	local ex = man.exits[suffix]
 	H.ex = ex
@@ -233,7 +238,8 @@ function Ride.Think(npc, now)
 	end
 	if H.state == "out" then
 		local u = (now - H.t0) / math.max(0.05, H.dur)
-		if u >= H.ex.release or not npc.tifAct or npc.tifAct.name ~= H.clip then
+		local relAt = (H.ex and H.ex.release) or 0.9
+		if u >= relAt or not npc.tifAct or npc.tifAct.name ~= H.clip then
 			release(npc, now)
 			return H.state == "hold"
 		end
@@ -268,6 +274,7 @@ hook.Add("TIF_HeliDestroyed", "tif_air_riders", function(heli, attacker)
 			npc:SetParent(nil)
 			if npc.tifAct then Act.Clear(npc) end
 			stand(npc)
+			npc.tifNoDown = true
 			local d = DamageInfo()
 			d:SetDamage(npc:Health() + 100)
 			d:SetDamageType(DMG_BLAST)

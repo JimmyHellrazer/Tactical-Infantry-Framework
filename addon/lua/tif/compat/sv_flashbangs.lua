@@ -17,8 +17,13 @@ local function thrower_of(inflictor)
 	return IsValid(o) and o or nil
 end
 
-local function los(a, b, filter)
-	local tr = util.TraceLine({ start = a, endpos = b, mask = MASK_SOLID - CONTENTS_GRATE, filter = filter })
+local FLASH_MASK = bit.band(MASK_SOLID, bit.bnot(CONTENTS_GRATE))
+local losOut = {}
+local losTr = { mask = FLASH_MASK, filter = {}, output = losOut }
+local function los(a, b, e1, e2)
+	losTr.start, losTr.endpos = a, b
+	losTr.filter[1], losTr.filter[2] = e1, e2
+	local tr = util.TraceLine(losTr)
 	return not tr.Hit or tr.Fraction > 0.98
 end
 
@@ -26,14 +31,15 @@ function TIF.FlashAt(pos, radius, inflictor, thrower)
 	if not TIF.API or not TIF.API.Stun then return 0 end
 	thrower = thrower or thrower_of(inflictor)
 	local n = 0
-	for _, npc in ipairs(TIF.Soldiers or {}) do
+	local soldiers = TIF.Soldiers or {}
+	for i = 1, #soldiers do
+		local npc = soldiers[i]
 		if IsValid(npc) and not npc.tifDead then
-
 			local s = TIF.FlashScale(thrower, npc)
 			local r = radius * s
 			local eye = (TIF.EyeOf and TIF.EyeOf(npc)) or (npc:GetPos() + Vector(0, 0, 60))
 			local d = eye:Distance(pos)
-			if s > 0 and d < r and los(pos, eye, { inflictor, npc }) then
+			if s > 0 and r > 0 and d < r and los(pos, eye, inflictor, npc) then
 				local to = (pos - eye):GetNormalized()
 				local facing = npc:GetForward():Dot(to)
 				local k = (1 - d / r) * Lerp((facing + 1) / 2, TIF.FLASH.behind, 1)
