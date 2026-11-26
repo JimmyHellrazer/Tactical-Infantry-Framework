@@ -349,7 +349,7 @@ local trs = io.open(ROOT .. "tif/tactics/sv_trans_mw.lua"):read("*a")
 check(select(2, trs:gsub("\n\tsettle_stop%(npc, name%)", "")) == 2, "both stop paths settle early")
 check(trs:find("a.warpU = u", 1, true) ~= nil, "the stop's landing warp completes at the settle point")
 local act = io.open(ROOT .. "tif/npc/sv_action.lua"):read("*a")
-check(act:find("if a.stopU and u >= a.stopU and npc.tifAct == a then Act.Clear(npc) end", 1, true) ~= nil, "cleared a moment after settling")
+check(act:find("if act.stopU and progress >= act.stopU and npc.tifAct == act then Action.Clear(npc) end", 1, true) ~= nil, "cleared a moment after settling")
 local mv = io.open(ROOT .. "tif/npc/sv_move.lua"):read("*a")
 check(mv:find("if now >= ex.doneAt - 0.1 and now < ex.doneAt + 0.4 then npc.loco:SetVelocity(ex.vel) end", 1, true) ~= nil, "the start's speed is handed to the locomotion only when it played through")
 do
