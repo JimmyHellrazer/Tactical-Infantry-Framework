@@ -694,9 +694,11 @@ function B.Think(npc, dt)
 	Per.Update(npc, dt, now)
 
 	if npc.tifSquad then
-		for _, c in pairs(npc.tifK.contacts) do
-			if c.confirmed and (c.visible or c.source == "heard" or c.source == "hit" or c.source == "fired on") then
-				TIF.Squad.Report(npc, c)
+		if next(npc.tifK.contacts) ~= nil then
+			for _, c in pairs(npc.tifK.contacts) do
+				if c.confirmed and (c.visible or c.source == "heard" or c.source == "hit" or c.source == "fired on") then
+					TIF.Squad.Report(npc, c)
+				end
 			end
 		end
 		TIF.Squad.Sync(npc, now)
@@ -708,7 +710,9 @@ function B.Think(npc, dt)
 	local c = Per.Primary(npc, now)
 	npc.tifPrimary = c and c.ent or nil
 	npc.tifPrimaryC = c
-	Move.UpdateThreatAreas(npc)
+	if (npc.tifAware or AW.UNAWARE) > AW.UNAWARE or (npc.tifMove and npc.tifMove.goal ~= nil) then
+		Move.UpdateThreatAreas(npc)
+	end
 	update_awareness(npc, c, now)
 
 	local st = npc.tifAware
@@ -718,6 +722,12 @@ function B.Think(npc, dt)
 	if not fighting then
 		if TIF.CoverBehave.In(npc) then exiting = TIF.CoverBehave.Exit(npc, "fight over") end
 		if TIF.ProneB.Is(npc) then TIF.ProneB.GetUp(npc) end
+	end
+
+	if npc.tifVeh and not IsValid(npc.tifVeh) then
+		npc.tifVeh, npc.tifBoard, npc.tifLeaving = nil, nil, nil
+		npc:SetParent(nil)
+		npc:SetCollisionGroup(COLLISION_GROUP_NPC)
 	end
 
 	local V = TIF.Vehicle

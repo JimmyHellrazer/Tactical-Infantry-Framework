@@ -1,42 +1,49 @@
 local TIF = TIF
 
-local cvOn = CreateConVar("tif_rescue", "1", FCVAR_ARCHIVE, "Rescue or remove soldiers that fell under the map (1/0)")
-local cvAll = CreateConVar("tif_rescue_all", "0", FCVAR_ARCHIVE,
+local cvRescue = CreateConVar("tif_rescue", "1", FCVAR_ARCHIVE, "Rescue or remove soldiers that fell under the map (1/0)")
+local cvRescueAll = CreateConVar("tif_rescue_all", "0", FCVAR_ARCHIVE,
 	"Also remove other NPCs / nextbots that fell under the map (1/0)")
 
-local CHECKS = 3
+local LOST_THRESHOLD = 3
+local UP_20 = Vector(0, 0, 20)
+local UP_4 = Vector(0, 0, 4)
 
-local function lost(ent)
+local function is_lost(ent)
 	local pos = ent:GetPos()
 	if ent:WaterLevel() >= 3 then
-		local a = navmesh.GetNearestNavArea(pos, false, 3000, false, true)
-		return true, IsValid(a) and a:GetCenter().z > pos.z + 40 and a or nil
+		local area = navmesh.GetNearestNavArea(pos, false, 3000, false, true)
+		return true, IsValid(area) and area:GetCenter().z > pos.z + 40 and area or nil
 	end
 
-	if IsValid(navmesh.GetNavArea(pos + Vector(0, 0, 20), 120)) then return false end
+	if IsValid(navmesh.GetNavArea(pos + UP_20, 120)) then return false end
 
-	local near = navmesh.GetNearestNavArea(pos, false, 400, false, false)
-	if IsValid(near) and math.abs(near:GetClosestPointOnArea(pos).z - pos.z) < 120 then return false end
+	local nearArea = navmesh.GetNearestNavArea(pos, false, 400, false, false)
+	if IsValid(nearArea) and math.abs(nearArea:GetClosestPointOnArea(pos).z - pos.z) < 120 then return false end
 
-	local up = navmesh.GetNearestNavArea(pos, false, 2500, false, false)
-	if IsValid(up) and up:GetClosestPointOnArea(pos).z > pos.z + 150 then return true, up end
+	local aboveArea = navmesh.GetNearestNavArea(pos, false, 2500, false, false)
+	if IsValid(aboveArea) and aboveArea:GetClosestPointOnArea(pos).z > pos.z + 150 then return true, aboveArea end
 	return false
 end
 
-local function busy(ent)
+local function is_busy(ent)
 	return ent.tifDead or ent.tifVeh or ent.tifBoard or ent.tifLeaving or IsValid(ent:GetParent())
 end
 
-local function rescue(ent, area)
+local function rescue_entity(ent, area)
 	ent.tifRescues = (ent.tifRescues or 0) + 1
 	if area and ent.tifRescues <= 2 and ent.tifArchId then
-		local p = area:GetClosestPointOnArea(ent:GetPos()) or area:GetCenter()
-		p = TIF.FreeSpot(p + Vector(0, 0, 4), ent)
-		ent:SetPos(p)
-		if ent.loco then ent.loco:SetVelocity(vector_origin) end
+		local spot = area:GetClosestPointOnArea(ent:GetPos()) or area:GetCenter()
+		spot = TIF.FreeSpot(spot + UP_4, ent)
+		if TIF.Action and ent.tifAct then TIF.Action.Clear(ent, true) end
+		ent.tifGlide = nil
+		ent:SetPos(spot)
+		if ent.loco then
+			ent.loco:SetVelocity(vector_origin)
+			ent.loco:ClearStuck()
+		end
 		if TIF.Move and ent.tifMove then TIF.Move.Stop(ent) end
 		TIF.Log("Soldier #", ent:EntIndex(), " fell under the map: put back on the navmesh at ",
-			math.floor(p.x), " ", math.floor(p.y), " ", math.floor(p.z))
+			math.floor(spot.x), " ", math.floor(spot.y), " ", math.floor(spot.z))
 		return
 	end
 	TIF.Log((ent.tifArchId and "Soldier #" or (ent:GetClass() .. " #")), ent:EntIndex(), " fell under the map: removed")
@@ -44,25 +51,29 @@ local function rescue(ent, area)
 end
 
 timer.Create("tif_rescue", 2, 0, function()
-	if not cvOn:GetBool() or navmesh.GetNavAreaCount() == 0 then return end
-	local list = {}
-	for _, e in ipairs(TIF.Soldiers or {}) do list[#list + 1] = e end
-	if cvAll:GetBool() then
-		for _, e in ipairs(ents.GetAll()) do
-			if (e:IsNPC() or e:IsNextBot()) and not e.tifArchId then list[#list + 1] = e end
+	if not cvRescue:GetBool() or navmesh.GetNavAreaCount() == 0 then return end
+	local candidates = {}
+	local soldiers = TIF.Soldiers or {}
+	for i = 1, #soldiers do candidates[#candidates + 1] = soldiers[i] end
+	if cvRescueAll:GetBool() then
+		local allEnts = ents.GetAll()
+		for i = 1, #allEnts do
+			local ent = allEnts[i]
+			if (ent:IsNPC() or ent:IsNextBot()) and not ent.tifArchId then candidates[#candidates + 1] = ent end
 		end
 	end
-	for _, e in ipairs(list) do
-		if IsValid(e) and not busy(e) then
-			local isLost, area = lost(e)
-			if isLost then
-				e.tifLostChecks = (e.tifLostChecks or 0) + 1
-				if e.tifLostChecks >= CHECKS then
-					e.tifLostChecks = 0
-					rescue(e, e.tifArchId and area or nil)
+	for i = 1, #candidates do
+		local ent = candidates[i]
+		if IsValid(ent) and not is_busy(ent) then
+			local lost, area = is_lost(ent)
+			if lost then
+				ent.tifLostChecks = (ent.tifLostChecks or 0) + 1
+				if ent.tifLostChecks >= LOST_THRESHOLD then
+					ent.tifLostChecks = 0
+					rescue_entity(ent, ent.tifArchId and area or nil)
 				end
 			else
-				e.tifLostChecks = 0
+				ent.tifLostChecks = 0
 			end
 		end
 	end
