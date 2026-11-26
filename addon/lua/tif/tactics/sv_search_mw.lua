@@ -24,20 +24,25 @@ function S.Use(npc)
 		and TIF.GTG.Clip("mwl_around_loop", npc.tifHomeHost) ~= nil
 end
 
-local function has(npc, kind) return TIF.GTG.Clip("mwl_" .. kind .. "_loop", npc.tifHomeHost) ~= nil end
+local function has(npc, kind)
+	return TIF.GTG.Clip("mwl_" .. kind .. "_loop", npc.tifHomeHost) ~= nil
+end
 
 function S.Find(npc, hint)
 	local out = {}
 	local base = npc:GetPos()
+
 	for i = 0, 7 do
 		local yaw = i * 45
 		local d = yaw_dir(yaw)
 		local mid = trace(base + Vector(0, 0, 30), base + Vector(0, 0, 30) + d * 60, npc)
+
 		if mid.Hit and math.abs(mid.HitNormal.z) < 0.5 then
 			local dist = mid.Fraction * 60
 			local high = trace(base + Vector(0, 0, 62), base + Vector(0, 0, 62) + d * (dist + 80), npc)
 			local low = trace(base + Vector(0, 0, 12), base + Vector(0, 0, 12) + d * (dist + 25), npc)
 			local gap = trace(base + Vector(0, 0, 4), base + Vector(0, 0, 4) + d * (dist + 30), npc)
+
 			if not low.Hit and not high.Hit then
 				out[#out + 1] = { kind = "under", yaw = yaw }
 			elseif low.Hit and not gap.Hit then
@@ -46,9 +51,9 @@ function S.Find(npc, hint)
 				out[#out + 1] = { kind = "over", yaw = yaw }
 			end
 		else
-
 			local p = base + d * 50
 			local g = trace(p + Vector(0, 0, 20), p - Vector(0, 0, 120), npc)
+
 			if not g.Hit then
 				out[#out + 1] = { kind = "down", yaw = yaw }
 			end
@@ -59,13 +64,19 @@ function S.Find(npc, hint)
 	if not up.Hit or up.HitSky then
 		local y = hint or npc:GetAngles().y
 		local tall = trace(base + Vector(0, 0, 220), base + Vector(0, 0, 220) + yaw_dir(y) * 500, npc)
+
 		if tall.Hit and not tall.HitSky then
 			out[#out + 1] = { kind = "high", yaw = y }
 		end
 	end
 
 	local ok = {}
-	for _, f in ipairs(out) do if has(npc, f.kind) then ok[#ok + 1] = f end end
+	for _, f in ipairs(out) do
+		if has(npc, f.kind) then
+			ok[#ok + 1] = f
+		end
+	end
+
 	return ok
 end
 
@@ -76,6 +87,7 @@ local function choose(npc, list, hint)
 		if hint then
 			k = k * (1.5 - math.abs(math.AngleDifference(f.yaw, hint)) / 180)
 		end
+
 		w[i] = k
 		total = total + k
 	end
@@ -93,9 +105,11 @@ function S.Look(npc, now, hint)
 	if not S.Use(npc) or npc.tifLook or npc.tifAct or npc.tifCov or npc.tifProne or npc.tifVeh then
 		return false
 	end
+
 	local f = choose(npc, S.Find(npc, hint), hint)
 	local d = Act.Play(npc, "mwl_" .. f.kind .. "_enter", { root = true, to = { pos = npc:GetPos(), yaw = f.yaw } })
 	if not d then return false end
+
 	npc.tifLook = { kind = f.kind, phase = "enter", untilT = now + d, yaw = f.yaw }
 	npc.tifAction = "search: look " .. f.kind
 	return true
@@ -104,10 +118,12 @@ end
 local function stop(npc)
 	npc.tifLook = nil
 	local a = npc.tifAct
+
 	if a and a.name and string.sub(a.name, 1, 4) == "mwl_" then
 		Act.Clear(npc)
 	end
 end
+
 S.Stop = stop
 
 function S.Busy(npc, now)
@@ -121,6 +137,7 @@ function S.Busy(npc, now)
 	end
 
 	TIF.Move.Stop(npc)
+
 	if l.phase == "enter" and now >= l.untilT then
 		Act.Loop(npc, "mwl_" .. l.kind .. "_loop")
 		l.phase, l.untilT = "loop", now + math.Rand(S.LOOP_FOR[1], S.LOOP_FOR[2])

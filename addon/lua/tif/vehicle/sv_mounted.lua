@@ -26,17 +26,20 @@ function MT.DefaultCar()
 	for _, c in ipairs(MT.CAR_FALLBACK) do
 		if scripted_ents.GetStored(c) then return c end
 	end
+
 	return nil
 end
 
 function MT.VehicleClass(class)
 	if not isstring(class) then return MT.DefaultCar() end
 	if scripted_ents.GetStored(class) then return class end
+
 	local car = string.match(class, "^gtg_grandtheftgmod_(.+)$") or string.match(class, "^tif_gta_glide_cars_(.+)$")
 	if car then
 		if scripted_ents.GetStored("tif_gta_glide_cars_" .. car) then
 			return "tif_gta_glide_cars_" .. car
 		end
+
 		return MT.DefaultCar() or class
 	end
 
@@ -45,6 +48,7 @@ end
 
 function MT.SpawnVehicle(class, pos, yaw)
 	class = MT.VehicleClass(class)
+
 	if not class then
 		return nil, "no vehicle class (install the TIF vehicle addon)"
 	end
@@ -52,12 +56,15 @@ function MT.SpawnVehicle(class, pos, yaw)
 	if not scripted_ents.GetStored(class) then
 		return nil, "no entity class " .. tostring(class)
 	end
+
 	local veh = ents.Create(class)
 	if not IsValid(veh) then return nil, "couldn't create " .. class end
+
 	veh:SetPos(pos + Vector(0, 0, 40))
 	veh:SetAngles(Angle(0, yaw or 0, 0))
 	veh:Spawn()
 	veh:Activate()
+
 	if not GL.IsVehicle(veh) then
 		veh:Remove()
 		return nil, class .. " isn't a Glide vehicle"
@@ -69,9 +76,11 @@ end
 
 function MT.Mount(sq, veh)
 	if not GL.IsUsable(veh) then return 0 end
+
 	local members = SQ.Members(sq)
 	local seats = V.SeatCount(veh)
 	if seats == 0 or #members == 0 then return 0 end
+
 	local riders, n = {}, 0
 
 	local waiting = {}
@@ -83,6 +92,7 @@ function MT.Mount(sq, veh)
 			if m.tifBoard then
 				V.CancelBoard(m, "new boarding order")
 			end
+
 			m.tifBoardFails = 0
 			waiting[#waiting + 1] = m
 		end
@@ -95,25 +105,31 @@ function MT.Mount(sq, veh)
 			return pa < pb
 		end)
 		local d = table.remove(waiting, 1)
+
 		if d and V.Board(d, veh, 1) then
-			riders[d] = 1 n = n + 1
+			riders[d] = 1
+			n = n + 1
 		end
 	end
 
 	table.sort(waiting, function(a, b) return a == sq.leader and b ~= sq.leader end)
+
 	for _, m in ipairs(waiting) do
 		local best, bestD
 		for s = 2, seats do
 			if V.SeatFree(veh, s, m) then
 				local p = V.EntryPoint(m, veh, s)
 				local d = p:DistToSqr(m:GetPos())
+
 				if not bestD or d < bestD then
 					best, bestD = s, d
 				end
 			end
 		end
+
 		if best and V.Board(m, veh, best) then
-			riders[m] = best n = n + 1
+			riders[m] = best
+			n = n + 1
 		end
 	end
 
@@ -136,12 +152,13 @@ end
 function MT.MountSeated(sq, veh)
 	local n = MT.Mount(sq, veh)
 	if n == 0 or not sq.mount then return n end
+
 	for m, seat in pairs(sq.mount.riders) do
 		if IsValid(m) and m.tifBoard then
-
 			V.Sit(m, veh, seat)
 		end
 	end
+
 	log(sq, "seated directly in ", tostring(veh))
 	return n
 end
@@ -149,9 +166,11 @@ end
 local function seated(sq)
 	local mt = sq.mount
 	local inside, total = 0, 0
+
 	for m in pairs(mt.riders) do
 		if IsValid(m) and not m.tifDead then
 			total = total + 1
+
 			if m.tifVeh == mt.veh then
 				inside = inside + 1
 			end
@@ -165,6 +184,7 @@ local function start_drive(sq, dest, dismount, label)
 	local mt = sq.mount
 	local veh = mt.veh
 	local pts, src = R.Build(veh:GetPos(), dest)
+
 	if not pts then
 		log(sq, "no route to ", tostring(dest), " (", tostring(src), ")")
 		return false
@@ -173,6 +193,7 @@ local function start_drive(sq, dest, dismount, label)
 	mt.phase, mt.dest, mt.dismountOnArrive = "driving", dest, dismount
 	D.Drive(veh, pts, { source = src, label = label or "drive", onArrive = function()
 		if not sq.mount or sq.mount.veh ~= veh then return end
+
 		if sq.mount.patrol then
 			local p = sq.mount.patrol
 			p.i = p.i % #p.pts + 1
@@ -182,6 +203,7 @@ local function start_drive(sq, dest, dismount, label)
 		else
 			sq.mount.phase = "ready"
 		end
+
 	end })
 	log(sq, label or "drive", ": route of ", #pts, " points (", src, ")")
 	return true
@@ -190,7 +212,9 @@ end
 function MT.DriveTo(sq, pos, stay)
 	local mt = sq.mount
 	if not mt then return false end
+
 	mt.patrol = nil
+
 	if mt.phase == "boarding" then
 		mt.pending = { pos = pos, stay = stay }
 		return true
@@ -202,7 +226,9 @@ end
 function MT.Patrol(sq, pts)
 	local mt = sq.mount
 	if not mt or #pts < 2 then return false end
+
 	mt.patrol = { pts = pts, i = 1 }
+
 	if mt.phase == "boarding" then
 		mt.pending = { patrol = true }
 		return true
@@ -228,12 +254,14 @@ function MT.Dismount(sq, threat, why)
 	end
 
 	table.sort(list, function(a, b) return (a.seat == 1 and 99 or a.seat) < (b.seat == 1 and 99 or b.seat) end)
+
 	for _, e in ipairs(list) do
 		mt.exitQueue[#mt.exitQueue + 1] = e.m
 	end
 
 	mt.combat = threat ~= nil
 	log(sq, "dismount (", why or "?", "), ", #list, " getting out")
+
 	if threat and list[1] then
 		TIF.Say(list[1].m, "contact", 0.9)
 	end
@@ -242,14 +270,17 @@ end
 function MT.Remount(sq)
 	local mt = sq.mount
 	if not mt or not GL.IsUsable(mt.veh) then return false end
+
 	local patrol = mt.patrol
 	local prev = mt.prevOrder
 	local convoy = mt.convoy
 	sq.mount = nil
 	MT.Mount(sq, mt.veh)
+
 	if sq.mount then
 		sq.mount.prevOrder = prev
 		sq.mount.convoy = convoy
+
 		if patrol then
 			sq.mount.patrol = patrol
 			sq.mount.pending = { patrol = true }
@@ -262,6 +293,7 @@ end
 local function contact(sq)
 	local mt = sq.mount
 	local best, bestD
+
 	for m in pairs(mt.riders) do
 		if IsValid(m) and not m.tifDead and m.tifVeh == mt.veh then
 			local c = m.tifPrimaryC
@@ -292,13 +324,18 @@ local function tick(sq, mt, now)
 	end
 
 	if mt.phase == "boarding" then
-
 		for m, seat in pairs(mt.riders) do
 			if IsValid(m) and not m.tifDead and m.tifVeh ~= veh and not m.tifBoard and not m.tifLeaving then
 				local s = V.SeatFree(veh, seat, m) and seat or nil
 				if not s then
-					for k = 2, V.SeatCount(veh) do if V.SeatFree(veh, k, m) then s = k break end end
+					for k = 2, V.SeatCount(veh) do
+						if V.SeatFree(veh, k, m) then
+							s = k
+							break
+						end
+					end
 				end
+
 				if s and (m.tifBoardFails or 0) < 3 then
 					if V.Board(m, veh, s) then
 						mt.riders[m] = s
@@ -313,19 +350,22 @@ local function tick(sq, mt, now)
 				end
 			end
 		end
+
 		local inside, total = seated(sq)
 		local driverIn = V.Driver(veh) ~= nil
+
 		if total == 0 then
 			sq.mount = nil
 			return
 		end
+
 		if inside >= total or (now - mt.t0 > 25 and driverIn) then
 			mt.phase = "ready"
 			log(sq, "mounted (", inside, "/", total, ")")
 			local p = mt.pending
 			mt.pending = nil
-			if mt.convoy then
 
+			if mt.convoy then
 			elseif p and p.patrol and mt.patrol then
 				start_drive(sq, mt.patrol.pts[mt.patrol.i], false, "patrol " .. mt.patrol.i .. "/" .. #mt.patrol.pts)
 			elseif p and p.pos then
@@ -335,6 +375,7 @@ local function tick(sq, mt, now)
 			log(sq, "boarding failed (", inside, "/", total, " in, no driver)")
 			MT.Dismount(sq, nil, "boarding failed")
 		end
+
 		return
 	end
 
@@ -346,12 +387,14 @@ local function tick(sq, mt, now)
 		local c, d = contact(sq)
 		local transit = mt.phase == "driving" and not mt.patrol and mt.dest ~= nil
 		local stopAt = transit and MT.STOP_TRANSIT or MT.STOP_PATROL
+
 		if c and d < stopAt then
 			mt.threat = Vector(c.pos)
 			mt.phase = "stopping"
 			D.Stop(veh, "contact")
 			log(sq, "contact, stopping")
 		end
+
 		return
 	end
 
@@ -359,42 +402,51 @@ local function tick(sq, mt, now)
 		if veh:GetVelocity():Length() < 140 or now - (mt.stopT or now) > 4 then
 			MT.Dismount(sq, mt.threat, "contact")
 		end
+
 		mt.stopT = mt.stopT or now
 		return
 	end
 
 	if mt.phase == "dismounting" then
-
 		if not mt.combat and IsValid(veh) and veh:GetVelocity():Length() > MT.EXIT_SPEED and now - (mt.dismountT or now) < 6 then
 			mt.nextExit = now + 0.5
 			return
 		end
+
 		if now >= mt.nextExit then
 			local m = table.remove(mt.exitQueue, 1)
-			while m and not (IsValid(m) and m.tifVeh == veh) do m = table.remove(mt.exitQueue, 1) end
+			while m and not (IsValid(m) and m.tifVeh == veh) do
+				m = table.remove(mt.exitQueue, 1)
+			end
+
 			if m then
 				V.Leave(m, mt.combat)
 				mt.nextExit = now + MT.EXIT_GAP
 			end
 		end
+
 		if #mt.exitQueue == 0 and #V.Occupants(veh) == 0 then
 			mt.phase = "dismounted"
 
 			local prev = mt.prevOrder
 			if prev and prev.kind ~= "mounted" then
-				sq.order = prev prev.time = now
+				sq.order = prev
+				prev.time = now
 			else
 				sq.order = { kind = "free", time = now }
 			end
+
 			SQ.Publish(sq)
 			log(sq, "on foot")
 		end
+
 		return
 	end
 end
 
 timer.Create("tif_mounted_tick", 0.25, 0, function()
 	if TIF.AIDisabled() then return end
+
 	local now = CurTime()
 	for _, sq in pairs(SQ.List) do
 		if sq.mount then

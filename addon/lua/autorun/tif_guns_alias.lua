@@ -4,7 +4,6 @@ end
 
 local P = "weapon_tifmw_"
 local A = {
-
 	assaultrifle = "akm", assaultrifle_mk2 = "ak_ff", compactrifle = "ak74u", advancedrifle = "an94",
 	carbinerifle = "m4_sof_a", carbinerifle_mk2 = "m4_sof_b", specialcarbine = "scar", specialcarbine_mk2 = "m13_sof",
 	tacticalrifle = "kilo_sof", bullpuprifle = "m13_sof", bullpuprifle_mk2 = "kilo_sof", militaryrifle = "fal",
@@ -28,6 +27,7 @@ local A = {
 }
 
 TIF_WEAPON_ALIAS = TIF_WEAPON_ALIAS or {}
+
 for gta, mw in pairs(A) do
 	TIF_WEAPON_ALIAS["weapon_gtg_" .. gta] = P .. mw
 end

@@ -123,7 +123,6 @@ local MANIFEST = {
 	"sv_selftest.lua",
 
 	"core/sv_watchdog.lua",
-
 }
 
 local function load_file(path)
@@ -142,6 +141,7 @@ local function load_file(path)
 		if SERVER then
 			AddCSLuaFile(path)
 		end
+
 		include(path)
 	end
 end
@@ -154,6 +154,7 @@ if TIF.Dev then
 	if SERVER then
 		AddCSLuaFile("tif_dev/sh_init.lua")
 	end
+
 	include("tif_dev/sh_init.lua")
 end
 

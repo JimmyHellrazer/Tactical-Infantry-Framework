@@ -36,21 +36,27 @@ end
 
 local function rescue_entity(ent, area)
 	ent.tifRescues = (ent.tifRescues or 0) + 1
+
 	if area and ent.tifRescues <= 2 and ent.tifArchId then
 		local spot = area:GetClosestPointOnArea(ent:GetPos()) or area:GetCenter()
 		spot = TIF.FreeSpot(spot + UP_4, ent)
+
 		if TIF.Action and ent.tifAct then
 			TIF.Action.Clear(ent, true)
 		end
+
 		ent.tifGlide = nil
 		ent:SetPos(spot)
+
 		if ent.loco then
 			ent.loco:SetVelocity(vector_origin)
 			ent.loco:ClearStuck()
 		end
+
 		if TIF.Move and ent.tifMove then
 			TIF.Move.Stop(ent)
 		end
+
 		TIF.Log("Soldier #", ent:EntIndex(), " fell under the map: put back on the navmesh at ",
 			math.floor(spot.x), " ", math.floor(spot.y), " ", math.floor(spot.z))
 		return
@@ -62,8 +68,10 @@ end
 
 timer.Create("tif_rescue", 2, 0, function()
 	if not cvRescue:GetBool() or navmesh.GetNavAreaCount() == 0 then return end
+
 	local candidates = {}
 	local soldiers = TIF.Soldiers or {}
+
 	for i = 1, #soldiers do
 		candidates[#candidates + 1] = soldiers[i]
 	end
@@ -84,6 +92,7 @@ timer.Create("tif_rescue", 2, 0, function()
 			local lost, area = is_lost(ent)
 			if lost then
 				ent.tifLostChecks = (ent.tifLostChecks or 0) + 1
+
 				if ent.tifLostChecks >= LOST_THRESHOLD then
 					ent.tifLostChecks = 0
 					rescue_entity(ent, ent.tifArchId and area or nil)

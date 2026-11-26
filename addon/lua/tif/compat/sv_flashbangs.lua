@@ -7,6 +7,7 @@ local cvFriendly = CreateConVar("tif_flash_friendly", "0.3", FCVAR_ARCHIVE,
 
 function TIF.FlashScale(thrower, ent)
 	if not (IsValid(thrower) and IsValid(ent)) then return 1 end
+
 	if thrower ~= ent and TIF.Relation(thrower, ent) ~= TIF.REL_ALLY then
 		return 1
 	end
@@ -16,6 +17,7 @@ end
 
 local function thrower_of(inflictor)
 	if not IsValid(inflictor) then return nil end
+
 	local o = inflictor.GetOwner and inflictor:GetOwner()
 	return IsValid(o) and o or nil
 end
@@ -32,9 +34,11 @@ end
 
 function TIF.FlashAt(pos, radius, inflictor, thrower)
 	if not TIF.API or not TIF.API.Stun then return 0 end
+
 	thrower = thrower or thrower_of(inflictor)
 	local n = 0
 	local soldiers = TIF.Soldiers or {}
+
 	for i = 1, #soldiers do
 		local npc = soldiers[i]
 		if IsValid(npc) and not npc.tifDead then
@@ -42,6 +46,7 @@ function TIF.FlashAt(pos, radius, inflictor, thrower)
 			local r = radius * s
 			local eye = (TIF.EyeOf and TIF.EyeOf(npc)) or (npc:GetPos() + Vector(0, 0, 60))
 			local d = eye:Distance(pos)
+
 			if s > 0 and r > 0 and d < r and los(pos, eye, inflictor, npc) then
 				local to = (pos - eye):GetNormalized()
 				local facing = npc:GetForward():Dot(to)
@@ -51,6 +56,7 @@ function TIF.FlashAt(pos, radius, inflictor, thrower)
 				if d < r * 0.15 then
 					secs = math.max(secs, TIF.FLASH.max * 0.8)
 				end
+
 				TIF.API.Stun(npc, secs * s)
 				n = n + 1
 			end
@@ -64,15 +70,18 @@ local function hook_sandswep()
 	local t = scripted_ents.GetStored and scripted_ents.GetStored("sandswep_flashbang")
 	t = t and t.t
 	if not t or t.tifWrapped or not t.Detonate then return end
+
 	t.tifWrapped = true
 	local orig = t.Detonate
 	t.Detonate = function(self, ...)
 		local done = self.Done
 		local r = orig(self, ...)
+
 		if not done then
 			local f = (self.Cfg and self.Cfg.Flash) or self.FlashDefaults or {}
 			TIF.FlashAt(self:GetPos() + Vector(0, 0, 4), math.max(f.Radius or 787, f.ShockRadius or 787), self)
 		end
+
 		return r
 	end
 end

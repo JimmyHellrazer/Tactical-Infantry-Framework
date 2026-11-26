@@ -11,17 +11,20 @@ local function unturn(ang)
 	SCRATCH_MAT:SetAngles(ang)
 	return (SCRATCH_MAT * UNTURN_MAT):GetAngles()
 end
+
 Props.Unturn = unturn
 
 local function ensure_prop_entity(state, model)
 	local prop = state.prop
 	if IsValid(prop) and prop:GetModel() == model then return prop end
+
 	if IsValid(prop) then
 		prop:Remove()
 	end
 
 	prop = ClientsideModel(model, RENDERGROUP_OPAQUE)
 	if not IsValid(prop) then return nil end
+
 	prop:SetNoDraw(true)
 	state.prop = prop
 	return prop
@@ -31,17 +34,23 @@ function Props.Remove(state)
 	if IsValid(state.prop) then
 		state.prop:Remove()
 	end
+
 	state.prop, state.propFrom, state.propKey = nil, nil, nil
 end
 
-local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+local CopyBone = TIF.CopyBone or function(ent, bone)
+	return bone and ent:GetBoneMatrix(bone)
+end
+
 local BONE_MAT = Matrix()
 local propBoneCache = {}
 local function bone_world_pose(ent, boneName)
 	local model = ent.GetModel and ent:GetModel() or ""
 	local cache = propBoneCache[model]
+
 	if not cache then
-		cache = {} propBoneCache[model] = cache
+		cache = {}
+		propBoneCache[model] = cache
 	end
 
 	local bone = cache[boneName]
@@ -52,6 +61,7 @@ local function bone_world_pose(ent, boneName)
 
 	local mat = bone and CopyBone(ent, bone, BONE_MAT)
 	if not mat then return nil end
+
 	return mat:GetTranslation(), mat:GetAngles()
 end
 
@@ -65,15 +75,18 @@ local function clip_pose(ent, def, cycle)
 	local idx = math.min(count, math.floor(frameFloat))
 	local frameA, frameB = frames[idx], frames[math.min(count, idx + 1)]
 	local frac = frameFloat - idx
+
 	if frameA[1] ~= frameB[1] then
 		if frac >= 0.5 then
 			frameA = frameB
 		end
+
 		frac = 0
 	end
 
 	local bonePos, boneAng = bone_world_pose(ent, def.bones[frameA[1]])
 	if not bonePos then return nil end
+
 	VEC_A.x, VEC_A.y, VEC_A.z = frameA[2], frameA[3], frameA[4]
 	VEC_B.x, VEC_B.y, VEC_B.z = frameB[2], frameB[3], frameB[4]
 	ANG_A.p, ANG_A.y, ANG_A.r = frameA[5], frameA[6], frameA[7]
@@ -87,6 +100,7 @@ local function stow_pose(ent, def)
 	local stow = def.stow
 	local bonePos, boneAng = bone_world_pose(ent, def.bones[2])
 	if not bonePos then return nil end
+
 	VEC_A.x, VEC_A.y, VEC_A.z = stow[1], stow[2], stow[3]
 	ANG_A.p, ANG_A.y, ANG_A.r = stow[4], stow[5], stow[6]
 	return LocalToWorld(VEC_A, ANG_A, bonePos, boneAng)
@@ -98,6 +112,7 @@ function Props.Update(ent, state, now)
 
 	local def, key, pos, ang
 	local activeClip = state.actClipCur
+
 	if activeClip and state.actU then
 		for clipName, clipDef in pairs(propClips) do
 			local resolved = TIF.GTG and TIF.GTG.Clip(clipName, state.hostId)
@@ -111,7 +126,8 @@ function Props.Update(ent, state, now)
 	if not def then
 		for flag, clipName in pairs(Props.CARRY) do
 			if ent:GetNW2Bool(flag, false) and propClips[clipName] then
-				def, key = propClips[clipName], "stow:" .. clipName break
+				def, key = propClips[clipName], "stow:" .. clipName
+				break
 			end
 		end
 	end
@@ -120,6 +136,7 @@ function Props.Update(ent, state, now)
 		if IsValid(state.prop) then
 			state.prop:SetNoDraw(true)
 		end
+
 		state.propKey = nil
 		return
 	end
@@ -131,6 +148,7 @@ function Props.Update(ent, state, now)
 	end
 
 	if not pos then return end
+
 	local prop = ensure_prop_entity(state, def.model)
 	if not prop then return end
 
@@ -140,6 +158,7 @@ function Props.Update(ent, state, now)
 		else
 			state.propFrom = nil
 		end
+
 		state.propKey = key
 	end
 

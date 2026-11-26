@@ -19,6 +19,7 @@ end
 function TIF.CanUseDev(ply)
 	if not IsValid(ply) then return true end
 	if game.SinglePlayer() or ply:IsListenServerHost() then return true end
+
 	return ply:IsSuperAdmin()
 end
 
@@ -79,8 +80,10 @@ function Report:Save()
 	file.CreateDir("tif/reports")
 	local fname = (CLIENT and "cl_" or "") .. self.name .. ".txt"
 	file.Write("tif/reports/" .. fname, text)
+
 	for _, l in ipairs(self.lines) do
-		if string.sub(l, 1, 6) == "[FAIL]" then TIF.Error(l)
+		if string.sub(l, 1, 6) == "[FAIL]" then
+			TIF.Error(l)
 		elseif string.sub(l, 1, 6) == "[WARN]" then
 			TIF.Warn(l)
 		else
@@ -104,10 +107,12 @@ local GetField = VMATRIX and VMATRIX.GetField
 
 function TIF.CopyBone(ent, bone, out)
 	if not bone then return nil end
+
 	if CopyBoneMatrix then
 		SetField(out, 4, 4, 0)
 		CopyBoneMatrix(ent, bone, out)
 		if GetField(out, 4, 4) == 0 then return nil end
+
 		return out
 	end
 

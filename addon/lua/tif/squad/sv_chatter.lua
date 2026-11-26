@@ -18,26 +18,33 @@ C.WEIGHTS = {
 
 function C.ContactEvent(e)
 	if not IsValid(e) then return "contact" end
+
 	if e.TIFSoldier then
 		local w = e.tifWep
 		local def = w and w.def
 		if def and def.projectile then return "contact_rpg" end
+
 		local kind = w and TIF.GTG.WeaponKind(w.class)
 		if kind == "lmg" then return "contact_mg" end
+
 		local arch = e.tifArch
 		if arch and arch.id == "marksman" then return "contact_sniper" end
+
 		return "contact"
 	end
 
 	if e.IsPlayer and e:IsPlayer() and e.GetActiveWeapon then
 		local wep = e:GetActiveWeapon()
 		local cls = IsValid(wep) and string.lower(wep:GetClass()) or ""
+
 		if string.find(cls, "rpg", 1, true) or string.find(cls, "launcher", 1, true) or string.find(cls, "at4", 1, true) then
 			return "contact_rpg"
 		end
+
 		if string.find(cls, "sniper", 1, true) or string.find(cls, "awp", 1, true) or string.find(cls, "svd", 1, true) then
 			return "contact_sniper"
 		end
+
 		if string.find(cls, "lmg", 1, true) or string.find(cls, "m249", 1, true) or string.find(cls, "pkm", 1, true) then
 			return "contact_mg"
 		end
@@ -58,6 +65,7 @@ local function pick(weights)
 	end
 
 	if sum <= 0 then return nil end
+
 	local r = math.random() * sum
 	for ev, w in pairs(weights) do
 		r = r - w
@@ -81,6 +89,7 @@ function C.EventFor(m, now)
 	if now - (m.GetTIFShotTime and m:GetTIFShotTime() or 0) < 2 then
 		w.suppressing = w.suppressing + 2
 	end
+
 	local mv = m.tifMove
 	if mv and mv.goal then
 		w.moving, w.advance = 2.5, (mv.tag == "advance" or m.tifRole == "maneuver") and 2 or 0
@@ -98,11 +107,13 @@ end
 function C.Tick(sq, now)
 	local members = TIF.Squad.Members(sq)
 	if #members == 0 then return end
+
 	if not sq.tifSpawnSaid then
 		sq.tifSpawnSaid = now + math.Rand(C.SPAWN_DELAY[1], C.SPAWN_DELAY[2])
 	elseif sq.tifSpawnSaid ~= true and now >= sq.tifSpawnSaid then
 		sq.tifSpawnSaid = true
 		local m = members[math.random(#members)]
+
 		if can_talk(m) and m.tifAware ~= TIF.AWARE.ENGAGED then
 			TIF.Say(m, "spawn", C.SPAWN_CHANCE)
 		end
@@ -126,6 +137,7 @@ function C.Tick(sq, now)
 	end
 
 	if now < sq.tifChatNext then return end
+
 	if now - (sq.tifSaidAt or 0) < C.QUIET_AFTER then
 		sq.tifChatNext = now + C.QUIET_AFTER
 		return
@@ -133,6 +145,7 @@ function C.Tick(sq, now)
 
 	local m = engaged[math.random(#engaged)]
 	local ev = C.EventFor(m, now)
+
 	if ev then
 		TIF.Say(m, ev, 1)
 	end

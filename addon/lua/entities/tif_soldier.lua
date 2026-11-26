@@ -31,10 +31,18 @@ function ENT:SetupDataTables()
 end
 
 if CLIENT then
-	function ENT:Initialize() TIF.Body.Add(self) end
-	function ENT:Draw(flags) TIF.Body.DrawHost(self, flags) end
+	function ENT:Initialize()
+		TIF.Body.Add(self)
+	end
 
-	function ENT:OnRemove(fullUpdate) TIF.Body.Remove(self) end
+	function ENT:Draw(flags)
+		TIF.Body.DrawHost(self, flags)
+	end
+
+	function ENT:OnRemove(fullUpdate)
+		TIF.Body.Remove(self)
+	end
+
 	return
 end
 
@@ -42,21 +50,25 @@ local modelInfo = {}
 local function model_info(model)
 	local info = modelInfo[model]
 	if info then return info end
+
 	local e = ents.Create("prop_dynamic")
 	info = { skins = 1, groups = {} }
+
 	if IsValid(e) then
 		e:SetModel(model)
 		info.skins = math.max(1, e:SkinCount())
-		for _, bg in ipairs(e:GetBodyGroups() or {}) do
 
+		for _, bg in ipairs(e:GetBodyGroups() or {}) do
 			local blank = {}
 			for k, sm in pairs(bg.submodels or {}) do
 				if not isstring(sm) or sm == "" or string.lower(sm) == "blank" then
 					blank[k] = true
 				end
 			end
+
 			info.groups[#info.groups + 1] = { name = bg.name, num = bg.num, blank = blank }
 		end
+
 		e:Remove()
 	end
 
@@ -74,11 +86,15 @@ local function random_look(model, fac)
 	local allowed = istable(fac and fac.bodygroups) and fac.bodygroups or {}
 	local noBlank = fac and fac.noBlank
 	local digits, byName = {}, {}
+
 	for i, g in ipairs(info.groups) do
 		local name = string.lower(g.name)
 		local v = 0
 		local ok = allowed[name]
-		local function usable(x) return x >= 0 and x < g.num and not (noBlank and g.blank and g.blank[x]) end
+		local function usable(x)
+			return x >= 0 and x < g.num and not (noBlank and g.blank and g.blank[x])
+		end
+
 		if istable(ok) and #ok > 0 then
 			local fit = {}
 			for _, x in ipairs(ok) do
@@ -86,13 +102,19 @@ local function random_look(model, fac)
 					fit[#fit + 1] = x
 				end
 			end
+
 			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
 		elseif g.num > 1 and name ~= "body" then
-
 			local fit = {}
-			for x = 0, g.num - 1 do if usable(x) then fit[#fit + 1] = x end end
+			for x = 0, g.num - 1 do
+				if usable(x) then
+					fit[#fit + 1] = x
+				end
+			end
+
 			v = #fit > 0 and pick(model .. "#" .. name, fit) or 0
 		end
+
 		digits[i] = v
 		byName[name] = i
 	end
@@ -113,8 +135,11 @@ local function random_look(model, fac)
 end
 
 function ENT:KeyValue(k, v)
-	if k == "tif_faction" and v ~= "" then self.tifSpawnFaction = v
-	elseif k == "tif_arch" and v ~= "" then self.tifArchId = TIF.Archetypes and TIF.Archetypes[v] and v or self.tifArchId end
+	if k == "tif_faction" and v ~= "" then
+		self.tifSpawnFaction = v
+	elseif k == "tif_arch" and v ~= "" then
+		self.tifArchId = TIF.Archetypes and TIF.Archetypes[v] and v or self.tifArchId
+	end
 end
 
 function ENT:Initialize()
@@ -122,6 +147,7 @@ function ENT:Initialize()
 	local fac = TIF.Factions[facId]
 	local hostId = fac and TIF.GTG.HostFor(fac)
 	local host = hostId and TIF.GTG.HostModel(hostId)
+
 	if not host then
 		TIF.Error("Can't spawn soldier: faction ", tostring(facId), " missing, or the MW19 body (mw_male) isn't loaded")
 		SafeRemoveEntityDelayed(self, 0)
@@ -146,25 +172,28 @@ function ENT:Initialize()
 	if modMain then
 		vis, parts = modMain, modParts or ""
 	end
+
 	local skin, groups = random_look(vis, fac)
 	if modMain and fac.modular.skins == false then
 		skin = 0
 	end
 
 	if modMain then
-
 		local digits = {}
 		for i, g in ipairs(model_info(vis).groups) do
 			local v = 0
 			if string.find(string.lower(g.name), "placeholder", 1, true) then
 				v = g.num - 1
+
 				for k in pairs(g.blank or {}) do
 					v = k
 					break
 				end
 			end
+
 			digits[i] = v
 		end
+
 		groups = table.concat(digits, " ")
 	end
 
@@ -191,6 +220,7 @@ function ENT:Initialize()
 
 	local idleClip = TIF.GTG.Clip("idle", hostId)
 	local idle = self:LookupSequence(idleClip and idleClip.seq or "") or 0
+
 	if idle < 0 then
 		idle = 0
 	end
@@ -206,6 +236,7 @@ function ENT:Initialize()
 	TIF.Perception.Init(self)
 	TIF.Move.Init(self)
 	TIF.Brain.Init(self)
+
 	if TIF.Morale then
 		TIF.Morale.Init(self)
 	end
@@ -228,6 +259,7 @@ function ENT:TIFRefreshSlots(nudge)
 		local id = self.tifSlots[i]
 		if not (id and self:IsValidLayer(id)) then
 			id = self:AddLayeredSequence(self.tifIdleSeq or 0, i)
+
 			if id and id >= 0 then
 				self:SetLayerPlaybackRate(id, 0)
 				self:SetLayerCycle(id, 0)
@@ -245,6 +277,7 @@ function ENT:TIFRefreshSlots(nudge)
 	if made > 0 then
 		TIF.Prof.Count("slots_rebuilt", made)
 	end
+
 	return made
 end
 
@@ -259,6 +292,7 @@ net.Receive("tif_slots_missing", function(_, ply)
 
 	local now = CurTime()
 	if (lastRefresh[ent] or 0) > now - 1 then return end
+
 	lastRefresh[ent] = now
 	TIF.Prof.Count("slots_refresh_requests", 1)
 	ent:TIFRefreshSlots(true)
@@ -280,8 +314,10 @@ end
 
 function ENT:TIFSetHost(id)
 	if not id or id == self.tifHostId then return end
+
 	local model = TIF.GTG.HostModel(id)
 	if not model then return end
+
 	self:SetModel(model)
 	self.tifHostId = id
 	self:SetNW2String("tif_host", id)
@@ -309,6 +345,7 @@ end
 function ENT:TIFSetSlim(on)
 	on = on or nil
 	if self.tifSlim == on then return end
+
 	self.tifSlim = on
 	self:TIFApplyStance()
 end
@@ -328,38 +365,44 @@ function ENT:RunBehaviour()
 			TIF.Move.Step(self)
 			TIF.Prof.End()
 		end
+
 		coroutine.yield()
 	end
 end
 
 function ENT:BodyUpdate()
-
 	local dy = self.tifDying
 	if dy then
 		if dy.seq and dy.seq >= 0 then
 			if self:GetSequence() ~= dy.seq then
 				self:ResetSequence(dy.seq)
 			end
+
 			self:SetCycle(math.Clamp((CurTime() - dy.t0) / math.max(0.05, dy.dur), 0, 1))
 			self:SetPlaybackRate(0)
 		end
+
 		return
 	end
 
 	local a = self.tifDowned and self.tifAct
 	local ac = a and a.clip
+
 	if ac and ac.seq then
 		local seq = self:LookupSequence(ac.seq)
 		if seq and seq >= 0 then
 			if self:GetSequence() ~= seq then
 				self:ResetSequence(seq)
 			end
+
 			local t = (CurTime() - a.t0) * (a.rate or 1)
 			local u = a.loop and (t / math.max(0.05, ac.dur)) % 1 or math.Clamp(t / math.max(0.05, ac.dur), 0, 1)
 			local fixed = self:GetNW2Float("tif_act_cycle", -1)
+
 			if fixed >= 0 then
 				u = fixed
 			end
+
 			self:SetCycle(u)
 			self:SetPlaybackRate(0)
 			return
@@ -371,7 +414,8 @@ function ENT:BodyUpdate()
 		local want
 
 		local prone = (self.tifProne ~= nil and self.tifProne.phase == 2) or self.tifDowned ~= nil
-		if prone then want = m.prone
+		if prone then
+			want = m.prone
 		elseif self.tifHitboxPose == "crouch" then
 			want = m.crouch
 		elseif self.tifHitboxPose == "aim" then
@@ -379,8 +423,10 @@ function ENT:BodyUpdate()
 		else
 			want = self:GetTIFStance() == 1 and m.crouch or (self:GetTIFMode() == 1 and m.aim or m.relaxed)
 		end
+
 		if want and want >= 0 and self:GetSequence() ~= want then
 			self:ResetSequence(want)
+
 			if prone then
 				self:SetCycle(0)
 				self:SetPlaybackRate(0)
@@ -397,6 +443,7 @@ function ENT:Think()
 	local now = CurTime()
 	local dt = math.min(0.2, now - (self.tifThinkAt or now))
 	self.tifThinkAt = now
+
 	if self.tifDying then
 		TIF.HitsMW.DyingThink(self, now)
 		self:NextThink(now)
@@ -406,31 +453,39 @@ function ENT:Think()
 	if not self.tifDead and not TIF.AIDisabled() then
 		TIF.Prof.Begin("tick")
 		TIF.Action.Tick(self, now)
+
 		if self.tifHostId ~= self.tifHomeHost then
 			if self.tifAct or self.tifVeh or self.tifBoard then
 				self.tifNoActSince = nil
 			else
 				self.tifNoActSince = self.tifNoActSince or now
+
 				if now - self.tifNoActSince > 0.6 then
 					self.tifNoActSince = nil
 					self:TIFSetHost(self.tifHomeHost)
 				end
 			end
 		end
+
 		TIF.Move.Face(self, dt)
 		local face = self.tifFace or self.tifAimAt
 		local want = 0
+
 		if face and self.tifMode == 1 then
 			local d = face - TIF.EyeOf(self)
 			want = -math.deg(math.atan2(d.z, math.max(1, d:Length2D())))
 		end
+
 		self.tifPitch = math.Approach(self.tifPitch or 0, want, 220 * dt)
+
 		if math.abs(self.tifPitch - self:GetTIFAimPitch()) > 0.75 then
 			self:SetTIFAimPitch(self.tifPitch)
 		end
+
 		local fw = self.tifFire
 		local look = (fw and fw.want and fw.aimPos) or self.tifAimAt or self.tifFace
 		local sent = self.tifLookSent
+
 		if look then
 			if not sent or sent:DistToSqr(look) > 32 * 32 then
 				if sent then
@@ -439,17 +494,21 @@ function ENT:Think()
 					sent = Vector(look)
 					self.tifLookSent = sent
 				end
+
 				self:SetNW2Vector("tif_look", sent)
 			end
 		elseif sent then
 			self.tifLookSent = nil
 			self:SetNW2Vector("tif_look", vector_origin)
 		end
+
 		TIF.Weapon.Think(self, now)
+
 		if now > (self.tifNextSlotCheck or 0) then
 			self.tifNextSlotCheck = now + 2
 			self:TIFRefreshSlots()
 		end
+
 		TIF.Prof.End()
 	end
 
@@ -462,7 +521,9 @@ local cvHead = CreateConVar("tif_headshot_mult", "2.5", FCVAR_ARCHIVE, "Damage m
 function ENT:OnTraceAttack(dmg, dir, tr)
 	local hg = tr.HitGroup
 	self.tifLastHitGroup = hg
-	if hg == HITGROUP_HEAD then dmg:ScaleDamage(cvHead:GetFloat())
+
+	if hg == HITGROUP_HEAD then
+		dmg:ScaleDamage(cvHead:GetFloat())
 	elseif hg == HITGROUP_LEFTARM or hg == HITGROUP_RIGHTARM or hg == HITGROUP_LEFTLEG or hg == HITGROUP_RIGHTLEG then
 		dmg:ScaleDamage(0.75)
 	end
@@ -470,16 +531,20 @@ end
 
 function ENT:OnInjured(dmg)
 	if self.tifDead then return end
+
 	local att = dmg:GetAttacker()
 	TIF.Perception.OnHurt(self, att)
 	TIF.Supp.Add(self, 0.35, IsValid(att) and att:GetPos() or nil, att)
+
 	if TIF.Morale then
 		TIF.Morale.OnHurt(self, dmg:GetDamage())
 	end
 
 	local friendly = IsValid(att) and att ~= self and (att.TIFSoldier or att:IsPlayer()) and TIF.Relation(self, att) == TIF.REL_ALLY
 	local crit = TIF.Chatter and self:Health() > 0 and self:Health() < self:GetMaxHealth() * TIF.Chatter.CRITICAL
-	if friendly then TIF.Say(self, "friendly_fire", 0.9)
+
+	if friendly then
+		TIF.Say(self, "friendly_fire", 0.9)
 	elseif crit and not self.tifSaidCritical then
 		self.tifSaidCritical = true
 		TIF.Say(self, "critical", 0.9)
@@ -504,11 +569,13 @@ end
 local CLIP_DEATH_HOLD = 0.2
 function ENT:OnKilled(dmg)
 	if self.tifDead then return end
+
 	self.tifDead = true
 
 	if TIF.Morale then
 		pcall(TIF.Morale.OnDeath, self, dmg:GetAttacker())
 	end
+
 	TIF.Unregister(self)
 	TIF.Cover.Release(self)
 	TIF.Squad.Remove(self)
@@ -517,9 +584,11 @@ function ENT:OnKilled(dmg)
 	for _, ally in ipairs(TIF.Soldiers) do
 		if IsValid(ally) and ally:GetTIFFaction() == self:GetTIFFaction() and ally:GetPos():DistToSqr(self:GetPos()) < 1200 * 1200 then
 			TIF.Perception.Stimulus(ally, self:GetPos(), "man_down", CurTime())
+
 			if math.random() < 0.5 then
 				TIF.Say(ally, "man_down")
 			end
+
 			break
 		end
 	end
@@ -528,6 +597,7 @@ function ENT:OnKilled(dmg)
 
 	hook.Run("TIF_SoldierKilled", self, dmg:GetAttacker())
 	local ok, err = pcall(self.TIFDropWeapon, self)
+
 	if not ok then
 		TIF.Error("Weapon drop failed: ", tostring(err))
 	end
@@ -543,6 +613,7 @@ function ENT:OnKilled(dmg)
 
 	local act = self.tifNoDeathClip and self.tifAct
 	local seq = act and act.clip and act.clip.seq and self:LookupSequence(act.clip.seq)
+
 	if seq and seq >= 0 and TIF.HitsMW and TIF.HitsMW.DyingThink then
 		local now = CurTime()
 		self.tifDying = { untilT = now + CLIP_DEATH_HOLD, prev = {}, prevT = now, seq = seq, t0 = act.t0 or now,
@@ -591,6 +662,7 @@ local function fallback_ragdoll()
 	for _, m in ipairs(CORPSE_FALLBACK) do
 		if util.IsValidRagdoll(m) then return m end
 	end
+
 	return nil
 end
 
@@ -602,8 +674,10 @@ local BONE_M = Matrix()
 
 local function settle_corpse(rag, clampUp)
 	if not IsValid(rag) then return end
+
 	local n = rag:GetPhysicsObjectCount()
 	local lift = 0
+
 	for i = 0, n - 1 do
 		local phys = rag:GetPhysicsObjectNum(i)
 
@@ -620,28 +694,33 @@ local function settle_corpse(rag, clampUp)
 
 	lift = math.min(lift, 24)
 	rag.tifDamp = rag.tifDamp or {}
+
 	for i = 0, n - 1 do
 		local phys = rag:GetPhysicsObjectNum(i)
 		if IsValid(phys) then
 			if lift > 0.5 then
 				phys:SetPos(phys:GetPos() + Vector(0, 0, lift))
 			end
+
 			if clampUp then
 				local v = phys:GetVelocity()
 				if v.z > 160 then
 					phys:SetVelocity(Vector(v.x, v.y, 160))
 				end
 			end
+
 			if not rag.tifDamp[i] then
 				local lin, ang = phys:GetDamping()
 				rag.tifDamp[i] = { lin, ang }
 			end
+
 			phys:SetDamping(rag.tifDamp[i][1], math.max(rag.tifDamp[i][2], SETTLE_ANG_DAMP))
 		end
 	end
 
 	timer.Create("tif_settle_" .. rag:EntIndex(), CORPSE_SETTLE, 1, function()
 		if not IsValid(rag) or not rag.tifDamp then return end
+
 		for i, d in pairs(rag.tifDamp) do
 			local phys = rag:GetPhysicsObjectNum(i)
 			if IsValid(phys) then
@@ -650,6 +729,7 @@ local function settle_corpse(rag, clampUp)
 		end
 	end)
 end
+
 ENT.TIFSettleCorpse = settle_corpse
 
 function ENT:TIFMakeCorpse(hit, boneVel)
@@ -672,8 +752,10 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	rag:SetNW2String("tif_parts", self:GetNW2String("tif_parts", ""))
 	rag:SetPos(self:GetPos())
 	rag:SetAngles(self:GetAngles())
+
 	if own then
 		rag:SetSkin(self:GetTIFSkin())
+
 		for i, d in ipairs(string.Explode(" ", self:GetTIFBodygroups())) do
 			rag:SetBodygroup(i - 1, tonumber(d) or 0)
 		end
@@ -703,6 +785,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 			if self.InvalidateBoneCache then
 				self:InvalidateBoneCache()
 			end
+
 			if self.SetupBones then
 				self:SetupBones()
 			end
@@ -712,6 +795,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	local vel = self.loco:GetVelocity()
 	local hitPos = hit and hit.pos or self:WorldSpaceCenter()
 	local force = hit and hit.force or Vector()
+
 	if force:Length() > 9000 then
 		force = force:GetNormalized() * 9000
 	end
@@ -719,6 +803,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	if boneVel and not (hit and hit.fresh) then
 		force = force * 0.25
 	end
+
 	local nearest, nearestD
 	for i = 0, rag:GetPhysicsObjectCount() - 1 do
 		local phys = rag:GetPhysicsObjectNum(i)
@@ -726,9 +811,11 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 
 		local hb = byName and self:LookupBone(rag:GetBoneName(rb) or "") or (not byName and rb) or nil
 		local m = hb and TIF.CopyBone(self, hb, BONE_M)
+
 		if IsValid(phys) and m then
 			phys:SetPos(m:GetTranslation())
 			local off = restOff and restOff[string.lower(rag:GetBoneName(rb) or "")]
+
 			if off then
 				local r = Matrix()
 				r:SetAngles(m:GetAngles())
@@ -736,20 +823,21 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 			else
 				phys:SetAngles(m:GetAngles())
 			end
+
 			local bv = boneVel and hb and boneVel[hb]
 			if bv and bv:LengthSqr() > BONE_VEL_MAX * BONE_VEL_MAX then
 				bv = bv:GetNormalized() * BONE_VEL_MAX
 			end
+
 			if bv then
 				phys:SetVelocity(bv)
 			elseif hit and hit.posed then
-
 				phys:SetVelocity(vel)
 			else
-
 				phys:SetVelocity(vel + VectorRand() * 45)
 				phys:AddAngleVelocity(VectorRand() * 160)
 			end
+
 			local d = m:GetTranslation():DistToSqr(hitPos)
 			if not nearestD or d < nearestD then
 				nearest, nearestD = phys, d
@@ -763,7 +851,6 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 				nearest:ApplyForceCenter(force * 0.4)
 			end
 		else
-
 			local n = rag:GetPhysicsObjectCount()
 			for i = 0, n - 1 do
 				local phys = rag:GetPhysicsObjectNum(i)
@@ -771,6 +858,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 					phys:ApplyForceCenter(force * 0.4 * 0.5 / math.max(1, n))
 				end
 			end
+
 			if nearest then
 				nearest:ApplyForceCenter(force * 0.4 * 0.5)
 			end
@@ -782,6 +870,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	if TIF.Foley and TIF.Foley.CorpseSounds then
 		TIF.Foley.CorpseSounds(rag)
 	end
+
 	local t = cvCorpse:GetFloat()
 	if t > 0 then
 		SafeRemoveEntityDelayed(rag, t)
@@ -796,24 +885,29 @@ function ENT:TIFDropWeapon(which)
 	local model = stored and stored.WorldModel
 	local def = w and w.def
 	local spent = def and def.disposable and def.spentModel and (w.rockets or 0) <= 0
+
 	if spent then
 		model = def.spentModel
 	end
 
 	if not model or model == "" then return end
+
 	local hand = self:LookupBone("PH_R_Hand") or self:LookupBone("ValveBiped.Bip01_R_Hand")
 	local m = hand and TIF.CopyBone(self, hand, BONE_M)
 	local prop = ents.Create("prop_physics")
 	if not IsValid(prop) then return end
+
 	prop:SetModel(model)
 	prop:SetPos(m and m:GetTranslation() or self:WorldSpaceCenter())
 
 	if m and string.sub(model, 1, 16) == "models/tif_guns/" then
 		m = m * Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
 	end
+
 	prop:SetAngles(m and m:GetAngles() or self:GetAngles())
 	prop:Spawn()
 	prop:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+
 	if not IsValid(prop:GetPhysicsObject()) then
 		prop:Remove()
 		return
@@ -821,6 +915,7 @@ function ENT:TIFDropWeapon(which)
 
 	local po = prop:GetPhysicsObject()
 	po:SetVelocity(self.loco:GetVelocity())
+
 	if spent then
 		prop.tifSpent = true
 		po:SetVelocity(self.loco:GetVelocity() + self:GetRight() * 45 - Vector(0, 0, 30))
@@ -830,6 +925,7 @@ function ENT:TIFDropWeapon(which)
 	if TIF.Foley and TIF.Foley.GunDropSounds then
 		TIF.Foley.GunDropSounds(prop, TIF.GTG.WeaponKind(w.class))
 	end
+
 	local t = cvCorpse:GetFloat()
 	if t > 0 then
 		SafeRemoveEntityDelayed(prop, t)

@@ -14,6 +14,7 @@ local function quat_of(A, a)
 	local sy = math_sqrt(A[a + 2] ^ 2 + A[a + 6] ^ 2 + A[a + 10] ^ 2)
 	local sz = math_sqrt(A[a + 3] ^ 2 + A[a + 7] ^ 2 + A[a + 11] ^ 2)
 	if sx < 1e-6 or sy < 1e-6 or sz < 1e-6 then return 0, 0, 0, 1 end
+
 	local m00, m01, m02 = A[a + 1] / sx, A[a + 2] / sy, A[a + 3] / sz
 	local m10, m11, m12 = A[a + 5] / sx, A[a + 6] / sy, A[a + 7] / sz
 	local m20, m21, m22 = A[a + 9] / sx, A[a + 10] / sy, A[a + 11] / sz
@@ -26,13 +27,16 @@ local function quat_local(triggers, A, a, C, c)
 	local x, y, z, w = quat_of(A, a)
 	local n = #triggers
 	local total = 0
+
 	for i = 1, n do
 		local tr = triggers[i]
 		local q = tr.trigger
 		local d = math_abs(q[1] * x + q[2] * y + q[3] * z + q[4] * w)
+
 		if d > 1 then
 			d = 1
 		end
+
 		local wt = math_max(0, 1 - 2 * math_acos(d) * tr.tol)
 		weights[i] = wt
 		total = total + wt
@@ -50,13 +54,16 @@ local function quat_local(triggers, A, a, C, c)
 			if s > 0 then
 				local tr = triggers[i]
 				local q = tr.quat
+
 				if qx * q[1] + qy * q[2] + qz * q[3] + qw * q[4] < 0 then
 					qx, qy, qz, qw = -qx, -qy, -qz, -qw
 				end
+
 				qx, qy, qz, qw = qx + s * q[1], qy + s * q[2], qz + s * q[3], qw + s * q[4]
 				px, py, pz = px + s * tr.pos[1], py + s * tr.pos[2], pz + s * tr.pos[3]
 			end
 		end
+
 		local l = math_sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
 		if l > 1e-9 then
 			qx, qy, qz, qw = qx / l, qy / l, qz / l, qw / l
@@ -71,16 +78,19 @@ end
 function PMS.Solve(ent, map, ik, origin)
 	local B, K, P, OFF, RL, Q = map.B, map.K, map.P, map.OFF, map.RL, map.Q
 	local W, E, has, rot = map.W, map.E, map.HAS, map.ROT
+
 	for k = 1, map.n do
 		local o = k * 12 - 12
 		local kind, p = K[k], P[k]
 		local ok = (kind == MERGE or has[p]) and read(ent, B[k], E, o)
 		has[k], rot[k] = ok, false
+
 		if ok then
 			local po = p * 12 - 12
 			if kind == MERGE then
 				place_merge(map, k, E, W, has, origin)
 				local m = ik and ik[k]
+
 				if m then
 					copy(m, 0, W, o)
 					rot[k] = true
@@ -92,12 +102,14 @@ function PMS.Solve(ent, map, ik, origin)
 					else
 						copy(E, po, T, 0)
 					end
+
 					if inv(T, 0, T, 12) then
 						mul(T, 12, E, o, T, 24)
 						mul(W, po, T, 24, W, o)
 					else
 						copy(E, o, W, o)
 					end
+
 					rot[k] = true
 				else
 					copy(E, o, W, o)
@@ -114,11 +126,13 @@ function PMS.Solve(ent, map, ik, origin)
 				else
 					mul(W, po, RL[k], 0, W, o)
 				end
+
 				rot[k] = true
 			else
 				mul(W, po, RL[k], 0, W, o)
 				rot[k] = true
 			end
+
 			write(ent, B[k], W, o)
 		end
 	end

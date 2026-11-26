@@ -21,6 +21,7 @@ if SERVER then
 		self.tifMax = r.max or self.tifSpeed
 		self.tifGrav = (self.tifP.gravity or 0) * 600
 		self.tifDie = CurTime() + (self.tifP.life or 5)
+
 		if IsValid(owner) then
 			self:SetOwner(owner)
 		end
@@ -48,9 +49,11 @@ if SERVER then
 
 	function ENT:Think()
 		if self.tifDone then return end
+
 		local now = CurTime()
 		local dt = math.max(0, now - (self.tifLast or now))
 		self.tifLast = now
+
 		if now >= self.tifDie then
 			self:Burst(self:GetPos())
 			return
@@ -68,6 +71,7 @@ if SERVER then
 		rocketHull.endpos = pos + v * math.max(dt, FrameTime())
 		rocketHull.filter[1], rocketHull.filter[2] = self, self:GetOwner()
 		local tr = util.TraceHull(rocketHull)
+
 		if tr.Hit then
 			if tr.HitSky then
 				self.tifDone = true
@@ -76,8 +80,10 @@ if SERVER then
 			else
 				self:Burst(tr.HitPos + tr.HitNormal * 4, tr.HitNormal)
 			end
+
 			return
 		end
+
 		self.tifVel = v
 		self:SetLocalVelocity(v)
 		self:SetAngles(v:Angle())
@@ -87,6 +93,7 @@ if SERVER then
 
 	function ENT:Touch(ent)
 		if self.tifDone or ent == self:GetOwner() then return end
+
 		if ent:IsSolid() then
 			self:Burst(self:GetPos())
 		end
@@ -94,6 +101,7 @@ if SERVER then
 
 	function ENT:Burst(pos, normal)
 		if self.tifDone then return end
+
 		self.tifDone = true
 		self:StopSound("weapons/rpg/rocket1.wav")
 		local owner = IsValid(self:GetOwner()) and self:GetOwner() or self
@@ -124,12 +132,15 @@ else
 			em = ParticleEmitter(self:GetPos())
 			self.tifEmitter = em
 		end
+
 		if not em then return end
+
 		local now = CurTime()
 		if now >= (self.tifNextPuff or 0) then
 			self.tifNextPuff = now + 0.015
 			local back = self:GetPos() - self:GetForward() * 14
 			local p = em:Add("particle/particle_smokegrenade", back)
+
 			if p then
 				p:SetVelocity(VectorRand() * 12)
 				p:SetDieTime(math.Rand(1.2, 2))
@@ -159,8 +170,10 @@ else
 
 	function ENT:OnRemove(fullUpdate)
 		if fullUpdate then return end
+
 		if self.tifEmitter then
-			self.tifEmitter:Finish() self.tifEmitter = nil
+			self.tifEmitter:Finish()
+			self.tifEmitter = nil
 		end
 	end
 end

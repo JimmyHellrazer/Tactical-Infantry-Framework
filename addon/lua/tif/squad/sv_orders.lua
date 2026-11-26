@@ -4,6 +4,7 @@ local SQUAD_MIX = TIF.SquadMix
 local function admin(name, fn, help)
 	concommand.Add(name, function(ply, cmd, args)
 		if not TIF.CanUseDev(ply) then return end
+
 		fn(ply, args)
 	end, nil, help)
 end
@@ -15,6 +16,7 @@ end
 
 admin("tif_spawn", function(ply, args)
 	if not IsValid(ply) then return end
+
 	local faction = args[1] or "insurgents"
 	local count = math.Clamp(tonumber(args[2]) or 1, 1, 64)
 	local spawned = TIF.SpawnSoldiers(ply, faction, count, args[3], crosshair(ply), args[4] or "me")
@@ -35,9 +37,11 @@ end, "tif_clear [faction]: remove soldiers")
 
 admin("tif_spawn_squad", function(ply, args)
 	if not IsValid(ply) then return end
+
 	local faction = args[1] or "insurgents"
 	local size = math.Clamp(tonumber(args[2]) or 6, 2, 12)
 	local mix = {}
+
 	for i = 1, size do
 		mix[i] = SQUAD_MIX[i]
 	end
@@ -67,9 +71,11 @@ end
 
 admin("tif_follow", function(ply, args)
 	if not IsValid(ply) then return end
+
 	local radius = tonumber(args[1]) or 1200
 	local sq = TIF.Squad.ForPlayer(ply)
 	local n = 0
+
 	for _, npc in ipairs(TIF.Soldiers) do
 		if IsValid(npc) and not npc.tifDead and npc.tifSquad ~= sq and TIF.Relation(npc, ply) == TIF.REL_ALLY
 			and npc:GetPos():DistToSqr(ply:GetPos()) < radius * radius then
@@ -84,16 +90,19 @@ end, "tif_follow [radius]: allied soldiers near you join your squad and follow y
 
 admin("tif_dismiss", function(ply)
 	if not IsValid(ply) then return end
+
 	for _, sq in pairs(TIF.Squad.List) do
 		if sq.leader == ply then
 			local members = TIF.Squad.Members(sq)
 			for _, m in ipairs(members) do
 				TIF.Squad.Remove(m)
 			end
+
 			if #members > 0 then
 				local nsq = TIF.Squad.Create(sq.faction, members)
 				TIF.Squad.SetOrder(nsq, "hold", ply:GetPos(), ply:EyeAngles().y)
 			end
+
 			TIF.Squad.List[sq.id] = nil
 			TIF.Log("Your squad now holds here on its own")
 			return
@@ -106,6 +115,7 @@ end, "tif_dismiss: your squad stops following you and holds where it is")
 local ORDERS = { hold = true, follow = true, regroup = true, advance = true, free = true, clear = true }
 admin("tif_order", function(ply, args)
 	if not IsValid(ply) then return end
+
 	local kind = args[1]
 	if not ORDERS[kind] then
 		TIF.Log("Orders: hold, follow, regroup, advance, free, clear")
@@ -118,11 +128,18 @@ admin("tif_order", function(ply, args)
 	if IsValid(tr.Entity) and tr.Entity.TIFSoldier and tr.Entity.tifSquad and TIF.Relation(tr.Entity, ply) == TIF.REL_ALLY then
 		sq = tr.Entity.tifSquad
 	end
+
 	if not sq then
-		for _, s in pairs(TIF.Squad.List) do if s.leader == ply then sq = s break end end
+		for _, s in pairs(TIF.Squad.List) do
+			if s.leader == ply then
+				sq = s
+				break
+			end
+		end
 	end
 
 	sq = sq or nearest_allied_squad(ply)
+
 	if not sq then
 		TIF.Log("No squad to order: look at a soldier, or use tif_follow first")
 		return
@@ -131,18 +148,21 @@ admin("tif_order", function(ply, args)
 	if sq.cqb then
 		TIF.CQB.Stop(sq, "new order")
 	end
+
 	if kind == "clear" then
 		if TIF.CQB.Start(sq, tr.HitPos) then
 			ply:ChatPrint("[TIF] Squad " .. sq.id .. " clearing the building at your crosshair")
 		else
 			ply:ChatPrint("[TIF] No way into a building found near your crosshair (look at or into a building)")
 		end
+
 		return
 	end
 
 	local pos, yaw
 	if kind == "hold" or kind == "advance" then
 		pos, yaw = tr.HitPos, ply:EyeAngles().y
+
 		if kind == "advance" and IsValid(sq.leader) and sq.leader:IsPlayer() then
 			kind = "hold"
 		end
@@ -154,6 +174,7 @@ end, "tif_order <hold|follow|regroup|advance|free|clear>: order your squad (or t
 
 admin("tif_formation", function(ply, args)
 	if not IsValid(ply) then return end
+
 	local f = args[1]
 	if not table.HasValue(TIF.Squad.FORMATIONS, f or "") then
 		TIF.Log("Formations: ", table.concat(TIF.Squad.FORMATIONS, ", "))
@@ -162,7 +183,16 @@ admin("tif_formation", function(ply, args)
 
 	local tr = ply:GetEyeTrace()
 	local sq = IsValid(tr.Entity) and tr.Entity.TIFSoldier and TIF.Relation(tr.Entity, ply) == TIF.REL_ALLY and tr.Entity.tifSquad or nil
-	if not sq then for _, s in pairs(TIF.Squad.List) do if s.leader == ply then sq = s break end end end
+
+	if not sq then
+		for _, s in pairs(TIF.Squad.List) do
+			if s.leader == ply then
+				sq = s
+				break
+			end
+		end
+	end
+
 	if not sq then
 		TIF.Log("No squad: look at a soldier, or lead one with tif_follow")
 		return

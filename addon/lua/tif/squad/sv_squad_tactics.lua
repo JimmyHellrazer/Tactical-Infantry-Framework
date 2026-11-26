@@ -71,6 +71,7 @@ local function set_role(m, role, goal)
 	m.tifRole = role
 	m.tifCoverCenter = goal
 	local r = role or ""
+
 	if m:GetNW2String("tif_role", "") ~= r then
 		m:SetNW2String("tif_role", r)
 	end
@@ -84,9 +85,11 @@ end
 local function assign_groups(sq, members)
 	local a, b = {}, {}
 	local flip = false
+
 	for _, m in ipairs(members) do
 		local arch = m.tifArchId
-		if ALWAYS_BASE[arch] then a[#a + 1] = m
+		if ALWAYS_BASE[arch] then
+			a[#a + 1] = m
 		elseif ALWAYS_MANEUVER[arch] then
 			b[#b + 1] = m
 		else
@@ -95,12 +98,14 @@ local function assign_groups(sq, members)
 			else
 				b[#b + 1] = m
 			end
+
 			flip = not flip
 		end
 	end
 
 	if (#a == 0 or #b == 0) and #members >= 2 then
 		a, b = {}, {}
+
 		for i, m in ipairs(members) do
 			if i % 2 == 0 then
 				a[#a + 1] = m
@@ -117,6 +122,7 @@ local function clear_roles(sq, members)
 	for _, m in ipairs(members) do
 		set_role(m, nil, nil)
 	end
+
 	sq.tactic = nil
 end
 
@@ -128,6 +134,7 @@ local function flank_point(sq, from, threat)
 	local dir = flat(threat - from)
 	local perp = Vector(-dir.y, dir.x, 0)
 	local sides = { 1, -1 }
+
 	if math.random() < 0.5 then
 		sides = { -1, 1 }
 	end
@@ -143,6 +150,7 @@ end
 local function start_bound(sq, members, threat, now)
 	assign_groups(sq, members)
 	if #sq.groupA == 0 or #sq.groupB == 0 then return false end
+
 	sq.tactic = { kind = "bound", moving = "B", started = now }
 	return true
 end
@@ -164,25 +172,31 @@ end
 
 local function prune(list)
 	if not list then return {} end
+
 	local out = {}
-	for _, m in ipairs(list) do if IsValid(m) and not m.tifDead and m.tifSquad then out[#out + 1] = m end end
+	for _, m in ipairs(list) do
+		if IsValid(m) and not m.tifDead and m.tifSquad then
+			out[#out + 1] = m
+		end
+	end
+
 	return out
 end
 
 local function plan(sq, now)
-
 	if sq.withdrawHoldUntil and now > sq.withdrawHoldUntil then
 		local prev = sq.preWithdrawOrder
 		sq.withdrawHoldUntil, sq.preWithdrawOrder = nil, nil
+
 		if sq.order.kind == "hold" and sq.order.time and sq.order.time < now - 29 then
 			if prev then
-
 				sq.order = prev
 				prev.time, prev.i = now, nil
 				SQ.Publish(sq)
 			else
 				SQ.SetOrder(sq, "free")
 			end
+
 			SQ.Log(sq, "hold after withdraw over: back to ", prev and prev.kind or "free")
 		end
 	end
@@ -194,6 +208,7 @@ local function plan(sq, now)
 	for _, m in ipairs(members) do
 		if m.tifAware == AW.SEARCHING and m.tifSearch then
 			searching[#searching + 1] = m
+
 			if not m.tifSearch.assigned then
 				fresh = m.tifSearch
 			end
@@ -211,15 +226,18 @@ local function plan(sq, now)
 		if sq.tactic then
 			clear_roles(sq, members)
 		end
+
 		return
 	end
 
 	sq.lastContact = now
 	local k = squad_threat(sq, now)
+
 	if not k then
 		if sq.tactic then
 			clear_roles(sq, members)
 		end
+
 		return
 	end
 
@@ -233,14 +251,17 @@ local function plan(sq, now)
 
 	if sq.static then
 		sq.tactic = { kind = "hold" }
+
 		for _, m in ipairs(members) do
 			set_role(m, "base", nil)
 		end
+
 		return
 	end
 
 	sq.peakSize = math.max(sq.peakSize or 0, #members)
 	local t0 = sq.tactic
+
 	if not playerLed and (not t0 or t0.kind ~= "withdraw") and now > (sq.nextWithdraw or 0) then
 		local enemies = 0
 		for ent, kk in pairs(sq.knowledge) do
@@ -248,10 +269,12 @@ local function plan(sq, now)
 				enemies = enemies + 1
 			end
 		end
+
 		local supp = 0
 		for _, m in ipairs(members) do
 			supp = supp + (m.tifSupp or 0)
 		end
+
 		supp = supp / #members
 
 		local lost = sq.peakSize >= 3 and #members <= sq.peakSize * 0.5
@@ -264,6 +287,7 @@ local function plan(sq, now)
 			local from0 = centroid(members)
 			local away = flat(from0 - threat)
 			local goal = snap(from0 + away * 700) or snap(from0 + away * 400)
+
 			if goal then
 				sq.tactic = { kind = "withdraw", goal = goal, started = now }
 				sq.nextWithdraw = now + 60
@@ -276,40 +300,45 @@ local function plan(sq, now)
 	if sq.tactic and sq.tactic.kind == "withdraw" then
 		local w = sq.tactic
 		local arrived = 0
+
 		for _, m in ipairs(members) do
 			if m:GetPos():DistToSqr(w.goal) < 220 * 220 then
 				arrived = arrived + 1
 			end
 		end
-		if arrived >= math.ceil(#members * 0.6) or now - w.started > 18 then
 
+		if arrived >= math.ceil(#members * 0.6) or now - w.started > 18 then
 			sq.preWithdrawOrder = sq.preWithdrawOrder or sq.order
 			sq.withdrawHoldUntil = now + 30
 			SQ.SetOrder(sq, "hold", w.goal, (threat - w.goal):Angle().y)
 			sq.tactic = { kind = "hold" }
+
 			for _, m in ipairs(members) do
 				set_role(m, "base", nil)
 			end
 		else
-
 			for _, m in ipairs(members) do
 				set_role(m, "maneuver", w.goal)
 			end
 		end
+
 		return
 	end
 
 	if o == "hold" or playerLed or (#members < 3 and o ~= "advance") then
 		sq.tactic = { kind = "hold" }
+
 		for _, m in ipairs(members) do
 			set_role(m, "base", nil)
 		end
+
 		return
 	end
 
 	local from = centroid(members)
 	local dist = from:Distance(threat)
 	local minRange = 350
+
 	if IsValid(sq.leader) and sq.leader.tifArch then
 		minRange = sq.leader.tifArch.prefRange[1] + 100
 	end
@@ -320,6 +349,7 @@ local function plan(sq, now)
 		and now > (sq.nextFlank or 0) and dist > 500 then
 		assign_groups(sq, members)
 		local p, side = flank_point(sq, from, threat)
+
 		if p and #sq.groupB > 0 then
 			sq.tactic = { kind = "flank", goal = p, side = side, started = now }
 			sq.nextFlank = now + ST.FLANK_COOLDOWN
@@ -336,20 +366,25 @@ local function plan(sq, now)
 				arrived = arrived + 1
 			end
 		end
-		if arrived >= math.ceil(#sq.groupB / 2) or now - t.started > ST.BOUND_TIMEOUT * 1.5 then
 
+		if arrived >= math.ceil(#sq.groupB / 2) or now - t.started > ST.BOUND_TIMEOUT * 1.5 then
 			sq.tactic = { kind = "engage", started = now }
+
 			for _, m in ipairs(members) do
 				set_role(m, "base", nil)
 			end
+
 			return
 		end
+
 		for _, m in ipairs(sq.groupA) do
 			set_role(m, "base", nil)
 		end
+
 		for _, m in ipairs(sq.groupB) do
 			set_role(m, "maneuver", t.goal)
 		end
+
 		return
 	end
 
@@ -367,14 +402,17 @@ local function plan(sq, now)
 
 	if dist < minRange and holdClose then
 		sq.tactic = { kind = "engage", started = now }
+
 		for _, m in ipairs(members) do
 			set_role(m, "base", nil)
 		end
+
 		return
 	end
 
 	if not t or t.kind ~= "bound" then
 		if not start_bound(sq, members, threat, now) then return end
+
 		t = sq.tactic
 		t.goal = advance_goal(sq.groupB, threat, obj)
 		TIF.Say(sq.groupB[1], obj and "advance" or "moving", 0.6)
@@ -393,6 +431,7 @@ local function plan(sq, now)
 		if IsValid(m) then
 			local cov = m.tifCov
 			local inCoverNear = cov and cov.phase ~= "move" and cov.origin:DistToSqr(t.goal) < 420 * 420
+
 			if inCoverNear or m:GetPos():DistToSqr(t.goal) < ST.ARRIVE * ST.ARRIVE then
 				arrived = arrived + 1
 			end
@@ -401,15 +440,16 @@ local function plan(sq, now)
 
 	local done = (arrived >= math.ceil(#moving * 0.6) and now - t.started > ST.BOUND_MIN) or now - t.started > ST.BOUND_TIMEOUT
 	if done then
-
 		t.moving = t.moving == "B" and "A" or "B"
 		t.started = now
 		moving, covering = covering, moving
 		t.goal = advance_goal(moving, threat, obj)
 		SQ.Log(sq, "bound: group ", t.moving, " moves (", #moving, "), ", #covering, " cover; ", math.floor(dist), "u from enemy")
+
 		if moving[1] then
 			TIF.Say(moving[1], (moving[1].tifSupp or 0) > 0.3 and "cover_me" or (obj and "advance" or "moving"), 0.6)
 		end
+
 		if covering[1] then
 			TIF.Say(covering[1], "suppressing", 0.5)
 		end
@@ -418,6 +458,7 @@ local function plan(sq, now)
 	for _, m in ipairs(covering) do
 		set_role(m, "base", nil)
 	end
+
 	for _, m in ipairs(moving) do
 		set_role(m, "maneuver", t.goal)
 	end
@@ -425,28 +466,33 @@ end
 
 timer.Create("tif_squad_tactics", 1, 0, function()
 	if TIF.AIDisabled() then return end
+
 	local now = CurTime()
 	for _, sq in pairs(SQ.List) do
 		local ok, err = pcall(plan, sq, now)
 		if not ok then
 			TIF.Error("Squad tactics error: ", tostring(err))
 		end
+
 		if TIF.Chatter then
 			local ok2, err2 = pcall(TIF.Chatter.Tick, sq, now)
 			if not ok2 then
 				TIF.Error("Squad chatter error: ", tostring(err2))
 			end
 		end
+
 		local kind = sq.tactic and sq.tactic.kind or ""
 		if kind ~= sq.lastTacticShown then
 			sq.lastTacticShown = kind
 			local members = SQ.Members(sq)
+
 			for i = 1, #members do
 				local m = members[i]
 				if m:GetNW2String("tif_tactic", "") ~= kind then
 					m:SetNW2String("tif_tactic", kind)
 				end
 			end
+
 			if SQ.Log then
 				SQ.Log(sq, "tactic: ", kind == "" and "none" or kind)
 			end

@@ -27,5 +27,5 @@ for _, part in ipairs({ "01", "02", "03", "04", "05", "06", "07", "08", "09", "1
 	end
 end
 check(held, "and the medic's gun follows the clip's own motion where he lets go of it")
-check(body:find("Bd.CARRY_R = 0.35", 1, true) ~= nil and body:find("if r > Bd.CARRY_R then v = true break end", 1, true) ~= nil, "the seated sleep loop (gun 0.43 off the hand) carries the gun like its sit-down and wake-up")
+check(body:find("Bd.CARRY_R = 0.35", 1, true) ~= nil and body:gsub("%s+", " "):find("if r > Bd.CARRY_R then v = true break end", 1, true) ~= nil, "the seated sleep loop (gun 0.43 off the hand) carries the gun like its sit-down and wake-up")
 print(string.format("passed %d, failed %d", pass, fail))

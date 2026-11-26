@@ -14,23 +14,34 @@ function M.mul3(a, b)
 	}
 end
 
-function M.tr3(a) return { a[1], a[4], a[7], a[2], a[5], a[8], a[3], a[6], a[9] } end
+function M.tr3(a)
+	return { a[1], a[4], a[7], a[2], a[5], a[8], a[3], a[6], a[9] }
+end
 
 function M.mulv(a, v)
 	return { a[1] * v[1] + a[2] * v[2] + a[3] * v[3], a[4] * v[1] + a[5] * v[2] + a[6] * v[3], a[7] * v[1] + a[8] * v[2] + a[9] * v[3] }
 end
 
-function M.sub(a, b) return { a[1] - b[1], a[2] - b[2], a[3] - b[3] } end
+function M.sub(a, b)
+	return { a[1] - b[1], a[2] - b[2], a[3] - b[3] }
+end
 
-function M.dot(a, b) return a[1] * b[1] + a[2] * b[2] + a[3] * b[3] end
+function M.dot(a, b)
+	return a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+end
 
-function M.cross(a, b) return { a[2] * b[3] - a[3] * b[2], a[3] * b[1] - a[1] * b[3], a[1] * b[2] - a[2] * b[1] } end
+function M.cross(a, b)
+	return { a[2] * b[3] - a[3] * b[2], a[3] * b[1] - a[1] * b[3], a[1] * b[2] - a[2] * b[1] }
+end
 
-function M.len(a) return math_sqrt(M.dot(a, a)) end
+function M.len(a)
+	return math_sqrt(M.dot(a, a))
+end
 
 function M.unit(a)
 	local l = M.len(a)
 	if l < 1e-6 then return nil end
+
 	return { a[1] / l, a[2] / l, a[3] / l }
 end
 
@@ -39,6 +50,7 @@ M.IDENTITY = { 1, 0, 0, 0, 1, 0, 0, 0, 1 }
 function M.swing(a, b)
 	local v, c = M.cross(a, b), M.dot(a, b)
 	if c > 0.999999 then return M.IDENTITY end
+
 	if c < -0.999999 then
 		local p = M.unit(M.cross(a, math_abs(a[1]) < 0.9 and { 1, 0, 0 } or { 0, 1, 0 }))
 		local x, y, z = p[1], p[2], p[3]
@@ -58,6 +70,7 @@ function M.frame(a, b)
 	local d = M.dot(b, a)
 	local n = M.unit({ b[1] - a[1] * d, b[2] - a[2] * d, b[3] - a[3] * d })
 	if not n then return nil end
+
 	local c = M.cross(a, n)
 	return { a[1], n[1], c[1], a[2], n[2], c[2], a[3], n[3], c[3] }
 end
@@ -91,6 +104,7 @@ end
 
 local function read_floats(f, at, n, out)
 	f:Seek(at)
+
 	for k = 1, n do
 		out[k] = f:ReadFloat()
 	end
@@ -101,6 +115,7 @@ end
 local function read_quat_rule(f, at, size)
 	f:Seek(at)
 	local control, count, index = f:ReadLong(), f:ReadLong(), f:ReadLong()
+
 	if count < 1 or count > MAX_TRIGGERS or at + index < 0 or at + index + count * TRIGGER_SIZE > size then
 		return nil
 	end
@@ -118,8 +133,10 @@ local function read_hitboxes(f, size, n)
 	f:Seek(HDR_NUMHITBOXSETS)
 	local sets, at = f:ReadLong(), f:ReadLong()
 	if sets < 1 or at < 0 or at + 12 > size then return {} end
+
 	f:Seek(at + 4)
 	local count, index = f:ReadLong(), f:ReadLong()
+
 	if count < 0 or count > MAX_HITBOXES or at + index < 0 or at + index + count * HITBOX_SIZE > size then
 		return {}
 	end
@@ -130,6 +147,7 @@ local function read_hitboxes(f, size, n)
 		f:Seek(o)
 		local bone, group = f:ReadLong(), f:ReadLong()
 		read_floats(f, o + 8, 6, v)
+
 		if bone >= 0 and bone < n then
 			out[#out + 1] = { bone = bone, group = group, index = h, min = { v[1], v[2], v[3] }, max = { v[4], v[5], v[6] } }
 		end
@@ -153,6 +171,7 @@ local function group_of(sk, i)
 	while i >= 0 do
 		local g = BONE_GROUP[sk.name[i]]
 		if g then return g end
+
 		i = sk.parent[i]
 	end
 
@@ -163,6 +182,7 @@ local function infer_groups(sk)
 	for _, h in ipairs(sk.hitboxes) do
 		if h.group ~= HITGROUP_GENERIC then return end
 	end
+
 	for _, h in ipairs(sk.hitboxes) do
 		h.group = group_of(sk, h.bone)
 	end
@@ -170,14 +190,17 @@ end
 
 local function read_bones(f, size)
 	if size < HDR_NUMBONES + 8 or f:Read(4) ~= "IDST" then return nil end
+
 	f:Seek(HDR_NUMBONES)
 	local n, base = f:ReadLong(), f:ReadLong()
+
 	if n < 1 or n > MAX_BONES or base < 0 or base + n * BONE_SIZE > size then
 		return nil
 	end
 
 	local sk = { n = n, name = {}, index = {}, parent = {}, R = {}, t = {}, weighted = {}, proc = {}, rule = {} }
 	local p = {}
+
 	for i = 0, n - 1 do
 		local o = base + i * BONE_SIZE
 		f:Seek(o)
@@ -187,6 +210,7 @@ local function read_bones(f, size)
 		local flags, proctype, procindex = f:ReadLong(), f:ReadLong(), f:ReadLong()
 		local name = read_name(f, o + name_at)
 		if parent < -1 or parent >= i then return nil end
+
 		local R = { p[1], p[5], p[9], p[2], p[6], p[10], p[3], p[7], p[11] }
 		sk.R[i] = R
 		sk.t[i] = { -(R[1] * p[4] + R[2] * p[8] + R[3] * p[12]), -(R[4] * p[4] + R[5] * p[8] + R[6] * p[12]),
@@ -194,9 +218,11 @@ local function read_bones(f, size)
 		sk.name[i], sk.parent[i] = name, parent
 		sk.weighted[i] = bit_band(flags, VERTEX_MASK) ~= 0
 		sk.proc[i] = procindex ~= 0 and proctype or 0
+
 		if sk.proc[i] == PMS.PROC_QUAT then
 			sk.rule[i] = read_quat_rule(f, o + procindex, size)
 		end
+
 		if not sk.index[name] then
 			sk.index[name] = i
 		end
@@ -219,11 +245,14 @@ local function to_entity_space(sk)
 	local up = M.unit(M.sub(sk.t[top], sk.t[ix[PELVIS]]))
 	local left = up and M.sub(sk.t[ix[L_THIGH]], sk.t[ix[R_THIGH]])
 	if not left then return false end
+
 	local d = M.dot(left, up)
 	left = M.unit({ left[1] - up[1] * d, left[2] - up[2] * d, left[3] - up[3] * d })
 	if not left then return false end
+
 	local fwd = M.cross(left, up)
 	local W = { fwd[1], fwd[2], fwd[3], left[1], left[2], left[3], up[1], up[2], up[3] }
+
 	for i = 0, sk.n - 1 do
 		sk.R[i] = M.mul3(W, sk.R[i])
 		sk.t[i] = M.mulv(W, sk.t[i])
@@ -235,14 +264,17 @@ end
 function PMS.ParseSkeleton(path)
 	local f = file.Open(path, "rb", "GAME")
 	if not f then return nil end
+
 	local ok, sk = pcall(read_bones, f, f:Size())
 	f:Close()
 	if not ok or not sk then return nil end
+
 	for _, name in ipairs(PMS.Required) do
 		if not sk.index[name] then return nil end
 	end
 
 	if not to_entity_space(sk) then return nil end
+
 	return sk
 end
 
@@ -256,6 +288,7 @@ function PMS.Skeleton(model)
 	if sk == nil or (sk == false and CurTime() >= (PMS.SkeletonRetry[model] or 0)) then
 		sk = PMS.ParseSkeleton(model) or false
 		PMS.Skeletons[model] = sk
+
 		if not sk then
 			PMS.SkeletonRetry[model] = CurTime() + 10
 		end
@@ -275,6 +308,7 @@ PMS.Limbs = {
 local function dist(sk, a, b)
 	local ia, ib = sk.index[a], sk.index[b]
 	if not (ia and ib) then return nil end
+
 	return M.len(M.sub(sk.t[ia], sk.t[ib]))
 end
 
@@ -289,6 +323,7 @@ function PMS.Oddness(lsk, fsk)
 	for _, l in ipairs(PMS.Limbs) do
 		take(dist(fsk, l[1], l[2]), dist(lsk, l[1], l[2]))
 	end
+
 	local fp, lp = fsk.t[fsk.index[PELVIS]], lsk.t[lsk.index[PELVIS]]
 	take(fp[3], lp[3])
 	local R, L = "valvebiped.bip01_r_upperarm", "valvebiped.bip01_l_upperarm"

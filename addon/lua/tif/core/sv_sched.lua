@@ -15,6 +15,7 @@ local cvCoverSearchBudget = CreateConVar("tif_cover_search_budget", "2", FCVAR_A
 local cvGmodDisabled
 function TIF.AIDisabled()
 	if cvDisabled:GetBool() then return true end
+
 	cvGmodDisabled = cvGmodDisabled or GetConVar("ai_disabled")
 	return cvGmodDisabled ~= nil and cvGmodDisabled:GetBool()
 end
@@ -28,6 +29,7 @@ Budget.left = { trace = 0, path = 0, cover_trace = 0, cover_search = 0 }
 
 function Budget.Take(kind, amount)
 	amount = amount or 1
+
 	if Budget.left[kind] >= amount then
 		Budget.left[kind] = Budget.left[kind] - amount
 		Prof.Count(kind, amount)
@@ -43,7 +45,12 @@ local math_min, math_rand = math.min, math.Rand
 
 function TIF.Register(npc)
 	local soldiers = TIF.Soldiers
-	for i = 1, #soldiers do if soldiers[i] == npc then return end end
+	for i = 1, #soldiers do
+		if soldiers[i] == npc then
+			return
+		end
+	end
+
 	soldiers[#soldiers + 1] = npc
 	npc.tifNextThink = CurTime() + math_rand(0, 0.3)
 	npc.tifTier = 1
@@ -62,6 +69,7 @@ local function think_soldier(npc, now)
 	local ok, err = pcall(npc.TIFThink, npc, dt)
 	npc.tifThinkMs = (SysTime() - startTime) * 1000
 	Prof.Count("thinks", 1)
+
 	if not ok and errorsLogged < 20 then
 		errorsLogged = errorsLogged + 1
 		TIF.Error("Soldier think error (", tostring(npc), "): ", tostring(err))
@@ -73,6 +81,7 @@ local function update_tiers()
 	local playerCount = #players
 	local soldiers = TIF.Soldiers
 	local awareEngaged, awareUnaware = TIF.AWARE.ENGAGED, TIF.AWARE.UNAWARE
+
 	for i = 1, #soldiers do
 		local npc = soldiers[i]
 		if IsValid(npc) then
@@ -83,14 +92,18 @@ local function update_tiers()
 					nearestDistSqr = distSqr
 				end
 			end
+
 			local aware = npc.tifAware or 0
 			local tier
-			if aware == awareEngaged then tier = nearestDistSqr < 6250000 and 0 or 1
+
+			if aware == awareEngaged then
+				tier = nearestDistSqr < 6250000 and 0 or 1
 			elseif aware > awareUnaware then
 				tier = 1
 			else
 				tier = nearestDistSqr < 9000000 and 2 or 3
 			end
+
 			npc.tifTier = tier
 		end
 	end
@@ -104,21 +117,27 @@ hook.Add("Tick", "tif_sched", function()
 	Budget.left.cover_trace = cvCoverTraceBudget:GetInt()
 	Budget.left.cover_search = cvCoverSearchBudget:GetInt()
 	if TIF.AIDisabled() then return end
+
 	local soldiers = TIF.Soldiers
 	local count = #soldiers
 	if count == 0 then return end
+
 	Prof.Begin("sched")
 	local budgetSec = cvBudgetMs:GetFloat() / 1000
 	local startTime, now = SysTime(), CurTime()
+
 	for _ = 1, count do
 		if Sched.idx > #soldiers then
 			Sched.idx = 1
 		end
+
 		local npc = soldiers[Sched.idx]
 		Sched.idx = Sched.idx + 1
+
 		if IsValid(npc) then
 			if not npc.tifDead and now >= (npc.tifNextThink or 0) then
 				think_soldier(npc, now)
+
 				if SysTime() - startTime > budgetSec then
 					Prof.Count("sched_over_budget", 1)
 					break

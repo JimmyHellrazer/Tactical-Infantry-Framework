@@ -22,6 +22,7 @@ end
 local function watch_point(lkp, from)
 	local back = flat(from - lkp)
 	local best, bestD
+
 	for _, a in ipairs(navmesh.Find(lkp, 750, 200, 200)) do
 		local p = a:GetCenter()
 		local d = p:Distance(lkp)
@@ -47,6 +48,7 @@ function S.Plan(sq, searchers, lkp, dir, now)
 					m.tifSearch.assigned = true
 				end
 			end
+
 			TIF.Squad.Log(sq, "search: enemy was indoors, clearing the building")
 			return
 		end
@@ -68,24 +70,32 @@ function S.Plan(sq, searchers, lkp, dir, now)
 				watcher, bestRank = m, r
 			end
 		end
+
 		watchAt = watch_point(lkp, centre)
+
 		if not watchAt then
 			watcher = nil
 		end
 	end
 
 	local movers = {}
-	for _, m in ipairs(searchers) do if m ~= watcher then movers[#movers + 1] = m end end
+	for _, m in ipairs(searchers) do
+		if m ~= watcher then
+			movers[#movers + 1] = m
+		end
+	end
 
 	local cands = {}
 	for _, a in ipairs(navmesh.Find(lkp, S.RADIUS, 150, 150)) do
 		local p = a:GetCenter()
 		local d = p:Distance(lkp)
+
 		if d > 160 then
 			local score = math.random() * 0.6 + (d < 500 and 0.3 or 0)
 			if dir then
 				score = score + flat(p - lkp):Dot(dir) * 1.2
 			end
+
 			cands[#cands + 1] = { p = p, score = score }
 		end
 	end
@@ -95,6 +105,7 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	local picked = {}
 	for _, c in ipairs(cands) do
 		if #picked >= #movers * S.POINTS_EACH then break end
+
 		local ok = true
 		for _, q in ipairs(picked) do
 			if q:DistToSqr(c.p) < 220 * 220 then
@@ -102,6 +113,7 @@ function S.Plan(sq, searchers, lkp, dir, now)
 				break
 			end
 		end
+
 		if ok then
 			picked[#picked + 1] = c.p
 		end
@@ -120,7 +132,6 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	end
 
 	for i, m in ipairs(movers) do
-
 		local mp = m:GetPos()
 		local list = lists[i]
 		table.sort(list, function(a, b) return a:DistToSqr(mp) < b:DistToSqr(mp) end)

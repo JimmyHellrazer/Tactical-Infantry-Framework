@@ -12,11 +12,12 @@ end
 function TIF.RefreshSpawnList()
 	local npcs = list.GetForEdit("NPC")
 	local now = {}
-	for id, def in pairs(TIF.Factions or {}) do
 
+	for id, def in pairs(TIF.Factions or {}) do
 		if istable(def) and not def.hidden and (def.models or def.variants) then
 			local cat = category(def, id)
 			local side = def.side == "ally" and " (ally)" or (def.side == "enemy" and " (enemy)" or "")
+
 			for _, arch in ipairs(TIF.SPAWN_ROLES) do
 				local a = TIF.Archetypes and TIF.Archetypes[arch]
 				if a then
@@ -26,6 +27,7 @@ function TIF.RefreshSpawnList()
 					now[key] = true
 				end
 			end
+
 			for _, g in ipairs(TIF.SPAWN_GROUPS) do
 				local key = "tif_" .. id .. "_" .. g.key
 				npcs[key] = { Name = g.name .. side, Class = "tif_spawner", Category = cat,
@@ -48,11 +50,17 @@ function TIF.RefreshSpawnList()
 	local changed = false
 	for key in pairs(added) do
 		if not now[key] then
-			npcs[key] = nil changed = true
+			npcs[key] = nil
+			changed = true
 		end
 	end
 
-	for key in pairs(now) do if not added[key] then changed = true end end
+	for key in pairs(now) do
+		if not added[key] then
+			changed = true
+		end
+	end
+
 	added = now
 
 	if CLIENT and changed and IsValid(g_SpawnMenu) then

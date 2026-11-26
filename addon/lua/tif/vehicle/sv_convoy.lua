@@ -24,6 +24,7 @@ end
 function CV.Create(squads)
 	local cv = { id = CV.NextId, squads = {}, state = "forming", pace = CV.PACE, gap = CV.GAP }
 	CV.NextId = CV.NextId + 1
+
 	for _, sq in ipairs(squads) do
 		if sq.mount then
 			cv.squads[#cv.squads + 1] = sq
@@ -32,6 +33,7 @@ function CV.Create(squads)
 	end
 
 	if #cv.squads == 0 then return nil end
+
 	CV.List[cv.id] = cv
 	log(cv, "formed with ", #cv.squads, " vehicles")
 	return cv
@@ -55,7 +57,9 @@ local function loop_route(pts)
 		local a, b = pts[i], pts[i % #pts + 1]
 		local leg, s = R.Build(a, b)
 		if not leg then return nil, s end
+
 		src = src or s
+
 		for _, p in ipairs(leg) do
 			all[#all + 1] = p
 		end
@@ -73,6 +77,7 @@ end
 function CV.Patrol(cv, pts)
 	cv.mode, cv.loop, cv.dest = "patrol", pts, nil
 	cv.state = "forming"
+
 	for _, sq in ipairs(cv.squads) do
 		if sq.mount then
 			sq.mount.patrol = { pts = pts, i = 1, convoy = true }
@@ -85,6 +90,7 @@ end
 local function set_off(cv, list)
 	local lead = list[1].mount.veh
 	local pts, src
+
 	if cv.mode == "patrol" then
 		pts, src = loop_route(cv.loop)
 	elseif cv.dest then
@@ -98,6 +104,7 @@ local function set_off(cv, list)
 	end
 
 	cv.pts, cv.state, cv.halted = pts, "driving", nil
+
 	for i, sq in ipairs(list) do
 		local mt = sq.mount
 		mt.phase = "driving"
@@ -107,19 +114,22 @@ local function set_off(cv, list)
 			source = src, label = "convoy " .. cv.id .. " #" .. i, speed = cv.pace * 1.3,
 			arrive = D.ARRIVE + cv.gap * (i - 1),
 
-			onArrive = i == 1 and function() cv.leadArrived = true end or nil,
+			onArrive = i == 1 and function()
+				cv.leadArrived = true
+			end or nil,
 		})
 	end
+
 	log(cv, cv.mode, ": ", #pts, " route points (", src, "), ", #list, " vehicles")
 end
 
 local function halt(cv, list, why, threat)
 	cv.state, cv.halted = "halted", true
+
 	for _, sq in ipairs(list) do
 		local mt = sq.mount
 		if mt.phase == "driving" or mt.phase == "ready" then
 			if threat and mt.veh:GetPos():DistToSqr(threat) > CV.HALT_RANGE ^ 2 then
-
 				D.Stop(mt.veh, why)
 				mt.phase = "ready"
 			else
@@ -141,7 +151,6 @@ local function tick(cv, now)
 	end
 
 	if cv.state == "forming" or cv.state == "idle" then
-
 		local ready = true
 		for _, sq in ipairs(list) do
 			local p = sq.mount.phase
@@ -150,14 +159,15 @@ local function tick(cv, now)
 				break
 			end
 		end
+
 		if ready and (cv.mode == "patrol" or cv.dest) and cv.state == "forming" then
 			set_off(cv, list)
 		end
+
 		return
 	end
 
 	if cv.state == "halted" then
-
 		local busy = false
 		for _, sq in ipairs(list) do
 			for _, m in ipairs(SQ.Members(sq)) do
@@ -167,20 +177,25 @@ local function tick(cv, now)
 					break
 				end
 			end
+
 			if busy then break end
 		end
+
 		if busy then
 			cv.quietSince = nil
 		else
 			cv.quietSince = cv.quietSince or now
 		end
+
 		if cv.quietSince and now - cv.quietSince > 30 then
 			cv.quietSince = nil
+
 			for _, sq in ipairs(list) do
 				if sq.mount.phase == "dismounted" then
 					MT.Remount(sq)
 				end
 			end
+
 			log(cv, "all quiet, remounting")
 		end
 
@@ -191,10 +206,12 @@ local function tick(cv, now)
 				break
 			end
 		end
+
 		if allReady then
 			log(cv, "everyone back in, moving on")
 			cv.state = "forming"
 		end
+
 		return
 	end
 
@@ -208,41 +225,56 @@ local function tick(cv, now)
 
 	if cv.leadArrived then
 		cv.leadArrived = nil
+
 		if cv.mode == "patrol" then
 			set_off(cv, list)
 		else
 			cv.state = "arrived"
+
 			for _, sq in ipairs(list) do
 				D.Stop(sq.mount.veh, "arrived")
+
 				if not cv.stay then
 					MT.Dismount(sq, nil, "convoy arrived")
 				else
 					sq.mount.phase = "ready"
 				end
 			end
+
 			log(cv, "arrived", cv.stay and "" or ", getting out")
 		end
+
 		return
 	end
 
 	for i, sq in ipairs(list) do
 		local veh = sq.mount.veh
 		local d = veh.tifDrive
+
 		if d then
 			local cap = cv.pace
 			if i == 1 then
 				local behind = list[2] and list[2].mount.veh
 				local g = behind and behind:GetPos():Distance(veh:GetPos()) or 0
-				if g > cv.gap * 3.5 then cap = 0
-				elseif g > cv.gap * 2.2 then cap = 150 end
+
+				if g > cv.gap * 3.5 then
+					cap = 0
+				elseif g > cv.gap * 2.2 then
+					cap = 150
+				end
 			else
 				local ahead = list[i - 1].mount.veh
 				local g = ahead:GetPos():Distance(veh:GetPos())
-				if g < cv.gap * 0.6 then cap = 0
+
+				if g < cv.gap * 0.6 then
+					cap = 0
 				elseif g < cv.gap then
 					cap = math.max(0, ahead:GetVelocity():Length() * 0.9)
-				elseif g > cv.gap * 1.6 then cap = cv.pace * 1.3 end
+				elseif g > cv.gap * 1.6 then
+					cap = cv.pace * 1.3
+				end
 			end
+
 			d.speedCap = cap
 		end
 	end
@@ -250,11 +282,13 @@ end
 
 timer.Create("tif_convoy_tick", 0.25, 0, function()
 	if TIF.AIDisabled() then return end
+
 	local now = CurTime()
 	for id, cv in pairs(CV.List) do
 		local ok, err = pcall(tick, cv, now)
 		if not ok then
-			TIF.Error("Convoy error: ", tostring(err)) CV.List[id] = nil
+			TIF.Error("Convoy error: ", tostring(err))
+			CV.List[id] = nil
 		end
 	end
 end)

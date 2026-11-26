@@ -16,11 +16,12 @@ local buf, written, started, full = {}, 0, false, false
 local function start()
 	started = true
 	file.CreateDir("tif")
-	if file.Exists(L.NAME, "DATA") then
 
+	if file.Exists(L.NAME, "DATA") then
 		if file.Exists(L.PREV, "DATA") then
 			file.Delete(L.PREV)
 		end
+
 		local ok = file.Rename and pcall(file.Rename, L.NAME, L.PREV)
 		if not ok then
 			file.Write(L.PREV, file.Read(L.NAME, "DATA") or "")
@@ -34,12 +35,14 @@ end
 
 function L.Line(kind, text)
 	if not cv:GetBool() or full then return end
+
 	if not started then
 		start()
 	end
 
 	local line = string.format("%s %9.2f %-8s %s\n", os.date("%H:%M:%S"), CurTime(), kind, text)
 	written = written + #line
+
 	if written > L.MAX_BYTES then
 		full = true
 		buf[#buf + 1] = "... log full for this session (tif/log, MAX_BYTES) ...\n"
@@ -51,6 +54,7 @@ end
 
 function L.Flush()
 	if #buf == 0 or not started then return end
+
 	file.Append(L.NAME, table.concat(buf))
 	buf = {}
 end
@@ -69,10 +73,21 @@ local function join(...)
 end
 
 local log0, warn0, err0 = TIF.Log, TIF.Warn, TIF.Error
-function TIF.Log(...) log0(...) L.Line("log", join(...)) end
+function TIF.Log(...)
+	log0(...)
+	L.Line("log", join(...))
+end
 
-function TIF.Warn(...) warn0(...) L.Line("WARN", join(...)) end
+function TIF.Warn(...)
+	warn0(...)
+	L.Line("WARN", join(...))
+end
 
-function TIF.Error(...) err0(...) L.Line("ERROR", join(...)) end
+function TIF.Error(...)
+	err0(...)
+	L.Line("ERROR", join(...))
+end
 
-function TIF.Event(tag, ...) L.Line(tag, join(...)) end
+function TIF.Event(tag, ...)
+	L.Line(tag, join(...))
+end

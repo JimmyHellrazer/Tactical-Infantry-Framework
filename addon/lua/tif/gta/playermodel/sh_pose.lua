@@ -14,6 +14,7 @@ local function read(ent, bone, A, o)
 		CopyBoneMatrix(ent, bone, IN)
 		local a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, _, _, _, m16 = Unpack(IN)
 		if m16 == 0 then return false end
+
 		A[o + 1], A[o + 2], A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9], A[o + 10], A[o + 11], A[o + 12] =
 			a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12
 		return true
@@ -21,6 +22,7 @@ local function read(ent, bone, A, o)
 
 	local m = GetBoneMatrix(ent, bone)
 	if not m then return false end
+
 	A[o + 1], A[o + 2], A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9], A[o + 10], A[o + 11], A[o + 12] = Unpack(m)
 	return true
 end
@@ -64,6 +66,7 @@ local function inv(A, a, C, c)
 	local c1, c2, c3 = m6 * m11 - m7 * m10, m7 * m9 - m5 * m11, m5 * m10 - m6 * m9
 	local d = m1 * c1 + m2 * c2 + m3 * c3
 	if math_abs(d) < 1e-12 then return false end
+
 	d = 1 / d
 	local r1, r2, r3 = c1 * d, (m3 * m10 - m2 * m11) * d, (m2 * m7 - m3 * m6) * d
 	local r5, r6, r7 = c2 * d, (m1 * m11 - m3 * m9) * d, (m3 * m5 - m1 * m7) * d
@@ -86,6 +89,7 @@ local function place_merge(map, k, E, W, has, origin)
 	local o = k * 12 - 12
 	mul_rot(E, o, map.OFF[k], W, o)
 	local s = map.scale
+
 	if k == map.root and s ~= 1 and origin then
 		W[o + 4] = origin.x + (W[o + 4] - origin.x) * s
 		W[o + 8] = origin.y + (W[o + 8] - origin.y) * s
@@ -105,21 +109,26 @@ end
 function PMS.Chain(src, map, origin, steps)
 	local W, E, has = map.SW, map.SE, map.SH
 	local K, P, RL = map.K, map.P, map.RL
+
 	for i = 1, #steps do
 		local k = steps[i]
 		local o, p = k * 12 - 12, P[k]
 		local ok
+
 		if K[k] == MERGE then
 			ok = read(src, map.LB[k], E, o)
+
 			if ok then
 				place_merge(map, k, E, W, has, origin)
 			end
 		else
 			ok = p ~= 0 and has[p]
+
 			if ok then
 				mul(W, p * 12 - 12, RL[k], 0, W, o)
 			end
 		end
+
 		has[k] = ok
 		if not ok then return false end
 	end

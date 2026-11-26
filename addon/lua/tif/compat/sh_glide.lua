@@ -16,6 +16,7 @@ function A.IsUsable(veh)
 	if veh.GetChassisHealth and veh:GetChassisHealth() <= 0 then return false end
 	if veh.GetEngineHealth and veh:GetEngineHealth() <= 0 then return false end
 	if veh:WaterLevel() >= 3 then return false end
+
 	return true
 end
 
@@ -33,10 +34,10 @@ if SERVER then
 	end
 
 	function A.Drive(veh, throttle, steer, brake, handbrake)
-
 		if veh.AwakePhysics then
 			veh:AwakePhysics()
 		end
+
 		veh:SetInputFloat(1, "accelerate", math.Clamp(throttle or 0, 0, 1))
 		veh:SetInputFloat(1, "steer", math.Clamp(steer or 0, -1, 1))
 		veh:SetInputFloat(1, "brake", math.Clamp(brake or 0, 0, 1))

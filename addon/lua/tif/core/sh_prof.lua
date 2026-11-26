@@ -17,16 +17,19 @@ end
 
 function P.End()
 	if depth <= 0 then return end
+
 	local key, t0 = stack[depth * 2 - 1], stack[depth * 2]
 	depth = depth - 1
 	local dt = SysTime() - t0
 	local a = P.acc[key]
+
 	if not a then
 		a = { t = 0, n = 0, max = 0 }
 		P.acc[key] = a
 	end
 
 	a.t, a.n = a.t + dt, a.n + 1
+
 	if dt > a.max then
 		a.max = dt
 	end
@@ -41,6 +44,7 @@ local function roll()
 	local window = math.max(0.001, now - windowStart)
 	windowStart = now
 	local times, counts = {}, {}
+
 	for k, a in pairs(P.acc) do
 		times[k] = { ms = a.t * 1000 / window, calls = a.n / window, max = a.max * 1000 }
 		a.t, a.n, a.max = 0, 0, 0

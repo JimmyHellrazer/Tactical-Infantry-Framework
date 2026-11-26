@@ -4,17 +4,27 @@ TIF.Factions = TIF.Factions or {}
 function TIF.RegisterFaction(id, def)
 	def.id = id
 	def.host = def.host or TIF.GTG.DEFAULT_HOST
+
 	if def.retarget then
 		TIF.Modular = TIF.Modular or {}
 		TIF.Modular.Retarget = TIF.Modular.Retarget or {}
-		local function flag(list) for _, m in ipairs(list or {}) do if isstring(m) then TIF.Modular.Retarget[string.lower(m)] = true end end end
+		local function flag(list)
+			for _, m in ipairs(list or {}) do
+				if isstring(m) then
+					TIF.Modular.Retarget[string.lower(m)] = true
+				end
+			end
+		end
+
 		flag(def.models)
+
 		for _, v in ipairs(def.variants or {}) do
 			flag(v.models)
 		end
 	end
 
 	TIF.Factions[id] = def
+
 	if TIF.ClearRelationCache then
 		TIF.ClearRelationCache()
 	end
@@ -24,12 +34,14 @@ end
 
 local function pick(list)
 	if not list or #list == 0 then return nil end
+
 	return list[math.random(#list)]
 end
 
 function TIF.WeaponAlias(class)
 	local a = class and TIF_WEAPON_ALIAS and TIF_WEAPON_ALIAS[class]
 	if a and TIF.GTG.WeaponDef(a) then return a end
+
 	return class
 end
 
@@ -37,11 +49,17 @@ local function is_launcher(class)
 	local def = class and TIF.GTG.WeaponDef(TIF.WeaponAlias(class))
 	return def ~= nil and def.projectile ~= nil
 end
+
 TIF.IsLauncherClass = is_launcher
 
 local function pick_gun(list)
 	local out = {}
-	for _, c in ipairs(list or {}) do if not is_launcher(c) then out[#out + 1] = c end end
+	for _, c in ipairs(list or {}) do
+		if not is_launcher(c) then
+			out[#out + 1] = c
+		end
+	end
+
 	return pick(out)
 end
 
@@ -49,6 +67,7 @@ function TIF.Loadout(fac, archId)
 	if isstring(fac) then
 		fac = TIF.Factions[fac] or {}
 	end
+
 	fac = fac or {}
 	local L = fac.loadouts or {}
 	local l = L[archId or ""] or L.default or {}
@@ -56,6 +75,7 @@ function TIF.Loadout(fac, archId)
 	local primary = pick(l.primary) or pick(d.primary) or pick(fac.weapons) or "weapon_tifmw_m4_sof_a"
 	local secondary = pick(l.secondary) or pick(d.secondary)
 	local launcher = pick(l.launcher)
+
 	if is_launcher(primary) then
 		launcher = launcher or primary
 		primary = pick_gun(l.rifle) or pick_gun(d.primary) or pick_gun(fac.weapons) or "weapon_tifmw_m4_sof_a"
@@ -152,6 +172,7 @@ TIF.RegisterFaction("russians", {
 })
 
 TIF.FactionAlias = TIF.FactionAlias or {}
+
 for old, new in pairs({ militia = "insurgents", pmc = "usmc" }) do
 	TIF.FactionAlias[old] = new
 	local def = table.Copy(TIF.Factions[new])

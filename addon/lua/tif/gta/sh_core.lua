@@ -12,6 +12,7 @@ local string_lower = string.lower
 function TIFG.Smooth(x)
 	if x <= 0 then return 0 end
 	if x >= 1 then return 1 end
+
 	return x * x * (3 - 2 * x)
 end
 
@@ -32,13 +33,16 @@ function TIFG.QuatFromRows(m00, m01, m02, m10, m11, m12, m20, m21, m22)
 	return (m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s
 end
 
-function TIFG.TickOf(t) return math.floor(t / engine.TickInterval() + 0.5) end
+function TIFG.TickOf(t)
+	return math.floor(t / engine.TickInterval() + 0.5)
+end
 
 local Frame = CLIENT and FrameNumber or engine.TickCount
 TIFG.Frame = Frame
 
 function TIFG.Piecewise(pts, x)
 	if x <= pts[1] then return pts[2] end
+
 	for i = 3, #pts, 2 do
 		if x <= pts[i] then
 			local x0, y0 = pts[i - 2], pts[i - 1]
@@ -65,6 +69,7 @@ local function Rec(ply)
 
 	return r
 end
+
 TIFG.Rec = Rec
 
 hook.Add("EntityRemoved", "tif_gta_assets_rec", function(ent, full_update)
@@ -89,6 +94,7 @@ local bone_ids = {}
 function TIFG.BoneOf(ent, name, model)
 	model = model or ent:GetModel() or ""
 	local ids = bone_ids[model]
+
 	if not ids then
 		ids = {}
 		bone_ids[model] = ids
@@ -97,10 +103,13 @@ function TIFG.BoneOf(ent, name, model)
 	local b = ids[name]
 	if b == nil then
 		b = ent:LookupBone(name)
+
 		if not b then
 			if ent:GetBoneCount() <= 0 then return nil end
+
 			b = false
 		end
+
 		ids[name] = b
 	end
 
@@ -116,14 +125,17 @@ function TIFG.MuzzleAttachment(e)
 	local model = e:GetModel()
 	if e.gtg_muz_model ~= model or e.gtg_muz_axis == nil or e.gtg_muz_side == nil then
 		if e:GetBoneCount() <= 0 then return 0, false, false end
+
 		local a, axis, side = 0, false, false
 		for i, n in ipairs(MUZZLES) do
 			a = e:LookupAttachment(n) or 0
+
 			if a > 0 then
 				axis, side = i == 1, n == "muzzle_flash"
 				break
 			end
 		end
+
 		e.gtg_muz_model, e.gtg_muz_att, e.gtg_muz_axis, e.gtg_muz_side = model, a, axis, side
 	end
 
@@ -144,18 +156,22 @@ local function curve_at(clip, frame, axis)
 	local c = clip.curve
 	local n = #c / 3
 	if n == 0 then return 0 end
+
 	local fi = frame / 3
 	if fi <= 0 then return c[axis] end
 	if fi >= n - 1 then return c[(n - 1) * 3 + axis] end
+
 	local i = math_floor(fi)
 	local a = c[i * 3 + axis]
 	return a + (c[i * 3 + 3 + axis] - a) * (fi - i)
 end
+
 TIFG.ClipCurve = curve_at
 
 function TIFG.ClipSpeedAt(clip, frame)
 	local a, b = math_max(0, frame - 3), math_min(clip.frames - 1, frame + 3)
 	if b <= a then return 0 end
+
 	local dx = curve_at(clip, b, 1) - curve_at(clip, a, 1)
 	local dy = curve_at(clip, b, 2) - curve_at(clip, a, 2)
 	return math_sqrt(dx * dx + dy * dy) / ((b - a) / FPS)
@@ -164,9 +180,11 @@ end
 function TIFG.ClipZ(clip, frame)
 	local z = clip.zcurve
 	if not z or #z == 0 then return 0 end
+
 	local fi = frame / 3
 	if fi <= 0 then return z[1] end
 	if fi >= #z - 1 then return z[#z] end
+
 	local i = math_floor(fi)
 	return z[i + 1] + (z[i + 2] - z[i + 1]) * (fi - i)
 end
@@ -194,17 +212,22 @@ local function resolve_tags(clip)
 	for i = 1, tags and #tags or 0 do
 		local t = tags[i]
 		local n = t[1]
+
 		if n == "MoveEvent" and istable(t[4]) and isstring(t[4].MoveEvent) then
 			n = t[4].MoveEvent
 		end
+
 		n = string_lower(TIFG.TagNames[n] or n)
 		list[i] = n
+
 		if not first[n] then
 			first[n] = t
 		end
+
 		local ev = istable(t[4]) and t[4].Event
 		if isstring(ev) then
 			ev = "event:" .. string_lower(TIFG.TagNames[ev] or ev)
+
 			if not first[ev] then
 				first[ev] = t
 			end
@@ -223,7 +246,9 @@ end
 function TIFG.ClipInTag(clip, name, p)
 	local tags, names = clip.tags, clip.tag_names
 	if not names then return false end
+
 	name = string_lower(name)
+
 	for i = 1, #names do
 		if names[i] == name then
 			local t = tags[i]
@@ -240,6 +265,7 @@ local function dedupe_wrap(plants, frames)
 		for i = 2, #plants do
 			out[i - 1] = plants[i]
 		end
+
 		return out
 	end
 
@@ -249,6 +275,7 @@ end
 local function heel_plants(clip)
 	local tags = clip.tags
 	if not tags then return nil end
+
 	local l, r = {}, {}
 	for _, t in ipairs(tags) do
 		local a = t[4]
@@ -263,17 +290,21 @@ local function heel_plants(clip)
 	end
 
 	if #l == 0 or #r == 0 then return nil end
+
 	table.sort(l)
 	table.sort(r)
 	return l, r
 end
 
-local function by_frame(a, b) return a[1] < b[1] end
+local function by_frame(a, b)
+	return a[1] < b[1]
+end
 
 local function build_phase(clip)
 	local tl, tr = heel_plants(clip)
 	clip.plants_from = tl and "tags" or "detected"
 	local lp, rp = tl or clip.lplant or {}, tr or clip.rplant or {}
+
 	if clip.loop then
 		lp, rp = dedupe_wrap(lp, clip.frames), dedupe_wrap(rp, clip.frames)
 	end
@@ -286,28 +317,34 @@ local function build_phase(clip)
 	for _, f in ipairs(rp) do
 		events[#events + 1] = { f, true }
 	end
+
 	table.sort(events, by_frame)
 
 	local pts, phase = {}, nil
 	for i, e in ipairs(events) do
-		if not phase then phase = e[2] and 0.5 or 0
+		if not phase then
+			phase = e[2] and 0.5 or 0
 		else
 			phase = phase + (events[i - 1][2] ~= e[2] and 0.5 or 1)
 		end
+
 		pts[i] = { e[1], phase }
 	end
 
 	clip.strides = nil
+
 	if clip.loop and #lp >= 1 then
 		local strides = #lp
 		clip.strides = strides
 		local period, n, wrapped = clip.frames - 1, #pts, {}
+
 		for i = 1, n do
 			local p = pts[i]
 			wrapped[i] = { p[1] - period, p[2] - strides }
 			wrapped[n + i] = p
 			wrapped[2 * n + i] = { p[1] + period, p[2] + strides }
 		end
+
 		pts = wrapped
 		clip.stride_len = math_sqrt(clip.move[1] ^ 2 + clip.move[2] ^ 2) / strides
 	end
@@ -328,6 +365,7 @@ function TIFG.ClipPhase(clip, frame)
 	if n == 0 then return frame / math_max(1, clip.frames - 1) end
 	if n == 1 then return pts[1][2] + (frame - pts[1][1]) / (clip.frames / 2) end
 	if frame <= pts[1][1] then return lerp_pts(pts[1], pts[2], frame) end
+
 	for i = 2, n do
 		if frame <= pts[i][1] then return lerp_pts(pts[i - 1], pts[i], frame) end
 	end
@@ -344,6 +382,7 @@ function TIFG.ClipFrameForPhase(clip, phase)
 
 	local base = clip.phase_base
 	local p = base + ((phase - base) % strides)
+
 	for i = 2, #pts do
 		local a, b = pts[i - 1], pts[i]
 		if p <= b[2] then
@@ -385,6 +424,7 @@ local function build_list(key, clips)
 
 	table.sort(names)
 	local list = { names = names, index = {}, byindex = {}, idx = {} }
+
 	for i, n in ipairs(names) do
 		local c = clips[n]
 		list.index[n], list.byindex[i], list.idx[c] = i, c, i
@@ -393,6 +433,7 @@ local function build_list(key, clips)
 	if #names > TIFG.MaxClips then
 		ErrorNoHalt("[TIF/GTA] clip set " .. key .. " has " .. #names .. " clips; only " .. TIFG.MaxClips .. " can be networked\n")
 	end
+
 	return list
 end
 
@@ -412,6 +453,7 @@ end
 
 function TIFG.ClipSet(packs)
 	if #packs == 1 then return packs[1] end
+
 	local key = table.concat(packs, "+")
 	TIFG.ClipSetPacks[key] = packs
 	build_set(key, packs)
@@ -423,12 +465,14 @@ function TIFG.MissingPacks(char)
 	for _, p in ipairs(char.packs or { char.clips }) do
 		local parts, meta = TIFG.ClipParts[p], TIFG.ClipMeta[p]
 		local whole = TIFG.Clips[p] ~= nil
+
 		for i = 1, parts and meta and meta.parts or 0 do
 			if not parts[i] then
 				whole = false
 				break
 			end
 		end
+
 		if not whole then
 			out[#out + 1] = p
 		end
@@ -441,6 +485,7 @@ local function merge_parts(pack, part, clips, meta)
 	local parts = TIFG.ClipParts[pack] or {}
 	TIFG.ClipParts[pack] = parts
 	parts[part] = clips
+
 	if part == 1 or not TIFG.ClipMeta[pack] then
 		TIFG.ClipMeta[pack] = meta
 	end
@@ -464,8 +509,10 @@ function TIFG.RegisterClips(pack, clips, meta)
 	for name, clip in pairs(clips) do
 		derive(clip, name, pack)
 	end
+
 	meta = istable(meta) and meta or nil
 	local part = meta and tonumber(meta.part)
+
 	if part then
 		clips = merge_parts(pack, part, clips, meta)
 	else
@@ -474,6 +521,7 @@ function TIFG.RegisterClips(pack, clips, meta)
 	end
 
 	TIFG.Clips[pack], TIFG.ClipList[pack] = clips, build_list(pack, clips)
+
 	for key, packs in pairs(TIFG.ClipSetPacks) do
 		for _, p in ipairs(packs) do
 			if p == pack then
@@ -500,24 +548,31 @@ local WEAPON_BASES = { weapon_gtg_fists = "unarmed", weapon_gtg_melee = "melee",
 
 local function weapon_kind(swep, class)
 	if WEAPON_BASES[class] then return WEAPON_BASES[class] end
+
 	local base = swep.Base
 	for _ = 1, 8 do
 		if not isstring(base) then return nil end
+
 		local kind = WEAPON_BASES[base]
 		if kind then return kind end
+
 		local b = weapons.GetStored(base)
 		base = b and b.Base
 	end
 end
 
-function TIFG.TintConVar(class) return "tif_gta_tint_" .. class end
+function TIFG.TintConVar(class)
+	return "tif_gta_tint_" .. class
+end
 
 function TIFG.RegisterWeapon(swep, class)
 	local def = swep.GTG
 	if not istable(def) then return end
+
 	class = isstring(swep.ClassNameOverride) and swep.ClassNameOverride or class
 	local kind = weapon_kind(swep, class)
 	if not kind then return end
+
 	if kind == "unarmed" then
 		TIFG.Data.melee.unarmed[class] = true
 	else
@@ -533,6 +588,7 @@ function TIFG.RegisterWeapon(swep, class)
 				cap = t.max
 			end
 		end
+
 		for _, d in pairs(all) do
 			local t = istable(d.thrown) and d.thrown
 			if t and t.ammo == T.ammo then
@@ -566,12 +622,17 @@ function TIFG.PMS.Worn(ent)
 	return model ~= "" and model or nil
 end
 
-function TIFG.IsPerson(e) return IsValid(e) and (e:IsPlayer() or e:IsNPC() or e:IsNextBot()) end
+function TIFG.IsPerson(e)
+	return IsValid(e) and (e:IsPlayer() or e:IsNPC() or e:IsNextBot())
+end
 
-function TIFG.IsLivePerson(e) return IsValid(e) and (e:IsPlayer() and e:Alive() or e:IsNPC() or e:IsNextBot()) end
+function TIFG.IsLivePerson(e)
+	return IsValid(e) and (e:IsPlayer() and e:Alive() or e:IsNPC() or e:IsNextBot())
+end
 
 function TIFG.HeelLift(ent)
 	if ent:IsPlayer() and TIFG.PMS.Worn(ent) then return 0 end
+
 	local id = TIFG.ByModel[ent:GetModel()]
 	return id and TIFG.Data.heels[id] or 0
 end
@@ -597,11 +658,13 @@ function TIFG.RegisterCharacter(id, def)
 	char.name = char.name or id
 	char.model = string_lower((string.gsub(char.model, "\\", "/")))
 	char.speeds = char.speeds or {}
+
 	for key, default in pairs(DEFAULT_SPEEDS) do
 		char.speeds[key] = tonumber(char.speeds[key]) or default
 	end
 
 	char.sequences = char.sequences or {}
+
 	for key, default in pairs(DEFAULT_SEQUENCES) do
 		char.sequences[key] = char.sequences[key] or default
 	end
@@ -612,9 +675,11 @@ function TIFG.RegisterCharacter(id, def)
 	local seen = {}
 	local function add(lib)
 		if not isstring(lib) or lib == char.ownPack or seen[lib] then return end
+
 		seen[lib] = true
 		char.packs[#char.packs + 1] = lib
 		local meta = TIFG.ClipMeta[lib]
+
 		for _, inc in ipairs(meta and istable(meta.includes) and meta.includes or {}) do
 			add(inc)
 		end
@@ -623,6 +688,7 @@ function TIFG.RegisterCharacter(id, def)
 	for _, lib in ipairs(char.libraries) do
 		add(lib)
 	end
+
 	char.clips = TIFG.ClipSet(char.packs)
 
 	char.playerModelKey = "gtg_" .. id
@@ -630,6 +696,7 @@ function TIFG.RegisterCharacter(id, def)
 
 	TIFG.Characters[id] = char
 	TIFG.ByModel[char.model] = id
+
 	for model in pairs(TIFG.Aliases[id] or {}) do
 		TIFG.ByModel[model] = id
 	end
@@ -642,9 +709,11 @@ function TIFG.AddCharacterModel(id, model)
 	if not TIFG.Characters[id] or not isstring(model) or model == "" then
 		return false
 	end
+
 	model = string_lower((string.gsub(model, "\\", "/")))
 	TIFG.Aliases[id] = TIFG.Aliases[id] or {}
 	TIFG.Aliases[id][model] = true
+
 	if TIFG.ByModel[model] ~= id then
 		TIFG.ByModel[model] = id
 		TIFG.RegistryVersion = TIFG.RegistryVersion + 1
@@ -653,7 +722,9 @@ function TIFG.AddCharacterModel(id, model)
 	return true
 end
 
-local function by_name(a, b) return a.name < b.name end
+local function by_name(a, b)
+	return a.name < b.name
+end
 
 function TIFG.GetCharacterList()
 	local out = {}
@@ -669,17 +740,20 @@ local check_content
 function TIFG.GetCharacter(ply)
 	local r = Rec(ply)
 	local now = Frame()
+
 	if r.char_at == now and r.regver == TIFG.RegistryVersion then
 		return r.char
 	end
 
 	r.char_at = now
 	local model = ply:GetModel()
+
 	if r.model ~= model or r.regver ~= TIFG.RegistryVersion then
 		r.model, r.regver = model, TIFG.RegistryVersion
 		local id = model and TIFG.ByModel[string_lower(model)]
 		r.char = id and TIFG.Characters[id] or nil
 		r.seqs, r.tier = nil, nil
+
 		if check_content and r.char then
 			check_content(r.char)
 		end

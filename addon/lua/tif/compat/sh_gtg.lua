@@ -25,6 +25,7 @@ A.REQUIRED = {
 
 function A.Stored(class)
 	if not isstring(class) then return nil end
+
 	local w = istable(TIFG) and TIFG.Weapons and TIFG.Weapons[class]
 	return w or weapons.GetStored(class)
 end
@@ -33,12 +34,14 @@ local function resolve(path)
 	local cur = _G
 	for part in string.gmatch(path, "[^%.]+") do
 		if type(cur) ~= "table" then return nil end
+
 		cur = cur[part]
 		if cur == nil then return nil end
 	end
 
 	return cur
 end
+
 A.Resolve = resolve
 
 function A.Present()
@@ -49,10 +52,13 @@ function A.Version()
 	return TIF.Version or "?"
 end
 
-function A.Unit() return 39.3701 end
+function A.Unit()
+	return 39.3701
+end
 
 function A.Character(id)
 	if not A.Present() then return nil end
+
 	return GTG.Characters[id or A.MW_HOST]
 end
 
@@ -86,36 +92,50 @@ local GENERIC_SEAT = { "mwck_s0_idle", "mwck_s1_idle", "mwck_s2_idle", "mwck_s3_
 function A.SeatPose(veh, n, hostId)
 	local pod = istable(veh.seats) and veh.seats[n]
 	if not IsValid(pod) then return nil end
+
 	local clips = A.Clips(hostId or A.MW_HOST)
 	if not clips then return nil end
+
 	local name = GENERIC_SEAT[n] or GENERIC_SEAT[(n % 2 == 1) and 3 or 4]
 	if not clips[name] then return nil end
+
 	local lp = veh:WorldToLocal(pod:GetPos()) - Vector(0, 0, cvSeatDrop:GetFloat())
 	local lyaw = veh:WorldToLocalAngles(pod:GetAngles()).y + 90
 	return { lp = lp, yaw = lyaw, clip = name, driver = n == 1, exact = true }
 end
 
-function A.SeatEntry(veh, n, hostId) return nil end
+function A.SeatEntry(veh, n, hostId)
+	return nil
+end
 
 function A.DoorWindow(clip)
 	local a, b
 	for _, t in ipairs(clip and clip.tags or {}) do
 		if t[1] == "Door" and istable(t[4]) then
 			if t[4].Start == true and not a then
-				a = t[2] elseif t[4].Start == false and a and not b then b = t[2]
+				a = t[2]
+				elseif t[4].Start == false and a and not b then
+					b = t[2]
 			end
 		end
 	end
 
 	if a and b and b > a then return a, b end
+
 	return nil
 end
 
-function A.DriveBySet() return nil end
+function A.DriveBySet()
+	return nil
+end
 
-function A.DriveByWeapon() return false end
+function A.DriveByWeapon()
+	return false
+end
 
-function A.SweepPhase() return 0.5 end
+function A.SweepPhase()
+	return 0.5
+end
 
 if SERVER then
 	function A.SetDoor(veh, index, ratio)
@@ -126,19 +146,24 @@ if SERVER then
 end
 
 if SERVER then
-
-	function A.GunShot() return false end
+	function A.GunShot()
+		return false
+	end
 
 	function A.Launch(npc, def, class, pos, dir)
 		local p = def and def.projectile
 		if not p then return nil end
+
 		local e = ents.Create(p.entity or "tif_rocket")
 		if not IsValid(e) then return nil end
+
 		e:SetPos(pos)
 		e:SetAngles(dir:Angle())
+
 		if e.Setup then
 			e:Setup(p, dir, npc)
 		end
+
 		e:Spawn()
 		e:Activate()
 		return e
@@ -148,6 +173,7 @@ end
 function A.WeaponDef(class)
 	local stored = A.Stored(class)
 	if stored and istable(stored.GTG) then return stored.GTG end
+
 	return nil
 end
 
@@ -179,17 +205,21 @@ function A.WeaponClasses()
 	return out
 end
 
-function A.HoldSet() return nil end
+function A.HoldSet()
+	return nil
+end
 
 function A.FrameForPhase(clip, phase)
 	if istable(GTG) and GTG.ClipFrameForPhase then
 		return GTG.ClipFrameForPhase(clip, phase)
 	end
+
 	return (phase % 1) * math.max(1, clip.frames - 1)
 end
 
 function A.ClipCurve(clip, frame, axis)
 	if not (istable(GTG) and GTG.ClipCurve) then return 0 end
+
 	return GTG.ClipCurve(clip, frame, axis)
 end
 
@@ -201,6 +231,7 @@ function A.Skeleton(model)
 	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.Skeleton) then
 		return nil
 	end
+
 	return GTG.PMS.Skeleton(model)
 end
 
@@ -208,6 +239,7 @@ function A.MapFor(hostModel, visualModel)
 	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.MapFor) then
 		return nil
 	end
+
 	return GTG.PMS.MapFor(hostModel, visualModel)
 end
 

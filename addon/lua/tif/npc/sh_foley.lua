@@ -48,8 +48,10 @@ F.BY_MAT, F.BY_PROP = BY_MAT, BY_PROP
 
 function F.SurfaceOf(tr)
 	if not (tr and tr.Hit) then return nil end
+
 	local name = tr.SurfaceProps and util.GetSurfacePropName(tr.SurfaceProps) or ""
 	name = string.lower(name or "")
+
 	if name ~= "" then
 		for _, e in ipairs(BY_PROP) do
 			if string.find(name, e[1], 1, true) then return e[2] end
@@ -66,10 +68,12 @@ function F.SurfaceAt(pos, ignore)
 	down.mask = MASK_PLAYERSOLID
 	local tr = util.TraceLine(down)
 	local s = F.SurfaceOf(tr)
+
 	if tr.Hit then
 		down.mask = MASK_WATER
 		down.start, down.endpos = tr.HitPos + Vector(0, 0, 30), tr.HitPos
 		local w = util.TraceLine(down)
+
 		if w.Hit and not w.StartSolid then
 			local depth = w.HitPos.z - tr.HitPos.z
 			if depth > 2 then
@@ -84,6 +88,7 @@ end
 function F.Pick(key)
 	local n = TIF.FoleyData and TIF.FoleyData[key]
 	if not n or n < 1 then return nil end
+
 	return "tif/foley/" .. key .. "/" .. math.random(n) .. ".ogg"
 end
 
@@ -103,26 +108,36 @@ if SERVER then
 	local function surf_of_hit(data)
 		local name = data.TheirSurfaceProps and util.GetSurfacePropName(data.TheirSurfaceProps) or ""
 		name = string.lower(name or "")
-		for _, e in ipairs(BY_PROP) do if string.find(name, e[1], 1, true) then return e[2] end end
+
+		for _, e in ipairs(BY_PROP) do
+			if string.find(name, e[1], 1, true) then
+				return e[2]
+			end
+		end
+
 		local mat = util.GetSurfaceData and data.TheirSurfaceProps and util.GetSurfaceData(data.TheirSurfaceProps)
 		return mat and BY_MAT[mat.material] or "concrete"
 	end
 
 	function F.CorpseSounds(rag)
 		if not IsValid(rag) then return end
+
 		local born, last = CurTime(), 0
 		rag:AddCallback("PhysicsCollide", function(ent, data)
 			local now = CurTime()
 			if now - born > F.BODY_TIME or now - last < F.BODY_GAP or data.Speed < F.BODY_MIN then
 				return
 			end
+
 			if IsValid(data.HitEntity) and data.HitEntity == ent then return end
+
 			last = now
 			local row = ROW[surf_of_hit(data)] or ROW.concrete
 
 			local mass = IsValid(data.PhysObject) and data.PhysObject:GetMass() or 5
 			local part = (mass >= 9 and "torso") or (data.Speed > 260 and "limb_lrg") or "limb_sm"
 			local snd = F.PickAny("fall/" .. row[2] .. "/" .. part, "fall/concrete_dry/" .. part)
+
 			if snd then
 				ent:EmitSound(snd, 72, math.random(95, 105), math.Clamp(data.Speed / 400, 0.35, 1))
 			end
@@ -133,13 +148,16 @@ if SERVER then
 		marksman = "sn", shotgun = "metal_ar", rifle = "metal_ar" }
 	function F.GunDropSounds(prop, kind)
 		if not IsValid(prop) then return end
+
 		local born, hits = CurTime(), 0
 		local set = DROP[kind or "rifle"] or "metal_ar"
 		prop:AddCallback("PhysicsCollide", function(ent, data)
 			if hits >= 3 or CurTime() - born > 6 or data.Speed < 60 then return end
+
 			hits = hits + 1
 			local row = ROW[surf_of_hit(data)] or ROW.concrete
 			local snd = F.PickAny("drop/" .. set .. "/" .. row[3], "drop/" .. set .. "/concrete", "drop/metal_ar/concrete")
+
 			if snd then
 				ent:EmitSound(snd, 70, math.random(96, 104), hits == 1 and 1 or 0.55)
 			end

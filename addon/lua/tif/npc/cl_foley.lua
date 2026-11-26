@@ -24,27 +24,31 @@ local cache = {}
 local function events_of(clip)
 	local ev = cache[clip]
 	if ev then return ev end
+
 	ev = {}
 	local feet = false
+
 	for _, t in ipairs(clip.tags or {}) do
 		if t[1] == "Foot" and istable(t[4]) then
 			feet = true
 			ev[#ev + 1] = { t[2], "step", t[4].Right and "r" or "l" }
 		elseif t[1] == "MoveEvent" and istable(t[4]) then
 			local n = t[4].MoveEvent
-			if n == "mvmt_step_pre" then ev[#ev + 1] = { t[2], "gear", "pre" }
+			if n == "mvmt_step_pre" then
+				ev[#ev + 1] = { t[2], "gear", "pre" }
 			elseif n == "mvmt_step_post" then
 				ev[#ev + 1] = { t[2], "gear", "post" }
 			elseif n == "land" then
 				ev[#ev + 1] = { t[2], "land" }
 			elseif FALL[n] then
 				ev[#ev + 1] = { t[2], "fall", FALL[n] }
-
 			elseif isstring(n) and string.sub(n, 1, 16) == "ps_hm_grnd_melee" then
 				ev[#ev + 1] = { t[2], "scuffle" }
 			elseif n == "dropgun" or n == "gun_drop" then
 				ev[#ev + 1] = { t[2], "gundrop" }
-			elseif n == "melee_death" then ev[#ev + 1] = { t[2], "fall", "torso" } end
+			elseif n == "melee_death" then
+				ev[#ev + 1] = { t[2], "fall", "torso" }
+			end
 		end
 	end
 
@@ -57,7 +61,13 @@ local function events_of(clip)
 	end
 
 	local hasGear = false
-	for _, e in ipairs(ev) do if e[2] == "gear" then hasGear = true break end end
+	for _, e in ipairs(ev) do
+		if e[2] == "gear" then
+			hasGear = true
+			break
+		end
+	end
+
 	if not hasGear and (clip.speed or 0) > 1 then
 		local n = #ev
 		for i = 1, n do
@@ -72,17 +82,21 @@ local function events_of(clip)
 	cache[clip] = ev
 	return ev
 end
+
 C.EventsOf = events_of
 
 local function vest_of(ent, st)
 	if st.folVest then return st.folVest end
+
 	local v
-	if st.wkind == "lmg" or st.wkind == "rpg" then v = "vestheavy"
+	if st.wkind == "lmg" or st.wkind == "rpg" then
+		v = "vestheavy"
 	else
 		local s, h = tostring(ent.GetTIFFaction and ent:GetTIFFaction() or ""), 0
 		for i = 1, #s do
 			h = (h * 31 + string.byte(s, i)) % 9973
 		end
+
 		v = VESTS[h % #VESTS + 1]
 	end
 
@@ -90,7 +104,9 @@ local function vest_of(ent, st)
 	return v
 end
 
-local function vest2(v) return v == "vestaq" and "vestlight" or v end
+local function vest2(v)
+	return v == "vestaq" and "vestlight" or v
+end
 
 local function rattle_set(st)
 	local k = st.wkind
@@ -98,12 +114,14 @@ local function rattle_set(st)
 	if k == "lmg" then return "large" end
 	if k == "pistol" then return "small" end
 	if k == "smg" then return "medium" end
+
 	return math.random() < 0.5 and "medium" or "large"
 end
 
 local function surface(ent, st, now)
 	if st.wade == 2 then return "waist" end
 	if st.wade == 1 then return "knee" end
+
 	if not st.folSurf or now >= (st.folSurfT or 0) then
 		st.folSurfT = now + C.SURF_EVERY
 		st.folSurf = F.SurfaceAt(ent:GetPos(), ent) or "concrete"
@@ -114,10 +132,12 @@ end
 
 local function gait_of(ent, st, clip)
 	if st.vbProne then return "prone" end
+
 	local sp = (clip and (clip.speed or 0) > 1) and clip.speed or (st.speed2d or 0)
 	if not st.civ and ent:GetTIFStance() == 1 then return "creep" end
 	if sp < 80 then return "walk" end
 	if sp < 170 then return "run" end
+
 	return "sprint"
 end
 
@@ -127,33 +147,42 @@ function C.HearDist(lvl)
 	if lvl >= 75 then return 2000 end
 	if lvl >= 70 then return 1400 end
 	if lvl >= 66 then return 1000 end
+
 	return 700
 end
 
 local function play(ent, snd, lvl, vol, pitch)
 	if not snd then return end
+
 	vol = vol * cvVol:GetFloat()
 	if vol <= 0.01 then return end
+
 	local fn = FrameNumber()
 	if fn ~= frameNo then
 		frameNo, played = fn, 0
 	end
 
 	if played >= C.MAX_PER_FRAME then return end
+
 	local hd = C.HearDist(lvl) * math.sqrt(math.min(1, vol) + 0.25)
 	if ent:GetPos():DistToSqr(EyePos()) > hd * hd then return end
+
 	played = played + 1
 	ent:EmitSound(snd, lvl, pitch or math.random(96, 104), math.min(1, vol), CHAN_AUTO)
 end
+
 C.Play = play
 
 function C.Fire(ent, st, e, clip, now)
 	if FrameNumber() == frameNo and played >= C.MAX_PER_FRAME then return end
+
 	local kind = e[2]
 	local row = F.ROW[surface(ent, st, now)] or F.ROW.concrete
 	local g = GAIT[gait_of(ent, st, clip)]
+
 	if kind == "step" then
 		if st.vbProne then return end
+
 		local s = row[1]
 		play(ent, F.PickAny("step/" .. s .. "/" .. g.step .. "_" .. e[3], "step/" .. s .. "/" .. g.step .. "_" .. (e[3] == "l" and "r" or "l"),
 			"step/" .. s .. "/run_" .. e[3], "step/" .. s .. "/walk_" .. e[3], "step/concrete/" .. g.step .. "_" .. e[3]), g.lvl, g.vol)
@@ -161,11 +190,13 @@ function C.Fire(ent, st, e, clip, now)
 		local v = vest_of(ent, st)
 		play(ent, F.PickAny("mvmt/" .. v .. "/" .. g.mvmt .. "_" .. e[3], "mvmt/" .. v .. "/" .. g.mvmt .. "_pre",
 			"mvmt/vestlight/" .. g.mvmt .. "_" .. e[3]), g.lvl - 6, g.vol * 0.45)
+
 		if not st.civ and e[3] == "post" and (g.mvmt == "run" or g.mvmt == "sprint") and math.random() < C.RATTLE_CHANCE then
 			play(ent, F.Pick("rattle/" .. rattle_set(st)), g.lvl - 8, g.vol * 0.35)
 		end
 	elseif kind == "land" then
 		play(ent, F.PickAny("land/" .. row[1], "land/concrete"), 75, 0.9)
+
 		if not st.civ then
 			play(ent, F.Pick("rattle/land"), 68, 0.45)
 		end
@@ -182,6 +213,7 @@ end
 
 function C.Update(ent, st, now)
 	if not cvOn:GetBool() or not F then return end
+
 	local lp = st.legPlay and st.legPlayN and st.legPlayN > 0 and st.legPlay[1]
 	local me = LocalPlayer()
 	local near = IsValid(me) and ent:GetPos():DistToSqr(me:GetPos()) < C.RANGE * C.RANGE
@@ -199,6 +231,7 @@ function C.Update(ent, st, now)
 		elseif prone == 0 and stance ~= st.folStance then
 			play(ent, F.Pick("stance/" .. v .. (stance == 1 and "/down" or "/up")), 62, 0.4)
 		end
+
 		if act ~= st.folAct and string.sub(act, 1, 5) == "mwtr_" then
 			local h = (string.find(act, "step", 1, true) and "32up") or (string.find(act, "_sm", 1, true) and "32over") or "48over"
 			play(ent, F.PickAny("mantle/" .. v .. "/" .. h, "mantle/vestlight/48over"), 68, 0.7)
@@ -207,6 +240,7 @@ function C.Update(ent, st, now)
 
 	if st.folProneAt and now >= st.folProneAt then
 		st.folProneAt = nil
+
 		if near then
 			local row = F.ROW[surface(ent, st, now)] or F.ROW.concrete
 			play(ent, F.PickAny("prone/" .. row[4], "prone/concrete"), 68, 0.7)
@@ -214,6 +248,7 @@ function C.Update(ent, st, now)
 	end
 
 	st.folStance, st.folProne, st.folAct = stance, prone, act
+
 	if not lp then
 		st.folClip = nil
 		return
@@ -223,20 +258,19 @@ function C.Update(ent, st, now)
 end
 
 function C.Track(ent, st, now, clip, cyc, near)
-
 	if clip == st.folClip and st.folCyc and near then
 		local p = st.folCyc
 		local ev = events_of(clip)
+
 		if #ev > 0 and cyc ~= p then
 			local wrapped = cyc < p
 			if wrapped and not clip.loop then
-
 			elseif not wrapped and cyc - p > 0.5 then
-
 			else
 				for i = 1, #ev do
 					local e = ev[i]
 					local t = e[1]
+
 					if (not wrapped and t > p and t <= cyc) or (wrapped and (t > p or t <= cyc)) then
 						C.Fire(ent, st, e, clip, now)
 					end
@@ -256,6 +290,7 @@ local function clip_of_seq(name)
 	if not bySeq then
 		bySeq = {}
 		local all = TIFG and TIFG.Clips and TIFG.Clips.mw_male or {}
+
 		for _, c in pairs(all) do
 			if c.seq and not bySeq[string.lower(c.seq)] then
 				bySeq[string.lower(c.seq)] = c
@@ -265,10 +300,12 @@ local function clip_of_seq(name)
 
 	return bySeq[string.lower(name or "")]
 end
+
 C.ClipOfSeq = clip_of_seq
 
 hook.Add("Think", "tif_foley_civ", function()
 	if not cvOn:GetBool() or not F then return end
+
 	local now = CurTime()
 	if now >= civScanT then
 		civScanT = now + C.CIV_SCAN
@@ -277,16 +314,20 @@ hook.Add("Think", "tif_foley_civ", function()
 
 	local me = LocalPlayer()
 	if not IsValid(me) then return end
+
 	local mp = me:GetPos()
 	for _, ent in ipairs(civs) do
 		if IsValid(ent) and not ent:IsDormant() then
 			local st = civState[ent]
 			if not st then
-				st = { civ = true, folVest = "cloth" } civState[ent] = st
+				st = { civ = true, folVest = "cloth" }
+				civState[ent] = st
 			end
+
 			local near = ent:GetPos():DistToSqr(mp) < C.RANGE * C.RANGE
 			local seq = ent:GetSequence()
 			local c = seq and seq >= 0 and clip_of_seq(ent:GetSequenceName(seq))
+
 			if c then
 				st.speed2d = ent:GetVelocity():Length2D()
 				C.Track(ent, st, now, c, ent:GetCycle() % 1, near)

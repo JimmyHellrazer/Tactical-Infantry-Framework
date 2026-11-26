@@ -43,6 +43,7 @@ end
 function D.Clear(veh)
 	veh.tifDrive = nil
 	D.Active[veh] = nil
+
 	if IsValid(veh) then
 		GL.Drive(veh, 0, 0, 1, true)
 	end
@@ -51,10 +52,12 @@ end
 local function ahead(d, pos, dist)
 	local pts = d.pts
 	local prev = pos
+
 	for k = d.i, #pts do
 		local p = pts[k]
 		local seg = prev:Distance(p)
 		if seg >= dist then return prev + (p - prev):GetNormalized() * dist, k end
+
 		dist = dist - seg
 		prev = p
 	end
@@ -88,6 +91,7 @@ local function tick(veh, d, now)
 		local p = pts[d.i]
 		local to = p - pos
 		to.z = 0
+
 		if to:Length() < 200 or (to:Dot(fwd) < 0 and to:Length() < 450) then
 			d.i = d.i + 1
 		else
@@ -97,17 +101,21 @@ local function tick(veh, d, now)
 
 	local final = pts[#pts]
 	local toEnd = Vector(final.x - pos.x, final.y - pos.y, 0):Length()
+
 	if d.i == #pts and toEnd < d.arrive then
 		d.state = "arrived"
 		GL.Drive(veh, 0, 0, 1, math.abs(speed) < 60)
+
 		if d.onArrive then
 			local cb = d.onArrive
 			d.onArrive = nil
 			local ok, err = pcall(cb, veh)
+
 			if not ok then
 				TIF.Error("onArrive error: ", tostring(err))
 			end
 		end
+
 		return
 	end
 
@@ -121,6 +129,7 @@ local function tick(veh, d, now)
 	local far = ahead(d, pos, look * 2)
 	local turn = math.abs(math.AngleDifference((far - target):Angle().y, want))
 	local vT = d.speed * math.Clamp(1 - math.max(turn, math.abs(err)) / 100, 0.3, 1)
+
 	if d.i >= #pts - 1 then
 		vT = math.min(vT, toEnd * 0.7 + 80)
 	end
@@ -133,6 +142,7 @@ local function tick(veh, d, now)
 	probe.start = pos + fwd * 60
 	probe.endpos = probe.start + fwd * plen
 	probe.filter = { veh }
+
 	for _, c in ipairs(veh:GetChildren()) do
 		probe.filter[#probe.filter + 1] = c
 	end
@@ -142,7 +152,9 @@ local function tick(veh, d, now)
 	if hit.Hit and hit.HitWorld and hit.HitNormal.z > 0.64 then
 		hit = { Hit = false, Fraction = 1 }
 	end
+
 	d.blocked = hit.Hit and not hit.HitWorld and IsValid(hit.Entity) and hit.Entity ~= veh
+
 	if hit.Hit then
 		vT = math.min(vT, math.max(0, (hit.Fraction * plen - 80) * 1.2))
 	end
@@ -153,11 +165,13 @@ local function tick(veh, d, now)
 			d.state = "reversing"
 			return
 		end
+
 		d.reverseUntil, d.stuckSince = nil, nil
 	end
 
 	if vT >= 40 and math.abs(speed) < 25 then
 		d.stuckSince = d.stuckSince or now
+
 		if now - d.stuckSince > 2.5 then
 			d.reverseUntil, d.reverseSteer = now + 1.5, steer ~= 0 and steer or 1
 			return
@@ -172,15 +186,16 @@ local function tick(veh, d, now)
 	end
 
 	if vT < 40 then
-
 		d.vT, d.state = vT, "blocked"
 
 		d.blockedSince = d.blockedSince or now
+
 		if hit.HitWorld and now - d.blockedSince > 3 then
 			d.blockedSince = nil
 			d.reverseUntil, d.reverseSteer = now + 1.5, steer ~= 0 and steer or 1
 			return
 		end
+
 		GL.Drive(veh, 0, steer, speed > 30 and 1 or 0, speed <= 30)
 		return
 	elseif speed < vT - 30 then
@@ -197,6 +212,7 @@ end
 
 timer.Create("tif_driver_tick", 0.1, 0, function()
 	if TIF.AIDisabled() then return end
+
 	local now = CurTime()
 	for veh in pairs(D.Active) do
 		if not IsValid(veh) or not veh.tifDrive then

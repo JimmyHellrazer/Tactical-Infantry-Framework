@@ -34,6 +34,7 @@ local cvDetect = CreateConVar("tif_detect_scale", "1", FCVAR_ARCHIVE, "Multiplie
 
 function P.Profile(npc, now)
 	if npc.tifProfAt and now < npc.tifProfAt then return npc.tifProf end
+
 	local name = npc.tifPerception or hook.Run("TIF_PerceptionProfile", npc) or cvProfile:GetString()
 	npc.tifProf = P.Profiles[name] or P.Profiles.long
 	npc.tifProfAt = now + 5
@@ -43,6 +44,7 @@ end
 local function contact(npc, ent)
 	local list = npc.tifK.contacts
 	local c = list[ent]
+
 	if not c then
 		c = { ent = ent, meter = 0, confirmed = false, visible = false, seenAt = -math.huge, heardAt = -math.huge,
 			pos = ent:GetPos(), vel = Vector(), unc = 0 }
@@ -51,6 +53,7 @@ local function contact(npc, ent)
 
 	return c
 end
+
 P.Contact = contact
 
 local function rand2d(scale)
@@ -71,11 +74,13 @@ function P.CanSee(npc, eye, ent)
 	if not Budget.Take("trace", 1) then return nil end
 	if line_clear(eye, TIF.EyeOf(ent), npc, ent) then return true end
 	if not Budget.Take("trace", 1) then return nil end
+
 	return line_clear(eye, ent:WorldSpaceCenter(), npc, ent)
 end
 
 local function stance_factor(ent)
 	if ent.TIFSoldier then return ent:GetTIFStance() == 1 and 0.6 or 1 end
+
 	if ent:IsPlayer() then
 		if ent.IsProne and ent:IsProne() then return 0.35 end
 		if ent:Crouching() then return 0.6 end
@@ -102,7 +107,9 @@ function P.Engage(npc, e)
 end
 
 local CAND_OUT, CAND_POOL = {}, {}
-local function by_d2(a, b) return a.d2 < b.d2 end
+local function by_d2(a, b)
+	return a.d2 < b.d2
+end
 
 local function candidates(npc, eye, maxD2)
 	local count = 0
@@ -111,14 +118,18 @@ local function candidates(npc, eye, maxD2)
 	local isLive, relation = TIF.IsLiveCombatant, TIF.Relation
 	local function consider(e)
 		if e == npc then return end
+
 		local d2 = eye:DistToSqr(e:GetPos())
 		if d2 < maxD2 and isLive(e) and relation(npc, e) == hostile
 			and not (filtered and P.Engage(npc, e) == "ignore") then
 			count = count + 1
 			local slot = CAND_POOL[count]
+
 			if not slot then
-				slot = {} CAND_POOL[count] = slot
+				slot = {}
+				CAND_POOL[count] = slot
 			end
+
 			slot.ent, slot.d2 = e, d2
 			CAND_OUT[count] = slot
 		end
@@ -127,6 +138,7 @@ local function candidates(npc, eye, maxD2)
 	for _, ply in player.Iterator() do
 		consider(ply)
 	end
+
 	local soldiers = TIF.Soldiers
 	for i = 1, #soldiers do
 		local s = soldiers[i]
@@ -148,6 +160,7 @@ local function candidates(npc, eye, maxD2)
 	for i = #CAND_OUT, count + 1, -1 do
 		CAND_OUT[i] = nil
 	end
+
 	if count > 1 then
 		table.sort(CAND_OUT, by_d2)
 	end
@@ -168,6 +181,7 @@ function P.Update(npc, dt, now)
 	local vd = arch.viewDist * TIF.ViewScale() * prof.view
 	local detectK = math_max(0.05, cvDetect:GetFloat()) * prof.detect
 	local cand, candN
+
 	if blind then
 		candN = 0
 	else
@@ -181,15 +195,17 @@ function P.Update(npc, dt, now)
 		local c = K.contacts[e]
 		local isPrimary = npc.tifPrimary == e
 		if checked >= MAX_CHECKS and not isPrimary then break end
+
 		local to = e:WorldSpaceCenter() - eye
 		to:Normalize()
 		local dotFwd = to:Dot(fwd)
 		local touch = cd.d2 < TOUCH_RANGE_SQR
+
 		if touch or dotFwd >= cosHalf then
 			checked = checked + 1
 			local vis = P.CanSee(npc, eye, e)
-			if vis == nil then
 
+			if vis == nil then
 			elseif vis then
 				c = c or contact(npc, e)
 				c.lastCheck = now
@@ -201,10 +217,12 @@ function P.Update(npc, dt, now)
 				local distF = math_clamp(prof.ref / math_max(dist, 1), 0.15, 3) ^ 0.8
 				local rate = (1 / arch.detectTime) * distF * stance_factor(e) * moveF * periph * awareF * detectK
 				c.meter = touch and 1 or math_min(1, c.meter + rate * dt)
+
 				if c.meter >= 1 then
 					if not c.confirmed or (now - c.seenAt) > 3 then
 						c.reacquired = now
 					end
+
 					c.confirmed = true
 					c.visible = true
 					c.seenAt = now
@@ -228,15 +246,16 @@ function P.Update(npc, dt, now)
 
 	for e, c in pairs(K.contacts) do
 		if not TIF.IsLiveCombatant(e) then
-
 			if npc.tifPrimary == e and c.confirmed and (now - c.seenAt) < 3 and TIF.IsDead(e) then
 				TIF.Say(npc, "kill", 0.6)
 			end
+
 			K.contacts[e] = nil
 		else
 			if c.visible and (now - (c.lastCheck or 0)) > STALE_SIGHT then
 				c.visible = false
 			end
+
 			if not c.visible then
 				if c.confirmed and not c.lostAt and c.seenAt > -math.huge then
 					c.lostAt = now
@@ -244,12 +263,14 @@ function P.Update(npc, dt, now)
 					v.z = 0
 					c.dir = v:LengthSqr() > 100 and v:GetNormalized() or nil
 				end
+
 				if not c.confirmed then
 					c.meter = math.max(0, c.meter - 0.25 * dt)
 				end
 
 				local since = now - math.max(c.seenAt, c.heardAt)
 				c.unc = math.min(1200, (c.baseUnc or 0) + since * math.min(220, c.vel:Length2D() + 60))
+
 				if since > MEMORY and not c.confirmed and c.meter <= 0 then
 					K.contacts[e] = nil
 				end
@@ -261,13 +282,16 @@ end
 function P.Primary(npc, now)
 	local best, bestScore
 	local pos = npc:GetPos()
+
 	for e, c in pairs(npc.tifK.contacts) do
 		if c.confirmed then
 			local age = now - math.max(c.seenAt, c.heardAt)
 			local score = (c.visible and 1000 or 0) - age * 12 - pos:Distance(c.pos) / 40
+
 			if e == npc.tifPrimary then
 				score = score + 150
 			end
+
 			if not bestScore or score > bestScore then
 				best, bestScore = c, score
 			end
@@ -299,6 +323,7 @@ function P.Hear(npc, kind, pos, d2, src, faction)
 	local rel = TIF.FactionRelation(npc:GetTIFFaction(), faction)
 
 	if rel == TIF.REL_ALLY and IsValid(src) and src:IsPlayer() then return end
+
 	local dist = math.sqrt(d2)
 	if kind == "gunfire" then
 		if rel == TIF.REL_HOSTILE and IsValid(src) and TIF.IsLiveCombatant(src) then
@@ -315,6 +340,7 @@ function P.Hear(npc, kind, pos, d2, src, faction)
 			if dist < 1600 then
 				c.confirmed = true
 			end
+
 			P.Stimulus(npc, c.pos, "gunfire", now)
 			npc.tifHeardAt = now
 		elseif rel == TIF.REL_ALLY and dist < 1500 then
@@ -330,6 +356,7 @@ function P.Hear(npc, kind, pos, d2, src, faction)
 				c.suspectAt = now
 				c.meter = math.max(c.meter, SUSPICIOUS_AT)
 			end
+
 			P.Stimulus(npc, c.suspectPos or pos, "footstep", now)
 		end
 	elseif kind == "explosion" then
@@ -340,9 +367,11 @@ end
 function P.OnHurt(npc, attacker)
 	if not IsValid(attacker) or not TIF.IsLiveCombatant(attacker) then return end
 	if TIF.Relation(npc, attacker) ~= TIF.REL_HOSTILE then return end
+
 	local now = CurTime()
 	local c = contact(npc, attacker)
 	c.confirmed = true
+
 	if not c.visible then
 		local dist = npc:GetPos():Distance(attacker:GetPos())
 		local unc = math.min(300, dist * 0.15)
@@ -361,9 +390,11 @@ function P.OnSuppressed(npc, shooter, srcPos)
 	if not TIF.IsLiveCombatant(shooter) or TIF.Relation(npc, shooter) ~= TIF.REL_HOSTILE then
 		return
 	end
+
 	local now = CurTime()
 	local c = contact(npc, shooter)
 	c.confirmed = true
+
 	if not c.visible then
 		local unc = math.Clamp(npc:GetPos():Distance(srcPos) * 0.08, 60, 400)
 		c.pos = srcPos + rand2d(unc)
@@ -381,6 +412,7 @@ function P.Share(npc, c)
 	local pos = npc:GetPos()
 	local fac = npc:GetTIFFaction()
 	local soldiers = TIF.Soldiers
+
 	for i = 1, #soldiers do
 		local ally = soldiers[i]
 		if ally ~= npc and IsValid(ally) and not ally.tifDead and ally:GetTIFFaction() == fac
@@ -423,6 +455,7 @@ function P.ForgetSight()
 					c.lostAt = c.seenAt
 				end
 			end
+
 			npc.tifBlindUntil = now + 3
 		end
 	end

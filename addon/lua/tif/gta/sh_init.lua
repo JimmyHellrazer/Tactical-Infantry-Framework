@@ -22,6 +22,7 @@ local function load_file(path)
 		if SERVER then
 			AddCSLuaFile(path)
 		end
+
 		include(path)
 	end
 end
@@ -30,6 +31,7 @@ for _, e in ipairs(MANIFEST) do
 	if istable(e) then
 		local found = file.Find(ROOT .. e.dir .. "/*.lua", "LUA")
 		table.sort(found)
+
 		for _, f in ipairs(found) do
 			load_file(ROOT .. e.dir .. "/" .. f)
 		end

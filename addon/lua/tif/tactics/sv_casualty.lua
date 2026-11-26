@@ -27,6 +27,7 @@ function CAS.CanGoDown(npc, now)
 	local sq = npc.tifSquad
 	if sq then
 		if now < (sq.nextDown or 0) then return false end
+
 		for _, m in ipairs(TIF.Squad.Members(sq)) do
 			if m ~= npc and IsValid(m) and m.tifDowned then return false end
 		end
@@ -54,7 +55,12 @@ local function log(npc, ...)
 end
 
 local function first_clip(npc, list)
-	for _, n in ipairs(list) do if Act.Clip(npc, n) then return n end end
+	for _, n in ipairs(list) do
+		if Act.Clip(npc, n) then
+			return n
+		end
+	end
+
 	return nil
 end
 
@@ -62,15 +68,19 @@ function CAS.TryDown(npc, dmg)
 	if not cvOn:GetBool() or npc.tifDowned or npc.tifDead or npc.tifVeh or npc.tifSurrendered or npc.tifNoDown then
 		return false
 	end
+
 	local amount = dmg:GetDamage()
 	if amount < npc:Health() then return false end
+
 	if amount > 150 or dmg:IsExplosionDamage() or npc.tifLastHitGroup == HITGROUP_HEAD then
 		return false
 	end
 
 	if math.random() > cvChance:GetFloat() then return false end
+
 	local now = CurTime()
 	if not CAS.CanGoDown(npc, now) then return false end
+
 	dmg:SetDamage(math.max(0, npc:Health() - 10))
 	CAS.Down(npc, dmg)
 	return true
@@ -80,6 +90,7 @@ function CAS.Down(npc, dmg)
 	local now = CurTime()
 	npc.tifDowned = { t0 = now, bleed = now + cvBleed:GetFloat() }
 	CAS.Downed[npc] = true
+
 	if npc.tifSquad then
 		npc.tifSquad.nextDown = now + CAS.SQUAD_COOLDOWN
 	end
@@ -87,6 +98,7 @@ function CAS.Down(npc, dmg)
 	if TIF.CoverBehave.In(npc) then
 		TIF.CoverBehave.Leave(npc, "downed")
 	end
+
 	if TIF.ProneB.Is(npc) then
 		npc.tifDowned.wasProne = true
 		npc.tifProne = nil
@@ -127,7 +139,11 @@ function CAS.Down(npc, dmg)
 	end
 
 	if TIF.Morale then
-		for _, m in ipairs(sq and TIF.Squad.Members(sq) or {}) do if m ~= npc then TIF.Morale.Add(m, -0.08) end end
+		for _, m in ipairs(sq and TIF.Squad.Members(sq) or {}) do
+			if m ~= npc then
+				TIF.Morale.Add(m, -0.08)
+			end
+		end
 	end
 end
 
@@ -140,12 +156,14 @@ local function back_up(npc)
 	npc:SetTIFWeapon(wep)
 	npc.tifHitboxPose = nil
 	npc:SetNW2Bool("tif_downed", false)
+
 	if TIF.Morale then
 		TIF.Morale.Add(npc, 0.15)
 	end
 
 	log(npc, "back up")
 end
+
 CAS.BackUp = back_up
 
 local function revive(npc, now)
@@ -157,11 +175,13 @@ local function revive(npc, now)
 		if LS.GetUp(npc, d, now) then
 			back_up(npc)
 		end
+
 		return
 	end
 
 	d.getUp = d.getUp or { step = 0 }
 	local g = d.getUp
+
 	if g.step == 0 then
 		npc:SetNW2Float("tif_act_cycle", -1)
 		local c1 = first_clip(npc, UP_CLIPS[1])
@@ -183,12 +203,14 @@ end
 function CAS.DownThink(npc, now)
 	local d = npc.tifDowned
 	if not d then return end
+
 	npc.tifFire.want = false
 	npc.tifFace = nil
 	npc.tifStance = A.STANCE_CROUCH
 	npc.tifMode = A.MODE_RELAXED
 	local LS = TIF.LastStandMW
 	local mw = LS and LS.Use(npc)
+
 	if not mw then
 		Move.Stop(npc)
 	end
@@ -197,6 +219,7 @@ function CAS.DownThink(npc, now)
 		if mw then
 			Move.Stop(npc)
 		end
+
 		npc.tifAction = "getting up"
 		revive(npc, now)
 		return
@@ -205,11 +228,11 @@ function CAS.DownThink(npc, now)
 	npc.tifAction = string.format("downed (%ds)", math.max(0, d.bleed - now))
 
 	if mw then
-
 		if d.revive and LS.ReviveAlive(npc, d, now) then
 			Move.Stop(npc)
 			return
 		end
+
 		if LS.Think(npc, d, now) then return end
 	end
 
@@ -234,12 +257,14 @@ end
 function CAS.MedicThink(npc, c, now)
 	local m = npc.tifMedic
 	local p = m and m.patient
+
 	if not IsValid(p) or p.tifDead or not p.tifDowned or p.tifDowned.treated then
 		npc.tifMedic = nil
 		return false
 	end
 
 	m.assignedAt = m.assignedAt or now
+
 	if not m.start and now - m.assignedAt > 25 then
 		npc.tifMedic = nil
 		return false
@@ -252,6 +277,7 @@ function CAS.MedicThink(npc, c, now)
 
 	local pos = p:GetPos()
 	npc.tifFire.want = false
+
 	if npc:GetPos():DistToSqr(pos) > 60 * 60 then
 		local CBh = TIF.CoverBehave
 		if CBh and CBh.In(npc) then
@@ -260,21 +286,26 @@ function CAS.MedicThink(npc, c, now)
 				npc.tifAction = "leaving cover for the casualty"
 				return true
 			end
+
 			if CBh.In(npc) then
 				CBh.Leave(npc, "medic")
 			end
 		end
+
 		npc.tifAction = "to the casualty"
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil
+
 		if not m.said then
-			m.said = true TIF.Say(npc, "cover_me", 0.7)
+			m.said = true
+			TIF.Say(npc, "cover_me", 0.7)
 		end
 
 		if not Move.SetGoal(npc, pos, Move.CombatGait(npc, pos), "medic") then
 			npc.tifMedic = nil
 			return false
 		end
+
 		m.start = nil
 		return true
 	end
@@ -283,6 +314,7 @@ function CAS.MedicThink(npc, c, now)
 	if LS and LS.Use(npc) and LS.Use(p) then
 		npc.tifAction = "treating"
 		if LS.MedicThink(npc, p, m, now) then return true end
+
 		npc.tifMedic = nil
 		return false
 	end
@@ -292,6 +324,7 @@ function CAS.MedicThink(npc, c, now)
 	npc.tifFace = pos + Vector(0, 0, 10)
 	npc.tifAction = "treating"
 	m.start = m.start or now
+
 	if now - m.start >= CAS.TREAT_TIME then
 		p.tifDowned.treated = true
 		npc.tifMedic = nil
@@ -303,6 +336,7 @@ end
 
 timer.Create("tif_casualty_tick", 0.5, 0, function()
 	if TIF.AIDisabled() then return end
+
 	for npc in pairs(CAS.Downed) do
 		if not IsValid(npc) or npc.tifDead or not npc.tifDowned then
 			CAS.Downed[npc] = nil
@@ -314,6 +348,7 @@ timer.Create("tif_casualty_tick", 0.5, 0, function()
 					break
 				end
 			end
+
 			local sq = npc.tifSquad
 			if not busy and sq then
 				local best, bestD
@@ -324,11 +359,13 @@ timer.Create("tif_casualty_tick", 0.5, 0, function()
 						if o == sq.leader then
 							d = d * 4
 						end
+
 						if d < CAS.MEDIC_RANGE ^ 2 and (not bestD or d < bestD) then
 							best, bestD = o, d
 						end
 					end
 				end
+
 				if best then
 					best.tifMedic = { patient = npc }
 					log(best, "going to treat #", npc:EntIndex())

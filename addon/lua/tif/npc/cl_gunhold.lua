@@ -14,14 +14,19 @@ local B = {
 	lup = "ValveBiped.Bip01_L_UpperArm", lfore = "ValveBiped.Bip01_L_Forearm", lhand = "ValveBiped.Bip01_L_Hand",
 }
 
-local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
+local CopyBone = TIF.CopyBone or function(ent, bone)
+	return bone and ent:GetBoneMatrix(bone)
+end
+
 local BONE_TMP = Matrix()
 local boneCache = {}
 local function bpos(ent, name)
 	local mdl = ent:GetModel()
 	local c = boneCache[mdl]
+
 	if not c then
-		c = {} boneCache[mdl] = c
+		c = {}
+		boneCache[mdl] = c
 	end
 
 	local i = c[name]
@@ -38,11 +43,13 @@ local function torso(ent)
 	local p, s, n = bpos(ent, B.pelvis), bpos(ent, B.spine4), bpos(ent, B.neck)
 	local l, r = bpos(ent, B.lclav), bpos(ent, B.rclav)
 	if not (p and s and n and l and r) then return nil end
+
 	local up = n - p
 	up:Normalize()
 	local left = l - r
 	left = left - up * left:Dot(up)
 	if left:LengthSqr() < 0.01 then return nil end
+
 	left:Normalize()
 	local fwd = left:Cross(up)
 	return s, fwd, left, up
@@ -52,6 +59,7 @@ local function frame_pose(gi, grip, barrel, up)
 	barrel:Normalize()
 	up = up - barrel * up:Dot(barrel)
 	if up:LengthSqr() < 0.0001 then return nil end
+
 	up:Normalize()
 	local w = Matrix()
 	w:SetForward(barrel)
@@ -68,17 +76,19 @@ M.BACK_DIST = 6.5
 
 local function kind_of(st, class)
 	if class then return G.WeaponKind(class) end
+
 	return st.pistol and "pistol" or (st.wkind or "rifle")
 end
 
 function M.SlingPose(src, st, gi, class)
 	if not gi then return nil end
+
 	local kind = kind_of(st, class)
 	if kind == "pistol" then
-
 		local t, k = bpos(src, B.rthigh), bpos(src, B.rcalf)
 		local c, fwd, left = torso(src)
 		if not (t and k and c) then return nil end
+
 		local down = k - t
 		down:Normalize()
 		local grip = t + down * 4 - left * 5 + fwd * 0.5
@@ -87,8 +97,8 @@ function M.SlingPose(src, st, gi, class)
 
 	local c, fwd, left, up = torso(src)
 	if not c then return nil end
-	if kind == "rpg" then
 
+	if kind == "rpg" then
 		local def = class and G.WeaponDef(class)
 		local lift = (def and def.disposable) and M.DISPOSABLE_LIFT or 0
 		local grip = c - fwd * M.BACK_DIST - up * (8 - lift)
@@ -104,24 +114,32 @@ end
 local ikTags = { left = {}, right = {} }
 local function clip_ik(clip, u, side)
 	if not clip or not u then return 1 end
+
 	side = side or "left"
 	local cache = ikTags[side]
 	local t = cache[clip]
+
 	if t == nil then
 		t = {}
 		local suf = "_" .. side .. "_hand"
+
 		for _, tag in ipairs(clip.tags or {}) do
 			local ev = tag[1] == "MoveEvent" and istable(tag[4]) and tag[4].MoveEvent
-			if ev == "ik_out_start" .. suf then t.os = t.os or tag[2]
+			if ev == "ik_out_start" .. suf then
+				t.os = t.os or tag[2]
 			elseif ev == "ik_out_end" .. suf then
 				t.oe = t.oe or tag[2]
 			elseif ev == "ik_in_start" .. suf then
 				t.is = tag[2]
-			elseif ev == "ik_in_end" .. suf then t.ie = tag[2] end
+			elseif ev == "ik_in_end" .. suf then
+				t.ie = tag[2]
+			end
 		end
+
 		if not (t.os and t.oe) then
 			t = false
 		end
+
 		cache[clip] = t
 	end
 
@@ -129,17 +147,20 @@ local function clip_ik(clip, u, side)
 	if u < t.os then return 1 end
 	if u < t.oe then return 1 - (u - t.os) / math.max(0.001, t.oe - t.os) end
 	if not t.is or u < t.is then return 0 end
+
 	if t.ie and u < t.ie then
 		return (u - t.is) / math.max(0.001, t.ie - t.is)
 	end
 
 	return 1
 end
+
 M.ClipIK = clip_ik
 
 local function rot_between(a, b)
 	local v = a:Cross(b)
 	local c = a:Dot(b)
+
 	if c < -0.9999 then
 		local axis = math.abs(a.x) < 0.9 and Vector(1, 0, 0) or Vector(0, 1, 0)
 		axis = a:Cross(axis)
@@ -170,11 +191,14 @@ local function arm(ent, side)
 	local model = ent:GetModel()
 	local a = armOf[side][model]
 	if a ~= nil then return a or nil end
+
 	local pre = "ValveBiped.Bip01_" .. side .. "_"
 	local u, f, h = ent:LookupBone(pre .. "UpperArm"), ent:LookupBone(pre .. "Forearm"), ent:LookupBone(pre .. "Hand")
 	a = false
+
 	if u and f and h then
 		a = { u = u, f = f, h = h, gov = {} }
+
 		for b = 0, ent:GetBoneCount() - 1 do
 			if b ~= u and b ~= f and b ~= h then
 				local p, guard = ent:GetBoneParent(b), 0
@@ -183,14 +207,17 @@ local function arm(ent, side)
 						a.gov[b] = "h"
 						break
 					end
+
 					if p == f then
 						a.gov[b] = "f"
 						break
 					end
+
 					if p == u then
 						a.gov[b] = "u"
 						break
 					end
+
 					p = ent:GetBoneParent(p)
 					guard = guard + 1
 				end
@@ -210,6 +237,7 @@ local function solve_arm(e, a, T, handRot)
 	local mF = CopyBone(e, a.f, M_F)
 	local mH = CopyBone(e, a.h, M_H)
 	if not (mU and mF and mH) then return false end
+
 	local A, Bp, C = mU:GetTranslation(), mF:GetTranslation(), mH:GetTranslation()
 	local lenA, lenB = A:Distance(Bp), Bp:Distance(C)
 	local AT = T - A
@@ -219,6 +247,7 @@ local function solve_arm(e, a, T, handRot)
 	local h = math.sqrt(math.max(lenA * lenA - along * along, 0))
 	local pole = Bp - A
 	pole = pole - dir * pole:Dot(dir)
+
 	if pole:LengthSqr() < 0.0001 then
 		pole = -mU:GetRight()
 	end
@@ -234,6 +263,7 @@ local function solve_arm(e, a, T, handRot)
 	local newH = Matrix(handRot or mH)
 	newH:SetTranslation(T2)
 	DELTA_BUF.u, DELTA_BUF.f, DELTA_BUF.h = newU * mU:GetInverseTR(), newF * mF:GetInverseTR(), newH * mH:GetInverseTR()
+
 	for b, which in pairs(a.gov) do
 		local m = CopyBone(e, b, M_G)
 		if m then
@@ -265,10 +295,13 @@ local function finger_bones(e)
 	local model = e:GetModel()
 	local list = fingerBones[model]
 	if list then return list end
+
 	list = {}
+
 	for _, n in ipairs(FINGERS) do
 		local b = e:LookupBone(n)
 		local p = b and e:GetBoneParent(b)
+
 		if b and p and p >= 0 then
 			list[#list + 1] = { name = n, b = b, p = p }
 		end
@@ -284,6 +317,7 @@ local F_WB, F_WP = Matrix(), Matrix()
 local function apply_fingers(e, F)
 	local list = finger_bones(e)
 	local n = #list
+
 	for i = 1, n do
 		local f = list[i]
 		local wb = CopyBone(e, f.b, F_WB)
@@ -292,22 +326,26 @@ local function apply_fingers(e, F)
 	end
 
 	F._m = F._m or {}
+
 	for i = 1, n do
 		local f = list[i]
 		local r = F[f.name]
 		local off = FINGER_OFFS[i]
 		local wp = off and CopyBone(e, f.p, F_WP)
+
 		if r and wp then
 			local m = F._m[f.name]
 			if not m then
 				m = Matrix({ { r[1], r[2], r[3], 0 }, { r[4], r[5], r[6], 0 }, { r[7], r[8], r[9], 0 }, { 0, 0, 0, 1 } })
 				F._m[f.name] = m
 			end
+
 			m:SetTranslation(off)
 			e:SetBoneMatrix(f.b, wp * m)
 		end
 	end
 end
+
 M.ApplyFingers = apply_fingers
 
 local TURN = Matrix({ { 0, -1, 0, 0 }, { 1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
@@ -330,17 +368,21 @@ local function ik_solve(e)
 	local lm = la and CopyBone(e, la.h, IK_LM)
 	local wR0, wL0 = st.ikRW or 0, st.ikW or 0
 	if wR0 < 0.01 and wL0 < 0.01 then return end
+
 	local gi = Bd.GunInfo(st.gun:GetModel())
 	if not gi then return end
+
 	local pos, ang = Bd.GunPose(st, e, gi)
 	if not pos then return end
 
 	if wR0 > 0.01 then
 		local a = arm(e, "R")
 		local mH = a and CopyBone(e, a.h, IK_RM)
+
 		if mH then
 			local C = mH:GetTranslation()
 			local w = wR0 * math.Clamp(1 - (C:Distance(pos) - R_NEAR) / (R_FAR - R_NEAR), 0, 1)
+
 			if w > 0.01 then
 				solve_arm(e, a, LerpVector(w, C, pos), rot_of(LerpAngle(w, mH:GetAngles(), ang)))
 			end
@@ -353,6 +395,7 @@ local function ik_solve(e)
 	local hgl = hold and hold.gripL
 	local tgt = gi.gripL or gi.gripV or (hgl and Vector(hgl[1], hgl[2], hgl[3]))
 	if wL0 < 0.01 or not tgt then return end
+
 	if vert then
 		tgt = gi.gripV + VERT_OFF
 	end
@@ -360,10 +403,12 @@ local function ik_solve(e)
 	local a = la
 	local mH = lm
 	if not mH then return end
+
 	local target = LocalToWorld(tgt, angle_zero, pos, ang)
 	local C = mH:GetTranslation()
 	local w = wL0 * math.Clamp(1 - (C:Distance(target) - IK_NEAR) / (IK_FAR - IK_NEAR), 0, 1)
 	if w < 0.01 then return end
+
 	local handRot
 	if vert then
 		local F, U, Rt = -ang:Right(), -ang:Up(), -ang:Forward()
@@ -383,10 +428,12 @@ local function ik_solve(e)
 	end
 
 	solve_arm(e, a, LerpVector(w, C, target), handRot)
+
 	if hold and hold.fingers and w > 0.5 and e:GetPos():DistToSqr(EyePos()) < M.FINGER_RANGE * M.FINGER_RANGE then
 		apply_fingers(e, hold.fingers)
 	end
 end
+
 M.RotBetween = rot_between
 M.SolveTwoBone = solve_arm
 
@@ -394,6 +441,7 @@ local function ik_cb(e)
 	local t0 = SysTime()
 	ik_solve(e)
 	local Prof = TIF.Prof
+
 	if Prof then
 		Prof.Count("cl_ik_us", (SysTime() - t0) * 1e6)
 		Prof.Count("cl_ik_n", 1)
@@ -404,6 +452,7 @@ function M.Prepare(ent, st, now)
 	if not ent.tifIKCb then
 		ent.tifIKCb = ent:AddCallback("BuildBonePositions", ik_cb)
 	end
+
 	local want, wantR = 0, 0
 	local gi = IsValid(st.gun) and Bd.GunInfo(st.gun:GetModel())
 	local ok = cvIK:GetBool() and gi and not st.hideGun and (st.slingW or 0) < 0.01
@@ -427,10 +476,12 @@ end
 local function post_launcher(ent, st)
 	local cls = ent:GetNW2String("tif_launcher", "")
 	local need = cls ~= "" and cls ~= (st.wclass or "") and not st.hideGun and not st.slung
+
 	if not need then
 		if IsValid(st.launcherGun) then
 			st.launcherGun:Remove()
 		end
+
 		st.launcherGun, st.launcherClass = nil, nil
 		return
 	end
@@ -439,11 +490,13 @@ local function post_launcher(ent, st)
 		if IsValid(st.launcherGun) then
 			st.launcherGun:Remove()
 		end
+
 		st.launcherGun, st.launcherClass = Bd.MakeGun(ent, cls, true), cls
 	end
 
 	local g = st.launcherGun
 	if not IsValid(g) then return end
+
 	local pos, ang = M.SlingPose(ent, st, Bd.GunInfo(g:GetModel()), cls)
 	if pos then
 		g:SetPos(pos)
@@ -461,6 +514,7 @@ function M.Post(ent, st)
 		if IsValid(st.backGun) then
 			st.backGun:Remove()
 		end
+
 		st.backGun, st.backClass = nil, nil
 		return
 	end
@@ -469,11 +523,13 @@ function M.Post(ent, st)
 		if IsValid(st.backGun) then
 			st.backGun:Remove()
 		end
+
 		st.backGun, st.backClass = Bd.MakeGun(ent, primary, true), primary
 	end
 
 	local g = st.backGun
 	if not IsValid(g) then return end
+
 	local pos, ang = M.SlingPose(ent, st, Bd.GunInfo(g:GetModel()), primary)
 	if pos then
 		g:SetPos(pos)

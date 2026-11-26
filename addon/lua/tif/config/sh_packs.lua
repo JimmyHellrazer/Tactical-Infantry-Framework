@@ -19,6 +19,7 @@ local function run(name, fn)
 		if not before[id] then
 			def.pack = name
 			n = n + 1
+
 			if TIF.BuiltinFactions then
 				TIF.BuiltinFactions[id] = table.Copy(def)
 			end
@@ -26,6 +27,7 @@ local function run(name, fn)
 	end
 
 	TIF.ContentPacks[name] = n
+
 	if TIF.Log then
 		TIF.Log("Content pack '", name, "': ", n, " faction(s)")
 	end
@@ -44,7 +46,8 @@ function TIF.FlattenVariants(def)
 	for _, v in ipairs(def.variants or {}) do
 		for _, m in ipairs(v.models or {}) do
 			if not seen[m] then
-				seen[m] = true out[#out + 1] = m
+				seen[m] = true
+				out[#out + 1] = m
 			end
 		end
 	end
@@ -56,6 +59,7 @@ local function variant_by_id(def, id)
 	for _, v in ipairs(def.variants or {}) do
 		if v.id == id then return v end
 	end
+
 	return nil
 end
 
@@ -98,10 +102,13 @@ function TIF.VisualUsable(hostId, model)
 	if not (G and G.MapFor and G.HostModel) then return true end
 
 	if G.IsVB and G.IsVB(hostId) then return true end
+
 	local host = G.HostModel(hostId or G.DEFAULT_HOST)
 	if not host then return true end
+
 	local key = host .. "|" .. string.lower(model)
 	local v = usable[key]
+
 	if v == false and CurTime() >= (usableRetry[key] or 0) then
 		v = nil
 	end
@@ -109,12 +116,14 @@ function TIF.VisualUsable(hostId, model)
 	if v == nil then
 		v = G.MapFor(host, model) ~= nil
 		usable[key] = v
+
 		if not v then
 			usableRetry[key] = CurTime() + 60
 		end
 	end
 
 	if v then return true end
+
 	local why = G.Skeleton and not G.Skeleton(model) and "its skeleton couldn't be read (missing file or not a ValveBiped skeleton)"
 		or "its bones don't match the GTA body"
 	return false, why
@@ -134,6 +143,7 @@ local function usable_of(def, list)
 
 	return #out > 0 and out or list
 end
+
 TIF.UsableVisuals = usable_of
 
 local function check_all(print_ok)
@@ -151,6 +161,7 @@ local function check_all(print_ok)
 	if bad == 0 and print_ok then
 		MsgN("[TIF] Every faction model can dress the soldier body.")
 	end
+
 	return bad
 end
 
@@ -174,8 +185,10 @@ function TIF.VarietyPick(facId, key, options)
 	local n = options and #options or 0
 	if n == 0 then return nil end
 	if n == 1 then return options[1] end
+
 	local now = CurTime()
 	local bag = TIF.VarietyBags[facId or "?"]
+
 	if not bag or now - bag.t > TIF.VARIETY_WINDOW then
 		bag = { counts = {} }
 		TIF.VarietyBags[facId or "?"] = bag
@@ -183,15 +196,20 @@ function TIF.VarietyPick(facId, key, options)
 
 	bag.t = now
 	local used = bag.counts[key]
+
 	if not used then
-		used = {} bag.counts[key] = used
+		used = {}
+		bag.counts[key] = used
 	end
 
 	local best, ties = math.huge, {}
 	for _, o in ipairs(options) do
 		local c = used[o] or 0
-		if c < best then best, ties = c, { o }
-		elseif c == best then ties[#ties + 1] = o end
+		if c < best then
+			best, ties = c, { o }
+		elseif c == best then
+			ties[#ties + 1] = o
+		end
 	end
 
 	local pick = ties[math.random(#ties)]
@@ -209,16 +227,19 @@ function TIF.PickVisual(def, ent)
 	local fid = def.id or (IsValid(ent) and ent.GetTIFFaction and ent:GetTIFFaction()) or nil
 	local mode = (IsValid(ent) and ent.tifVariant) or (fid and override_for(fid)) or def.variantMode or "squad"
 	local v = variant_by_id(def, mode)
+
 	if not v then
 		if mode == "mixed" then
 			v = vars[math.random(#vars)]
 		else
 			local now = CurTime()
 			local g = def._variantGroup
+
 			if not g or now > g.untilT or not variant_by_id(def, g.id) then
 				g = { id = vars[math.random(#vars)].id, untilT = now + 4 }
 				def._variantGroup = g
 			end
+
 			v = variant_by_id(def, g.id)
 		end
 	end

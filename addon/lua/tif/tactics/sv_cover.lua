@@ -72,8 +72,10 @@ end
 
 local function record(pt)
 	if not TIF.Dev then return end
+
 	local r = C.Recent
 	r[#r + 1] = pt
+
 	if #r > 160 then
 		table.remove(r, 1)
 	end
@@ -96,11 +98,13 @@ local function evaluate(p, threat, threatEye, traces)
 	local pWaist = p + VEC_WAIST
 	local w = line(pWaist, pWaist + dir * 90)
 	local wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
+
 	if not wallOk then
 		if not spend(traces, 1) then
 			pt.reject = "budget"
 			return pt
 		end
+
 		local pChest = p + VEC_CHEST
 		w = line(pChest, pChest + dir * 90)
 		wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
@@ -136,8 +140,10 @@ local function evaluate(p, threat, threatEye, traces)
 
 	origin = Vector(g.HitPos)
 	pt.pos = origin
+
 	if not IsValid(navmesh.GetNearestNavArea(origin, false, 72, false, true)) then
-		pt.reject = "off navmesh" return pt
+		pt.reject = "off navmesh"
+		return pt
 	end
 
 	if not spend(traces, 1) then
@@ -147,6 +153,7 @@ local function evaluate(p, threat, threatEye, traces)
 
 	hull.start, hull.endpos = origin, origin
 	local h = util.TraceHull(hull)
+
 	if h.Hit or h.StartSolid then
 		pt.reject = "no room"
 		return pt
@@ -161,17 +168,20 @@ local function evaluate(p, threat, threatEye, traces)
 	local wallBack = n * (C.HUG + 24)
 	local head = line(oHead, oHead - wallBack)
 	pt.high = head.Hit
+
 	if not pt.high then
 		if not spend(traces, 1) then
 			pt.reject = "budget"
 			return pt
 		end
+
 		local oChest = origin + VEC_CHEST
 		pt.mid = line(oChest, oChest - wallBack).Hit
 	end
 
 	local tL, tR = yaw_dir(pt.ny - 90), yaw_dir(pt.ny + 90)
 	local probeZ = pt.high and VEC_HEAD or VEC_WAIST
+
 	if not spend(traces, 2) then
 		pt.reject = "budget"
 		return pt
@@ -188,6 +198,7 @@ local function evaluate(p, threat, threatEye, traces)
 	end
 
 	pt.protected = blocked_before(threatEye, origin + (pt.high and VEC_56 or VEC_34), 6)
+
 	if not pt.protected then
 		pt.reject = "exposed"
 		return pt
@@ -205,10 +216,12 @@ local function evaluate(p, threat, threatEye, traces)
 	else
 		local side = tL:Dot(dir) >= tR:Dot(dir) and "l" or "r"
 		local edge = side == "l" and pt.edgeL or pt.edgeR
+
 		if not edge then
 			side = side == "l" and "r" or "l"
 			edge = side == "l" and pt.edgeL or pt.edgeR
 		end
+
 		if edge then
 			local t = side == "l" and tL or tR
 			pt.canShoot = reaches(origin + t * 40 + VEC_60, target, 40)
@@ -227,6 +240,7 @@ function C.IsCoverEntity(ent)
 	if not IsValid(ent) then return false end
 	if ent.IsGlideVehicle or ent.tifCover then return true end
 	if not COVER_CLASSES[ent:GetClass()] then return false end
+
 	local mins, maxs = ent:OBBMins(), ent:OBBMaxs()
 	local h = maxs.z - mins.z
 	local w = math.max(maxs.x - mins.x, maxs.y - mins.y)
@@ -246,16 +260,20 @@ end
 local function score(pt, npc, threat)
 	local arch = npc.tifArch
 	local s, why = 0, {}
+
 	if pt.canShoot then
-		s = s + 3 why[#why + 1] = "can shoot"
+		s = s + 3
+		why[#why + 1] = "can shoot"
 	else
-		s = s + 0.3 why[#why + 1] = "hide only"
+		s = s + 0.3
+		why[#why + 1] = "hide only"
 	end
 
 	local d = pt.pos:Distance(threat)
 	local lo, hi = arch.prefRange[1], arch.prefRange[2]
 	local off = d < lo and lo - d or (d > hi and d - hi or 0)
 	s = s - off / 400
+
 	if off > 0 then
 		why[#why + 1] = string.format("%d off range", off)
 	end
@@ -263,16 +281,19 @@ local function score(pt, npc, threat)
 	local travel = npc:GetPos():Distance(pt.pos)
 	s = s - travel / 350
 	why[#why + 1] = string.format("%du away", travel)
+
 	if pt.high and pt.canShoot then
 		s = s + 0.4
 	end
 
 	if pt.material == "vehicle" then
-		s = s - 0.3 why[#why + 1] = "vehicle"
+		s = s - 0.3
+		why[#why + 1] = "vehicle"
 	end
 
 	if pt.ent and pt.ent.tifCover then
-		s = s + 1.5 why[#why + 1] = "fortification"
+		s = s + 1.5
+		why[#why + 1] = "fortification"
 	end
 
 	local to = flat(pt.pos - npc:GetPos())
@@ -307,6 +328,7 @@ function C.Find(npc, threat, opts)
 	local function add_probe(p, z)
 		p.z = z
 		local k = math.floor(p.x / 32) .. ":" .. math.floor(p.y / 32)
+
 		if not seen[k] then
 			seen[k] = true
 			probes[#probes + 1] = p
@@ -317,27 +339,33 @@ function C.Find(npc, threat, opts)
 		local low, high = origin + Vector(0, 0, C.WAIST), origin + Vector(0, 0, C.CHEST)
 
 		len = math.min(len, math.max(80, origin:Distance(threat) - 40))
+
 		for i = 0, count - 1 do
 			if traces.n >= C.MAX_TRACES * 0.45 then return end
+
 			local yaw = yawCenter + (count == 1 and 0 or (i / (count - 1) - 0.5) * spread)
 			local dir = Vector(math.cos(math.rad(yaw)), math.sin(math.rad(yaw)), 0)
 
 			local start = (i % 2 == 0) and low or high
 			traces.n = traces.n + 1
 			if not Budget.Take("cover_trace", 1) then return end
+
 			local h = line(start, start + dir * len)
 			local hit = Vector(h.HitPos)
 			local face = flat(h.HitNormal)
 			local toThreatHere = flat(threat - hit)
 			local solid = h.Hit and not h.StartSolid and not h.HitSky and math_abs(h.HitNormal.z) < 0.55 and h.Fraction > 0.02
 			local ok = solid and face:Dot(toThreatHere) <= 0.1
+
 			if TIF.Dev then
 				local rays = C.RecentRays
 				rays[#rays + 1] = { a = Vector(start), b = hit, kind = ok and 1 or (solid and 2 or 0), time = now }
+
 				if #rays > 300 then
 					table.remove(rays, 1)
 				end
 			end
+
 			if ok then
 				add_probe(hit - toThreatHere * (C.HUG - 4), origin.z)
 			end
@@ -348,9 +376,11 @@ function C.Find(npc, threat, opts)
 
 	fan(center, toThreat, 200, 18, radius)
 	local fwd, side = yaw_dir(toThreat), yaw_dir(toThreat + 90)
+
 	for _, off in ipairs({ side * radius * 0.45, -side * radius * 0.45, fwd * radius * 0.35 }) do
 		local o = center + off
 		local g = line(o + Vector(0, 0, 40), o - Vector(0, 0, 120))
+
 		if g.Hit and not g.StartSolid then
 			fan(Vector(g.HitPos), toThreat, 110, 6, radius * 0.6)
 		end
@@ -360,6 +390,7 @@ function C.Find(npc, threat, opts)
 
 	local toT = flat(threat - center)
 	local propProbes = {}
+
 	for _, ent in ipairs(ents.FindInSphere(center, radius)) do
 		if C.IsCoverEntity(ent) then
 			local c = ent:WorldSpaceCenter()
@@ -370,6 +401,7 @@ function C.Find(npc, threat, opts)
 				local p = c - flat(threat - c) * math.min(half + C.HUG - 4, 120)
 				p.z = center.z
 				local k = math.floor(p.x / 32) .. ":" .. math.floor(p.y / 32)
+
 				if not seen[k] then
 					seen[k] = true
 					propProbes[#propProbes + 1] = p
@@ -380,6 +412,7 @@ function C.Find(npc, threat, opts)
 
 	table.sort(propProbes, function(a, b) return a:DistToSqr(center) < b:DistToSqr(center) end)
 	stats.props = #propProbes
+
 	for _, p in ipairs(probes) do
 		propProbes[#propProbes + 1] = p
 	end
@@ -388,8 +421,10 @@ function C.Find(npc, threat, opts)
 
 	local best, bestScore
 	local tested = 0
+
 	for _, p in ipairs(probes) do
 		if tested >= C.MAX_CANDIDATES or traces.n >= C.MAX_TRACES then break end
+
 		tested = tested + 1
 		local key = cell_key(p, threat)
 		local cached = C.Cache[key]
@@ -397,6 +432,7 @@ function C.Find(npc, threat, opts)
 
 		local fresh = cached and now - cached.time < C.CACHE_TIME and cached.threat
 			and cached.threat:DistToSqr(threat) < math.max(100, 0.04 * p:Distance(threat)) ^ 2
+
 		if fresh then
 			pt = cached
 			Prof.Count("cover_cache_hits", 1)
@@ -404,13 +440,17 @@ function C.Find(npc, threat, opts)
 			pt = evaluate(p, threat, threatEye, traces)
 			pt.key = key
 			pt.threat = Vector(threat)
+
 			if pt.reject ~= "budget" then
 				C.Cache[key] = pt
 			end
+
 			record(pt)
 		end
+
 		local why = pt.reject or "usable"
 		stats[why] = (stats[why] or 0) + 1
+
 		if not pt.reject then
 			local unreachable = false
 			for _, a in ipairs(opts.avoid or {}) do
@@ -419,6 +459,7 @@ function C.Find(npc, threat, opts)
 					break
 				end
 			end
+
 			if unreachable then
 				pt.lastReject = "unreachable"
 				stats.unreachable = (stats.unreachable or 0) + 1
@@ -429,6 +470,7 @@ function C.Find(npc, threat, opts)
 			else
 				local s, sw = score(pt, npc, threat)
 				pt.score, pt.why = s, sw
+
 				if not bestScore or s > bestScore then
 					best, bestScore = pt, s
 				end
@@ -439,6 +481,7 @@ function C.Find(npc, threat, opts)
 	Prof.Count("cover_searches", 1)
 	Prof.Count("cover_traces", traces.n)
 	Prof.End()
+
 	if best then
 		best.chosenBy, best.chosenAt = npc, now
 	end
@@ -450,12 +493,14 @@ end
 
 function C.StillGood(pt, threat)
 	if not Budget.Take("trace", 1) then return true end
+
 	if not blocked_before(threat + VEC_60, pt.pos + (pt.high and VEC_56 or VEC_34), 6) then
 		return false, "exposed"
 	end
 
 	local dir = flat(threat - pt.pos)
 	if pt.normal:Dot(-dir) < 0.25 then return false, "flanked" end
+
 	return true
 end
 

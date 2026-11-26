@@ -38,10 +38,25 @@ local usable
 function Civ.PickModel()
 	if not usable then
 		usable = {}
-		for _, m in ipairs(Civ.MODELS) do if util.IsValidModel(m) then usable[#usable + 1] = m end end
-		for _, m in ipairs(czech) do if util.IsValidModel(m) then usable[#usable + 1] = m end end
+
+		for _, m in ipairs(Civ.MODELS) do
+			if util.IsValidModel(m) then
+				usable[#usable + 1] = m
+			end
+		end
+
+		for _, m in ipairs(czech) do
+			if util.IsValidModel(m) then
+				usable[#usable + 1] = m
+			end
+		end
+
 		if #usable == 0 then
-			for _, m in ipairs(Civ.HL2) do if util.IsValidModel(m) then usable[#usable + 1] = m end end
+			for _, m in ipairs(Civ.HL2) do
+				if util.IsValidModel(m) then
+					usable[#usable + 1] = m
+				end
+			end
 		end
 	end
 
@@ -49,13 +64,22 @@ function Civ.PickModel()
 end
 
 local list = {}
-function Civ.Register(civ) list[civ] = true end
+function Civ.Register(civ)
+	list[civ] = true
+end
 
-function Civ.Unregister(civ) list[civ] = nil end
+function Civ.Unregister(civ)
+	list[civ] = nil
+end
 
 function Civ.List()
 	local out = {}
-	for c in pairs(list) do if IsValid(c) then out[#out + 1] = c end end
+	for c in pairs(list) do
+		if IsValid(c) then
+			out[#out + 1] = c
+		end
+	end
+
 	return out
 end
 
@@ -63,6 +87,7 @@ function Civ.Spawn(pos, opts)
 	opts = opts or {}
 	local civ = ents.Create("tif_civilian")
 	if not IsValid(civ) then return nil end
+
 	civ:SetPos(pos + Vector(0, 0, 4))
 	civ:SetAngles(Angle(0, opts.yaw or math.random(0, 359), 0))
 	civ.home, civ.homeRadius = opts.home or pos, opts.radius or 1200
@@ -101,22 +126,26 @@ function Civ.HideSpot(civ, danger)
 	local pos = civ:GetPos()
 	local away = pos - danger
 	away.z = 0
+
 	if away:LengthSqr() < 1 then
 		away = Vector(1, 0, 0)
 	end
 
 	away:Normalize()
 	local best, bs
+
 	for i = 1, 8 do
 		local a = math.rad(math.Rand(-70, 70))
 		local c, s = math.cos(a), math.sin(a)
 		local dir = Vector(away.x * c - away.y * s, away.x * s + away.y * c, 0)
 		local p = snap(pos + dir * math.Rand(500, 1200))
+
 		if p then
 			local score = math.random()
 			if hit(danger + Vector(0, 0, 50), p + Vector(0, 0, 40)).Hit then
 				score = score + 2
 			end
+
 			if indoors(p) then
 				score = score + 1.5
 			end
@@ -126,6 +155,7 @@ function Civ.HideSpot(civ, danger)
 			toD.z = 0
 			toD:Normalize()
 			local left = Vector(-toD.y, toD.x, 0)
+
 			for _, side in ipairs({ { "l", left }, { "r", left * -1 } }) do
 				local w = hit(p + Vector(0, 0, 40), p + Vector(0, 0, 40) + side[2] * 40)
 				if w.Hit and math.abs(w.HitNormal.z) < 0.3 then
@@ -136,6 +166,7 @@ function Civ.HideSpot(civ, danger)
 					break
 				end
 			end
+
 			if not bs or score > bs then
 				best, bs = { pos = p, yaw = yaw or toD:Angle().y, wall = wall }, score
 			end
@@ -149,11 +180,14 @@ function Civ.LeavePoint(civ, danger)
 	local pos = civ:GetPos()
 	local away = pos - danger
 	away.z = 0
+
 	if away:LengthSqr() < 1 then
-		away = VectorRand() away.z = 0
+		away = VectorRand()
+		away.z = 0
 	end
 
 	away:Normalize()
+
 	for _, k in ipairs({ 1, 0.7, 0.45 }) do
 		for _ = 1, 3 do
 			local a = math.rad(math.Rand(-45, 45))
@@ -199,11 +233,14 @@ end
 local lastShot = 0
 hook.Add("EntityFireBullets", "tif_civilians", function(ent, data)
 	if next(list) == nil then return end
+
 	local now = CurTime()
 	if now - lastShot < 0.25 then return end
+
 	lastShot = now
 	local src = data.Src or (IsValid(ent) and ent:GetPos())
 	if not src then return end
+
 	Civ.Scare(src, Civ.SHOT_RADIUS, 0.6)
 
 	if data.Dir then
@@ -216,6 +253,7 @@ end)
 
 hook.Add("EntityTakeDamage", "tif_civilians", function(target, dmg)
 	if next(list) == nil or not dmg:IsDamageType(DMG_BLAST) then return end
+
 	Civ.Scare(dmg:GetDamagePosition(), Civ.BLAST_RADIUS, 1)
 end)
 
@@ -228,9 +266,11 @@ local function seen(p, players)
 	end
 
 	if not near then return false end
+
 	for _, ply in ipairs(players) do
 		local eye = ply:EyePos()
 		if eye:DistToSqr(p) < Civ.GONE_DIST * Civ.GONE_DIST then return true end
+
 		local dir = (p - eye):GetNormalized()
 		if dir:Dot(ply:GetAimVector()) > 0.4 and not hit(eye, p + Vector(0, 0, 50)).Hit then
 			return true
@@ -242,8 +282,14 @@ end
 
 timer.Create("tif_civilians", 1, 0, function()
 	if next(list) == nil then return end
+
 	local players = {}
-	for _, ply in ipairs(player.GetHumans()) do if ply:Alive() then players[#players + 1] = ply end end
+	for _, ply in ipairs(player.GetHumans()) do
+		if ply:Alive() then
+			players[#players + 1] = ply
+		end
+	end
+
 	for c in pairs(list) do
 		if IsValid(c) and c.state == "leave" and not c.gone and CurTime() - (c.scaredAt or 0) > 2
 			and not seen(c:GetPos(), players) then

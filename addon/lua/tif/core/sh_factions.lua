@@ -6,7 +6,14 @@ local cvPlayer = CreateConVar("tif_player_faction", "usmc", bit.bor(FCVAR_ARCHIV
 	"Faction players belong to. Soldiers of this faction treat players as allies.")
 
 local NPC_SIDE = {}
-local function side(names, v) for _, n in ipairs(names) do if _G[n] then NPC_SIDE[_G[n]] = v end end end
+local function side(names, v)
+	for _, n in ipairs(names) do
+		if _G[n] then
+			NPC_SIDE[_G[n]] = v
+		end
+	end
+end
+
 side({ "CLASS_PLAYER_ALLY", "CLASS_PLAYER_ALLY_VITAL", "CLASS_CITIZEN_REBEL", "CLASS_VORTIGAUNT", "CLASS_CONSCRIPT",
 	"CLASS_HACKED_ROLLERMINE" }, "player")
 side({ "CLASS_COMBINE", "CLASS_COMBINE_GUNSHIP", "CLASS_MANHACK", "CLASS_METROPOLICE", "CLASS_MILITARY", "CLASS_SCANNER",
@@ -26,8 +33,10 @@ function TIF.PlayerFaction()
 	local id = cvPlayer:GetString()
 	if id == "" then return "usmc" end
 	if TIF.PlayerSides[id] then return id end
+
 	local F = TIF.Factions
 	if not F or F[TIF.FactionCanon(id)] then return id end
+
 	if warnedPf ~= id then
 		warnedPf = id
 		MsgC(Color(255, 120, 80), "[TIF] tif_player_faction \"" .. id .. "\" isn't installed: players count as usmc\n")
@@ -48,10 +57,11 @@ local function npc_faction(ent)
 	if ent.tifNpcSide ~= nil then
 		return ent.tifNpcSide == "player" and TIF.PlayerFaction() or (ent.tifNpcSide or nil)
 	end
+
 	local ok, cls = pcall(ent.Classify, ent)
 	local s = ok and NPC_SIDE[cls]
-	if s == nil then
 
+	if s == nil then
 		local ply = player.GetAll()[1]
 		local d = IsValid(ply) and ent.Disposition and ent:Disposition(ply)
 		s = (d == D_HT or d == D_FR) and "hl2_hostile" or (d == D_LI and "player") or false
@@ -60,23 +70,27 @@ local function npc_faction(ent)
 	ent.tifNpcSide = s
 	return s == "player" and TIF.PlayerFaction() or (s or nil)
 end
+
 TIF.NPCFaction = npc_faction
 
 local function tagged_bot(ent)
 	return ent.IsNextBot ~= nil and ent:IsNextBot() and not ent.TIFSoldier and not ent.TIFCivilian
 		and ent:GetNW2String("tif_faction", "") ~= ""
 end
+
 TIF.TaggedBot = tagged_bot
 
 function TIF.FactionOf(ent)
 	if not IsValid(ent) then return nil end
 	if ent.TIFSoldier then return ent:GetTIFFaction() end
+
 	if ent:IsPlayer() then
 		local own = ent:GetNW2String("tif_faction", "")
 		return own ~= "" and own or TIF.PlayerFaction()
 	end
 
 	if ent:IsNPC() or tagged_bot(ent) then return npc_faction(ent) end
+
 	return nil
 end
 
@@ -88,6 +102,7 @@ end
 local function names_it(list, id)
 	if not list then return false end
 	if list[id] then return true end
+
 	for old, new in pairs(TIF.FactionAlias or {}) do
 		if new == id and list[old] then return true end
 	end
@@ -98,6 +113,7 @@ end
 function TIF.RelationId(id)
 	local c = TIF.FactionCanon(id)
 	local d = TIF.Factions and TIF.Factions[c]
+
 	if d and type(d.relationsAs) == "string" and d.relationsAs ~= c then
 		return TIF.FactionCanon(d.relationsAs)
 	end
@@ -106,16 +122,20 @@ function TIF.RelationId(id)
 end
 
 local relCache = {}
-function TIF.ClearRelationCache() relCache = {} end
+function TIF.ClearRelationCache()
+	relCache = {}
+end
 
 timer.Create("tif_relation_cache", 1, 0, TIF.ClearRelationCache)
 
 local relation_of
 function TIF.FactionRelation(fa, fb)
 	if not fa or not fb or fa == "" or fb == "" then return TIF.REL_NEUTRAL end
+
 	local row = relCache[fa]
 	if not row then
-		row = {} relCache[fa] = row
+		row = {}
+		relCache[fa] = row
 	end
 
 	local r = row[fb]
@@ -130,18 +150,22 @@ end
 function relation_of(fa, fb)
 	fa, fb = TIF.RelationId(fa), TIF.RelationId(fb)
 	if fa == fb then return TIF.REL_ALLY end
+
 	local P = TIF.PlayerSides
 	local pa, pb = P[fa], P[fb]
 	if pa and pb then return TIF.REL_HOSTILE end
+
 	if pa or pb then
 		local ps, oid = pa or pb, pa and fb or fa
 		local o = TIF.Factions[oid]
 		local mine = pa and fa or fb
 		if o and names_it(o.allies, mine) then return TIF.REL_ALLY end
 		if o and names_it(o.neutral, mine) then return TIF.REL_NEUTRAL end
+
 		if o and ps.alliesSide and o.side == ps.alliesSide then
 			return TIF.REL_ALLY
 		end
+
 		return TIF.REL_HOSTILE
 	end
 
@@ -173,13 +197,14 @@ end
 
 function TIF.IsLiveCombatant(ent)
 	if not IsValid(ent) then return false end
-	if ent.TIFSoldier then
 
+	if ent.TIFSoldier then
 		return not ent.tifDead and ent:Health() > 0 and not ent.tifSurrendered and not ent.tifDowned
 	end
 
 	if ent:IsPlayer() then
 		if TIF.IgnorePlayers() then return false end
+
 		return ent:Alive() and ent:GetMoveType() ~= MOVETYPE_NOCLIP and not ent:IsFlagSet(FL_NOTARGET)
 	end
 
@@ -191,6 +216,7 @@ function TIF.IsLiveCombatant(ent)
 
 	if ent:IsNPC() then
 		if TIF.HL2NPCsOn and not TIF.HL2NPCsOn() then return false end
+
 		return ent:Health() > 0 and not ent:IsFlagSet(FL_NOTARGET) and (ent.GetNPCState == nil or ent:GetNPCState() ~= NPC_STATE_DEAD)
 			and TIF.FactionOf(ent) ~= nil
 	end
@@ -202,6 +228,7 @@ function TIF.IsDead(ent)
 	if not IsValid(ent) then return true end
 	if ent.TIFSoldier then return ent.tifDead == true end
 	if ent:IsPlayer() then return not ent:Alive() end
+
 	return ent:Health() <= 0
 end
 

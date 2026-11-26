@@ -24,6 +24,7 @@ local function button(parent, label, cmd, close)
 	b.DoClick = function()
 		LocalPlayer():ConCommand(cmd)
 		surface.PlaySound("buttons/lightswitch2.wav")
+
 		if close and IsValid(frame) then
 			frame:Close()
 		end
@@ -45,6 +46,7 @@ local function open(holdMode)
 	if IsValid(frame) then
 		frame:Remove()
 	end
+
 	frame = vgui.Create("DFrame")
 	frame:SetTitle("Squad orders")
 	frame:SetSize(240, 460)
@@ -54,16 +56,19 @@ local function open(holdMode)
 	frame.tifHold = holdMode
 
 	header(frame, "Orders")
+
 	for _, o in ipairs(ORDERS) do
 		button(frame, o[1], o[2], not holdMode)
 	end
 
 	header(frame, "Formation")
+
 	for _, f in ipairs(FORMS) do
 		button(frame, f:sub(1, 1):upper() .. f:sub(2), "tif_formation " .. f, not holdMode)
 	end
 
 	header(frame, "Squad")
+
 	for _, s in ipairs(SQUAD) do
 		button(frame, s[1], s[2], not holdMode)
 	end

@@ -10,6 +10,7 @@ local function add_reset_button(form, convars)
 		for i = 1, #convars do
 			local name = convars[i]
 			local cv = GetConVar(name)
+
 			if cv then
 				RunConsoleCommand(name, cv:GetDefault())
 			end
@@ -39,6 +40,7 @@ local function Section(panel, title, expanded, build)
 	function ui.Choice(label, convar, choices)
 		convars[#convars + 1] = convar
 		local box = form:ComboBox(label, convar)
+
 		for i = 1, #choices do
 			local item = choices[i]
 			if istable(item) then
@@ -47,6 +49,7 @@ local function Section(panel, title, expanded, build)
 				box:AddChoice(item)
 			end
 		end
+
 		return box
 	end
 
@@ -55,17 +58,20 @@ local function Section(panel, title, expanded, build)
 		local box = form:ComboBox(label, convar)
 		local added = {}
 		local order = TIF and TIF.PlayerSideOrder or {}
+
 		for i = 1, #order do
 			local id = order[i]
 			box:AddChoice(id)
 			added[id] = true
 		end
+
 		for id, def in SortedPairs(TIF and TIF.Factions or {}) do
 			if istable(def) and not def.hidden and not added[id] then
 				box:AddChoice(id)
 				added[id] = true
 			end
 		end
+
 		return box
 	end
 
@@ -78,10 +84,12 @@ local function Section(panel, title, expanded, build)
 		if command then
 			btn.DoClick = function() LocalPlayer():ConCommand(command) end
 		end
+
 		return btn
 	end
 
 	build(ui)
+
 	if #convars > 0 then
 		add_reset_button(form, convars)
 	end
@@ -97,6 +105,7 @@ local function ServerPanel(panel)
 	Section(panel, "Spawning & Actions", true, function(ui)
 		local facBox = ui.form:ComboBox("Faction")
 		local firstFac
+
 		for id, def in SortedPairs(TIF and TIF.Factions or {}) do
 			if istable(def) and not def.hidden and (def.models or def.variants) then
 				local label = def.name and (def.name .. " (" .. id .. ")") or id

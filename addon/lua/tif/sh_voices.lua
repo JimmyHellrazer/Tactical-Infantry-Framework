@@ -129,6 +129,7 @@ function V.FactionPacks(def)
 	if #out == 0 and def and V.PACKS[def.voice or ""] then
 		out[1] = def.voice
 	end
+
 	return out
 end
 
@@ -145,6 +146,7 @@ end
 function V.Build(packId)
 	local pack = V.PACKS[packId]
 	if not pack then return nil end
+
 	local byCat = {}
 	for _, ext in ipairs({ "mp3", "wav", "ogg" }) do
 		local found = file.Find("sound/" .. pack.folder .. "/*." .. ext, "GAME")
@@ -163,6 +165,7 @@ function V.Build(packId)
 				list[#list + 1] = p
 			end
 		end
+
 		if #list > 0 then
 			set.events[event] = list
 		end
@@ -198,9 +201,11 @@ V.FALLBACK = {
 function V.Pick(packId, event)
 	local set = V.Get(packId)
 	local list = set and set.events[event]
+
 	if not list then
 		for _, alt in ipairs(V.FALLBACK[event] or {}) do
 			list = set and set.events[alt]
+
 			if list then
 				event = alt
 				break
@@ -210,8 +215,10 @@ function V.Pick(packId, event)
 
 	if not list then return nil end
 	if #list == 1 then return list[1] end
+
 	local last = set.last and set.last[event]
 	local pick
+
 	for _ = 1, 4 do
 		pick = list[math.random(#list)]
 		if pick ~= last then break end
@@ -230,6 +237,7 @@ if SERVER then
 	function V.Play(ent, packId, event, level)
 		local snd = V.Pick(packId, event)
 		if not snd or not IsValid(ent) then return nil end
+
 		ent:EmitSound(snd, level or V.LEVEL, math.random(97, 103), 1, CHAN_VOICE)
 		return snd
 	end
@@ -242,20 +250,24 @@ if SERVER then
 	local function group_of(npc)
 		local sq = npc.tifSquad
 		if sq then return groupNext, sq end
+
 		return loneNext, npc:GetTIFFaction() .. "#" .. math.floor(npc:EntIndex() / 4)
 	end
 
 	function TIF.Say(npc, event, chance)
 		if not cvVoice:GetBool() or not IsValid(npc) then return end
 		if chance and math.random() > chance then return end
+
 		local now = CurTime()
 		local fac = npc:GetTIFFaction()
 		local gt, gk = group_of(npc)
+
 		if not FORCE[event] then
 			if (npc.tifNextSay or 0) > now or (gt[gk] or 0) > now then return end
 		elseif event == "pain" and (npc.tifNextSay or 0) > now then
 			return
 		end
+
 		local def = TIF.Factions[fac]
 
 		if npc.tifVoiceFac ~= fac then
@@ -263,17 +275,19 @@ if SERVER then
 			npc.tifVoice = packs[math.random(math.max(1, #packs))]
 			npc.tifVoiceFac = fac
 		end
+
 		local snd = npc.tifVoice and V.Play(npc, npc.tifVoice, event)
 		if snd then
 			npc.tifNextSay = now + V.SOLDIER_GAP
 			gt[gk] = now + V.GROUP_GAP
 			npc.tifSaidAt = now
 			local sq = npc.tifSquad
+
 			if sq then
 				sq.tifSaidAt = now
 			end
 		end
+
 		return snd
 	end
-
 end

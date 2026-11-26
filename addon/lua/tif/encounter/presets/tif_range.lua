@@ -5,7 +5,6 @@ return {
 		center = Vector(2300, -1300, 0),
 		radius = 2000,
 		posts = {
-
 			{ pos = Vector(3650, 130, 264), yaw = 125, job = "post", arch = "marksman" },
 			{ pos = Vector(2000, 80, 0), yaw = 90, job = "post", arch = "support" },
 			{ pos = Vector(2400, 80, 0), yaw = 90, job = "post" },
@@ -21,7 +20,6 @@ return {
 			{ pos = Vector(1550, -980, 0), yaw = 135, job = "reserve" },
 		},
 		routes = {
-
 			{ size = 3, pts = {
 				Vector(1000, -250, 0), Vector(3300, -250, 0), Vector(3300, -1350, 0), Vector(2300, -1350, 0),
 				Vector(2300, -2750, 0), Vector(900, -2750, 0), Vector(900, -1300, 0),
@@ -39,7 +37,6 @@ return {
 		},
 
 		convoys = {
-
 			{ count = 2, size = 4, pts = {
 				Vector(1500, -3190, 2), Vector(4190, -3190, 2), Vector(4190, 3190, 2), Vector(-4190, 3190, 2),
 				Vector(-4190, -3190, 2),

@@ -114,7 +114,12 @@ Air.RegisterType("heavy", {
 
 function Air.AvailableTypes()
 	local out = {}
-	for id in pairs(Air.Types) do if Air.Available(id) then out[#out + 1] = id end end
+	for id in pairs(Air.Types) do
+		if Air.Available(id) then
+			out[#out + 1] = id
+		end
+	end
+
 	table.sort(out)
 	return out
 end

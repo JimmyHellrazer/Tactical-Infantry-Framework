@@ -21,14 +21,20 @@ CreateConVar("tif_health_scale", "1", FCVAR_ARCHIVE, "Multiplier on soldier heal
 local cvReaction = CreateConVar("tif_reaction_scale", "1", FCVAR_ARCHIVE, "Multiplier on how long soldiers take to react to a new enemy (lower = faster)")
 local cvView = CreateConVar("tif_view_scale", "1", FCVAR_ARCHIVE, "Multiplier on how far soldiers can see")
 
-function TIF.ReactionScale() return math.max(0, cvReaction:GetFloat()) end
+function TIF.ReactionScale()
+	return math.max(0, cvReaction:GetFloat())
+end
 
-function TIF.ViewScale() return math.max(0.1, cvView:GetFloat()) end
+function TIF.ViewScale()
+	return math.max(0.1, cvView:GetFloat())
+end
 
 hook.Add("EntityTakeDamage", "tif_side_damage", function(target, dmg)
 	if not dmg:IsDamageType(DMG_BLAST) then return end
+
 	local att = dmg:GetAttacker()
 	if not (IsValid(att) and att.TIFSoldier) then return end
+
 	dmg:ScaleDamage(math.max(0, cvDamage:GetFloat()) * TIF.SideDamageScale(att))
 end)
 
@@ -48,6 +54,7 @@ local function make(class, fallback)
 
 	local stored = TIF.GTG.Stored(class)
 	local clip = stored and stored.Primary and stored.Primary.ClipSize or 30
+
 	if clip <= 0 then
 		clip = 30
 	end
@@ -64,12 +71,14 @@ function W.LauncherRifle(npc)
 	local fac = TIF.Factions and npc.GetTIFFaction and TIF.Factions[npc:GetTIFFaction()]
 	local L = fac and fac.loadouts or {}
 	local pool = {}
+
 	for _, list in ipairs({ L.default and L.default.primary, L.rifleman and L.rifleman.primary, fac and fac.weapons }) do
 		for _, c in ipairs(list or {}) do
 			if not W.IsLauncher(c) then
 				pool[#pool + 1] = c
 			end
 		end
+
 		if #pool > 0 then break end
 	end
 
@@ -78,7 +87,6 @@ function W.LauncherRifle(npc)
 end
 
 function W.Init(npc, primary, secondary, launcher)
-
 	local alias = TIF.WeaponAlias
 	if alias then
 		primary = primary and alias(primary) or primary
@@ -93,6 +101,7 @@ function W.Init(npc, primary, secondary, launcher)
 
 	npc.tifArms = { primary = make(primary, true), secondary = make(secondary, false) }
 	local lw = launcher and W.IsLauncher(launcher) and make(launcher, false)
+
 	if lw then
 		lw.rockets = TIF.Launcher and TIF.Launcher.Rockets(lw.def) or 1
 		npc.tifArms.launcher = lw
@@ -133,21 +142,28 @@ function W.Switch(npc, slot, now, opts)
 		local c
 		local CBm = not (opts and opts.clip) and TIF.CoverBehave and TIF.CoverBehave.MW
 		local covClip = CBm and CBm.PlaySwitch and CBm.PlaySwitch(npc, slot)
+
 		if covClip then
-			opts = opts or {} opts.clip = covClip
+			opts = opts or {}
+			opts.clip = covClip
 		end
+
 		if opts and opts.clip then
 			c = TIF.GTG.Clip(opts.clip, home)
+
 			if c then
 				name = opts.clip
 			end
 		end
+
 		if not c then
 			c = TIF.GTG.Clip(name, home)
+
 			if not c then
 				c, name = TIF.GTG.Clip(base, home), base
 			end
 		end
+
 		if c then
 			local swapU, readyU, dropU = 0.45, 0.75, nil
 			for _, t in ipairs(c.tags or {}) do
@@ -155,17 +171,22 @@ function W.Switch(npc, slot, now, opts)
 				if ev == "pistol_pickup" or ev == "pistol_putaway" then
 					swapU = t[2]
 				end
+
 				if ev == "start_aim" then
 					readyU = t[2]
 				end
+
 				if ev == "dropgun" then
 					dropU = t[2]
 				end
 			end
+
 			npc.tifSwitch.swapAt, npc.tifSwitch.done = now + c.dur * swapU, now + c.dur * readyU
+
 			if npc.tifSwitch.drop and dropU then
 				npc.tifSwitch.dropAt = now + c.dur * dropU
 			end
+
 			npc:SetNW2String("tif_switch_clip", c.name or name)
 			npc:SetNW2Float("tif_switch_t", now)
 		end
@@ -174,19 +195,27 @@ function W.Switch(npc, slot, now, opts)
 	return true
 end
 
-function W.Switching(npc) return npc.tifSwitch ~= nil end
+function W.Switching(npc)
+	return npc.tifSwitch ~= nil
+end
 
 W.SIDEARM = "weapon_tifmw_m19"
 
 function W.ForcePistol(npc)
 	local arms = npc.tifArms
 	if not arms then return false end
-	local function pistol(w) return w and TIF.GTG.WeaponKind(w.class) == "pistol" end
+
+	local function pistol(w)
+		return w and TIF.GTG.WeaponKind(w.class) == "pistol"
+	end
+
 	if pistol(npc.tifWep) then return true end
+
 	if not pistol(arms.secondary) then
 		local cls = TIF.WeaponAlias and TIF.WeaponAlias(W.SIDEARM) or W.SIDEARM
 		local w = make(cls, false)
 		if not pistol(w) then return false end
+
 		arms.secondary = w
 	end
 
@@ -199,6 +228,7 @@ end
 function W.Choose(npc, dist, now, opts)
 	local arms = npc.tifArms
 	if not arms or npc.tifSwitch or npc.tifLaunch then return end
+
 	if npc.tifSlot == "launcher" then
 		W.Switch(npc, "primary", now)
 		return
@@ -206,25 +236,25 @@ function W.Choose(npc, dist, now, opts)
 
 	if not arms.secondary then return end
 	if now < (npc.tifNextSwitch or 0) then return end
+
 	local arch = npc.tifArch
 	local below = arch.secondaryBelow
 	local want
+
 	if opts and opts.secondary ~= nil then
 		want = opts.secondary and "secondary" or "primary"
 	elseif npc.tifSlot == "secondary" and arms.secondary.ammo <= 0 and arms.primary.ammo > 0 then
-
 		want = "primary"
 	elseif not dist then
 		want = "primary"
 	elseif below and dist < below then
 		want = "secondary"
 	elseif npc.tifSlot == "primary" and arms.primary.ammo <= 0 and dist < 600 then
-
 		want = "secondary"
 	elseif npc.tifSlot == "secondary" then
-
 		local lull = now - (npc:GetTIFShotTime() or 0) > 3
-		if below then want = dist > below * 1.4 and "primary" or "secondary"
+		if below then
+			want = dist > below * 1.4 and "primary" or "secondary"
 		else
 			want = (dist > 700 or lull) and "primary" or "secondary"
 		end
@@ -241,11 +271,14 @@ local function switch_tick(npc, now)
 	local s = npc.tifSwitch
 	if s.drop and not s.dropped and now >= (s.dropAt or s.swapAt) and npc.tifArms.launcher then
 		s.dropped = true
+
 		if npc.TIFDropWeapon then
 			pcall(npc.TIFDropWeapon, npc, npc.tifArms.launcher)
 		end
+
 		npc.tifArms.launcher = nil
 		npc:SetNW2String("tif_launcher", "")
+
 		if not s.swapped then
 			npc:SetTIFWeapon("")
 		end
@@ -272,10 +305,12 @@ function W.StartReload(npc)
 	local w = npc.tifWep
 	if not w or w.reloadEnd > 0 or w.ammo >= w.clip then return end
 	if w.rockets and w.rockets <= w.ammo then return end
+
 	local now = CurTime()
 	w.reloadEnd = now + ((w.def and w.def.reload_time) or 2.2) * (npc.tifPanic and W.PANIC_RELOAD or 1)
 	w.burstLeft = 0
 	npc:SetTIFReloadStart(now)
+
 	if w.ammo <= 0 and not w.rockets then
 		TIF.Say(npc, "no_ammo", 0.7)
 	else
@@ -284,11 +319,11 @@ function W.StartReload(npc)
 
 	local mw = w.def and w.def.mw
 	local list = mw and ((w.ammo <= 0 and mw.reloadEmpty) or mw.reload)
+
 	if list then
 		local dur = w.reloadEnd - now
 		for _, e in ipairs(list) do
 			timer.Simple(e[1] * dur, function()
-
 				if IsValid(npc) and npc.tifWep == w and w.reloadEnd > 0 and sound.GetProperties(e[2]) then
 					npc:EmitSound(e[2], 72, 100, 1, CHAN_AUTO)
 				end
@@ -301,7 +336,6 @@ W.BAND_CLOSE, W.BAND_MID = 400, 1500
 W.WALK_FIRE_MAX = 110
 W.DRIFT = { auto = 0.14, braced = 0.05, cap = 2.0 }
 W.PROFILES = {
-
 	rifle   = { close = { 3, 5 }, mid = { 2, 3 }, long = { 1, 2 }, cad = { 1.15, 1.45 }, pause = { 1, 1.25, 1.8 } },
 	smg     = { close = { 4, 6 }, mid = { 2, 4 }, long = { 1, 2 }, cad = { 1.05, 1.3 }, pause = { 0.9, 1.2, 1.8 } },
 	lmg     = { close = { 4, 7 }, mid = { 3, 5 }, long = { 2, 4 }, cad = { 1.05, 1.25 }, pause = { 1, 1.2, 1.5 } },
@@ -320,11 +354,14 @@ W.SEMI = {
 		gap = { { 1.8, 2.2 }, { 2.2, 2.7 }, { 2.7, 3.3 } }, pause = { { 1.8, 2.2 }, { 2.2, 2.7 }, { 2.7, 3.3 } } },
 }
 
-local function semi_of(def) return def and def.semi and W.SEMI[def.semi] or nil end
+local function semi_of(def)
+	return def and def.semi and W.SEMI[def.semi] or nil
+end
 
 local function band(dist)
 	if dist < W.BAND_CLOSE then return "close", 1 end
 	if dist < W.BAND_MID then return "mid", 2 end
+
 	return "long", 3
 end
 
@@ -354,18 +391,22 @@ local function burst_size(npc, w, def, dist, braced, walking)
 
 	local kind = kind_of(w)
 	if b[2] <= 1 and kind ~= "pistol" then return 1 end
+
 	local P = W.PROFILES[kind] or W.PROFILES.rifle
 	local bn = band(dist)
+
 	if def and not def.auto and kind ~= "shotgun" and kind ~= "pistol" then
 		return (bn == "close" and math.random() < 0.5) and 2 or 1
 	end
 
 	if kind == "lmg" and braced then return math.random(b[1], b[2]) end
+
 	local r = P[bn]
 
 	local scale = kind == "lmg" and 1 or ((b[1] + b[2]) / 2) / 5
 	local n = math.random(r[1], r[2])
 	n = math.max(1, math.floor(n * math.min(scale, 1.6) + 0.5))
+
 	if walking then
 		n = math.min(n, bn == "close" and 3 or 2)
 	end
@@ -385,14 +426,17 @@ local function cadence(w, def, dist)
 	if kind_of(w) == "pistol" then
 		local Q = W.PISTOL
 		local t = math.Rand(Q.shot[1], Q.shot[2]) * (dist >= W.BAND_MID and 1.4 or 1)
+
 		if math.random() < Q.hitch then
 			t = t + math.Rand(Q.hitchT[1], Q.hitchT[2])
 		end
+
 		return t
 	end
 
 	local rate = def and def.rate or 0.1
 	if dist < W.BAND_CLOSE then return rate * math.Rand(1, 1.12) end
+
 	return rate * math.Rand(P.cad[1], P.cad[2])
 end
 
@@ -406,6 +450,7 @@ local function pause(npc, w, def, dist, walking)
 
 	local P = W.PROFILES[kind_of(w)] or W.PROFILES.rifle
 	local _, i = band(dist)
+
 	if kind_of(w) == "pistol" then
 		local Q = W.PISTOL
 		return math.Rand(Q.gap[1], Q.gap[2]) * P.pause[i] * (walking and 1.2 or 1) * (npc.tifPanic and W.PANIC_PAUSE or 1)
@@ -413,6 +458,7 @@ local function pause(npc, w, def, dist, walking)
 
 	local p = npc.tifArch.burstPause
 	local t = math.Rand(p[1], p[2]) * P.pause[i] * (walking and 1.3 or 1)
+
 	if npc.tifPanic then
 		t = t * W.PANIC_PAUSE
 	end
@@ -423,6 +469,7 @@ end
 function W.CoveringBurst(npc, now)
 	local arch = npc.tifArch
 	local w = npc.tifWep
+
 	if not w or w.reloadEnd > 0 or w.ammo < 4 or (w.def and w.def.projectile) then
 		return false
 	end
@@ -430,10 +477,12 @@ function W.CoveringBurst(npc, now)
 	if npc.tifAware ~= TIF.AWARE.ENGAGED or now < (npc.tifNextCoverFire or 0) or npc.tifVeh or npc.tifProne then
 		return false
 	end
+
 	npc.tifNextCoverFire = now + 3
 	local c = npc.tifPrimaryC
 	if not c or now - (c.seenAt or -99) > 2.5 then return false end
 	if math.random() > (arch.coverFire or 0.35) then return false end
+
 	local aim = (c.visible and IsValid(c.ent)) and c.ent:WorldSpaceCenter() or (c.pos + Vector(0, 0, 40))
 	npc.tifCoverFire = { untilT = now + math.Rand(0.55, 0.9), aim = aim, shots = math.random(3, 5) }
 	w.burstLeft = 0
@@ -452,8 +501,10 @@ function W.TracerCallback(npc, inner)
 		if inner then
 			inner(att, tr, dmg)
 		end
+
 		tracerData = tracerData or (EffectData and EffectData())
 		if not tracerData then return end
+
 		tracerData:SetEntity(npc)
 		tracerData:SetStart(tr.StartPos)
 		tracerData:SetOrigin(tr.HitPos)
@@ -464,8 +515,10 @@ end
 local function falloff_cb(def)
 	local fo = def and def.falloff
 	if not fo then return nil end
+
 	local cb = fallCache[def]
 	if cb then return cb end
+
 	local near, far, low = fo[1], fo[2], fo[3]
 	cb = function(_, tr, dmg)
 		local d = tr.StartPos:Distance(tr.HitPos)
@@ -487,6 +540,7 @@ local function in_cone(src, dir, dist, tanc, chest)
 	local rx, ry, rz = chest.x - src.x, chest.y - src.y, chest.z - src.z
 	local along = rx * dir.x + ry * dir.y + rz * dir.z
 	if along < 16 or along > dist + PAST_TARGET then return false end
+
 	local rad = BODY + along * tanc
 	local lat2 = rx * rx + ry * ry + rz * rz - along * along
 	return lat2 < rad * rad
@@ -496,6 +550,7 @@ local function ally_in_line(npc, src, aim, deg)
 	local dir = aim - src
 	local dist = dir:Length()
 	if dist < 1 then return nil end
+
 	dir:Mul(1 / dist)
 	local tanc = math.tan(math.rad(math.min(deg, 60) * 0.7))
 	local reach = dist + PAST_TARGET
@@ -503,6 +558,7 @@ local function ally_in_line(npc, src, aim, deg)
 	local ally = TIF.REL_ALLY
 	local relation = TIF.Relation
 	local soldiers = TIF.Soldiers
+
 	for i = 1, #soldiers do
 		local e = soldiers[i]
 		if e ~= npc and IsValid(e) and not e.tifDead then
@@ -545,12 +601,12 @@ local function ally_in_line(npc, src, aim, deg)
 
 	return nil
 end
+
 W.AllyInLine = ally_in_line
 
 local MUZZLE_Z = { [0] = 58, 38, 12 }
 
 function W.MuzzleSrc(npc, aimPos)
-
 	local veh = npc.tifVeh
 	if IsValid(veh) and aimPos then
 		local o = npc:GetPos() + Vector(0, 0, 38)
@@ -561,9 +617,9 @@ function W.MuzzleSrc(npc, aimPos)
 	end
 
 	if npc.tifMuzzle and not npc.tifBlind then return npc.tifMuzzle end
+
 	local z = MUZZLE_Z[npc:GetTIFStance()] or 58
 	if npc.tifBlind then
-
 		return npc:GetPos() + Vector(0, 0, z + 14) + npc:GetForward() * 6
 	end
 
@@ -573,6 +629,7 @@ end
 local function spread_deg(npc, now)
 	local arch = npc.tifArch
 	local deg = arch.spread
+
 	if npc.loco:GetVelocity():Length2D() > 20 then
 		deg = deg * arch.spreadMoving
 	end
@@ -588,6 +645,7 @@ local function spread_deg(npc, now)
 	end
 
 	deg = deg * (1 + 1.5 * (npc.tifSupp or 0))
+
 	if npc.tifBlind then
 		deg = deg * 4
 	end
@@ -595,6 +653,7 @@ local function spread_deg(npc, now)
 	if TIF.Morale and TIF.Morale.Shaken(npc) then
 		deg = deg * 1.25
 	end
+
 	if npc.tifPanic then
 		deg = deg * W.PANIC_SPREAD
 	end
@@ -622,6 +681,7 @@ local skyTrace = { start = skyStart, endpos = skyEnd, mask = MASK_SOLID_BRUSHONL
 function W.Outdoors(npc)
 	local now = CurTime()
 	if (npc.tifOutAt or 0) > now then return npc.tifOut end
+
 	npc.tifOutAt = now + 3
 	local p = npc:GetPos()
 	skyStart.x, skyStart.y, skyStart.z = p.x, p.y, p.z + 64
@@ -634,6 +694,7 @@ end
 local hasSound = {}
 local function registered(name)
 	if not isstring(name) then return false end
+
 	local h = hasSound[name]
 	if h == nil then
 		h = sound.GetProperties(name) ~= nil or string.find(name, "%.wav$") ~= nil or string.find(name, "%.mp3$") ~= nil
@@ -648,9 +709,11 @@ local function shot_sound(npc, w, src)
 	if mw and registered(mw.fire) then
 		npc:EmitSound(mw.fire, 95, math.random(97, 103), 1, CHAN_WEAPON)
 		local tail = W.Outdoors(npc) and mw.tailOut or mw.tailIn
+
 		if registered(tail) and (w.burstLeft or 0) <= 1 then
 			npc:EmitSound(tail, 110, 100, 0.8, CHAN_AUTO)
 		end
+
 		return
 	end
 
@@ -662,12 +725,14 @@ local BULLET_DATA = { Spread = vector_origin, Tracer = 0 }
 local function bullet_callback(att, tr, dmg)
 	local w = att and att.tifWep
 	local cb = w and falloff_cb(w.def)
+
 	if cb then
 		cb(att, tr, dmg)
 	end
 
 	tracerData = tracerData or (EffectData and EffectData())
 	if not tracerData then return end
+
 	tracerData:SetEntity(att)
 	tracerData:SetStart(tr.StartPos)
 	tracerData:SetOrigin(tr.HitPos)
@@ -683,18 +748,22 @@ local function fire_one(npc, w, aimPos, now)
 	local deg = spread_deg(npc, now)
 	ang:RotateAroundAxis(ang:Up(), (math.Rand(-1, 1) + math.Rand(-1, 1)) * 0.5 * deg)
 	ang:RotateAroundAxis(ang:Right(), (math.Rand(-1, 1) + math.Rand(-1, 1)) * 0.5 * deg * 0.7)
+
 	if def and def.projectile then
 		local fwd = ang:Forward()
 		TIF.GTG.Launch(npc, def, w.class, src + fwd * 30, fwd)
 		shot_sound(npc, w, src)
 		npc:SetTIFShotTime(now)
 		w.ammo = w.ammo - 1
+
 		if w.rockets then
 			w.rockets = math.max(0, w.rockets - 1)
 		end
+
 		if TIF.Launcher and npc.tifLaunch then
 			TIF.Launcher.Fired(npc, now)
 		end
+
 		return
 	end
 
@@ -722,11 +791,13 @@ function W.Think(npc, now)
 
 	local w = npc.tifWep
 	if not w then return end
+
 	if w.reloadEnd > 0 then
 		if now >= w.reloadEnd then
 			w.ammo, w.reloadEnd = w.clip, 0
 			npc:SetTIFReloadStart(0)
 		end
+
 		return
 	end
 
@@ -734,6 +805,7 @@ function W.Think(npc, now)
 
 	local cf = npc.tifCoverFire
 	local covering = cf and now < cf.untilT and cf.shots > 0
+
 	if cf and not covering then
 		npc.tifCoverFire, cf = nil, nil
 	end
@@ -747,11 +819,13 @@ function W.Think(npc, now)
 		if not want then
 			w.burstLeft, w.burstShot = 0, 0
 		end
+
 		return
 	end
 
 	local act = npc.tifAct
 	local low = act and TIFG_GUN_LOW and TIFG_GUN_LOW[act.name]
+
 	if low then
 		local u = (now - act.t0) / math.max(0.01, act.dur)
 		if u >= low[1] and u <= low[2] then
@@ -763,6 +837,7 @@ function W.Think(npc, now)
 	local speed = npc.loco:GetVelocity():Length2D()
 	local walking = speed > 20 and not npc.tifVeh
 	local dist = npc:GetPos():Distance(aimPos)
+
 	if not covering and walking and (speed > W.WALK_FIRE_MAX or dist >= W.BAND_MID) then
 		w.burstLeft, w.burstShot = 0, 0
 		return
@@ -784,6 +859,7 @@ function W.Think(npc, now)
 	if npc.tifSlot == "launcher" and not (TIF.Launcher and TIF.Launcher.Ready(npc, now)) then
 		return
 	end
+
 	if now < (npc.tifReactUntil or 0) then return end
 	if now < (npc.tifLowReadyUntil or 0) then return end
 
@@ -829,6 +905,7 @@ function W.Think(npc, now)
 	fire_one(npc, w, aimPos, now)
 	w.burstLeft = w.burstLeft - 1
 	w.burstShot = (w.burstShot or 0) + 1
+
 	if covering then
 		cf.shots = cf.shots - 1
 	end

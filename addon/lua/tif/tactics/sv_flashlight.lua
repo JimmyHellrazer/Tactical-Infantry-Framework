@@ -9,11 +9,19 @@ FL.SKY_WORDS = { "night", "dark", "dusk", "borealis", "black", "_09", "moon" }
 
 local cv = CreateConVar("tif_flashlights", "2", FCVAR_ARCHIVE, "Soldier flashlights: 0 off, 1 always, 2 dark maps only")
 
-function FL.Set(state) FL.Override = state end
+function FL.Set(state)
+	FL.Override = state
+end
 
 local function has_word(s, words)
 	s = string.lower(s or "")
-	for _, w in ipairs(words) do if string.find(s, w, 1, true) then return true end end
+
+	for _, w in ipairs(words) do
+		if string.find(s, w, 1, true) then
+			return true
+		end
+	end
+
 	return false
 end
 
@@ -22,6 +30,7 @@ function FL.Dark()
 	if mode == 0 then return false end
 	if mode == 1 then return true end
 	if FL.Override ~= nil then return FL.Override end
+
 	if FL.mapDark == nil then
 		local sky = GetConVar("sv_skyname")
 		FL.mapDark = has_word(game.GetMap(), FL.MAP_WORDS) or has_word(sky and sky:GetString() or "", FL.SKY_WORDS)
@@ -45,6 +54,7 @@ timer.Create("tif_flashlights", 1, 0, function()
 		if IsValid(npc) then
 			local on = dark and not npc.tifDead and not npc.tifVeh and not npc.tifDowned and not npc.tifSurrendered
 				and npc:GetTIFWeapon() ~= "" and carries(npc)
+
 			if npc:GetNW2Bool("tif_light", false) ~= on then
 				npc:SetNW2Bool("tif_light", on)
 			end

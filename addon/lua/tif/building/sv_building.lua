@@ -24,6 +24,7 @@ BLD.IndoorCache = {}
 function BLD.AreaIndoor(area)
 	local id = area:GetID()
 	local v = BLD.IndoorCache[id]
+
 	if v == nil then
 		local c = area:GetCenter()
 		local t = line(c + Vector(0, 0, 40), c + Vector(0, 0, 420))
@@ -56,6 +57,7 @@ local function find_existing(center)
 	for _, d in ipairs(BLD.Doors) do
 		if d.center:DistToSqr(center) < 48 * 48 then return d end
 	end
+
 	return nil
 end
 
@@ -65,9 +67,11 @@ local function gap_at(p, dir)
 	local l = line(base, base + side * 72)
 	local r = line(base, base - side * 72)
 	if not (l.Hit and r.Hit) then return nil end
+
 	local dl, dr = l.Fraction * 72, r.Fraction * 72
 	local width = dl + dr
 	if width < 24 or width > 100 then return nil end
+
 	local center = p + side * ((dl - dr) / 2)
 	local cz = center + Vector(0, 0, 48)
 
@@ -78,9 +82,11 @@ local function gap_at(p, dir)
 
 	local lintel = up.HitPos.z
 	local higher = false
+
 	for _, s in ipairs({ 1, -1 }) do
 		local o = cz + dir * (s * 48)
 		local c = line(o, o + Vector(0, 0, 400))
+
 		if not c.Hit or c.HitSky or c.HitPos.z > lintel + 6 then
 			higher = true
 			break
@@ -88,13 +94,14 @@ local function gap_at(p, dir)
 	end
 
 	if not higher then return nil end
+
 	return center, width
 end
 
 local function make_door(center, width, normal, areaA, areaB, ent)
-
 	local sa = navmesh.GetNearestNavArea(center - normal * 72 + Vector(0, 0, 16), false, 80, false, true)
 	local sb = navmesh.GetNearestNavArea(center + normal * 72 + Vector(0, 0, 16), false, 80, false, true)
+
 	if IsValid(sa) then
 		areaA = sa
 	end
@@ -102,7 +109,9 @@ local function make_door(center, width, normal, areaA, areaB, ent)
 	if IsValid(sb) then
 		areaB = sb
 	end
+
 	if areaA == areaB then return nil end
+
 	local inA = IsValid(areaA) and BLD.AreaIndoor(areaA)
 	local inB = IsValid(areaB) and BLD.AreaIndoor(areaB)
 	if not inA and not inB then return nil end
@@ -134,6 +143,7 @@ local function edge_samples(a, b)
 	local function along_y(x, sx)
 		local lo, hi = math.max(ay0, by0), math.min(ay1, by1)
 		if hi < lo then return end
+
 		local n = math.min(24, math.floor((hi - lo) / 20) + 1)
 		for i = 0, n - 1 do
 			local y = n == 1 and (lo + hi) / 2 or lo + (hi - lo) * i / (n - 1)
@@ -144,6 +154,7 @@ local function edge_samples(a, b)
 	local function along_x(y, sy)
 		local lo, hi = math.max(ax0, bx0), math.min(ax1, bx1)
 		if hi < lo then return end
+
 		local n = math.min(24, math.floor((hi - lo) / 20) + 1)
 		for i = 0, n - 1 do
 			local x = n == 1 and (lo + hi) / 2 or lo + (hi - lo) * i / (n - 1)
@@ -152,42 +163,53 @@ local function edge_samples(a, b)
 	end
 
 	local E = 4
-	if math.abs(ax1 - bx0) < E then along_y((ax1 + bx0) / 2, 1)
+	if math.abs(ax1 - bx0) < E then
+		along_y((ax1 + bx0) / 2, 1)
 	elseif math.abs(bx1 - ax0) < E then
 		along_y((bx1 + ax0) / 2, -1)
 	elseif math.abs(ay1 - by0) < E then
 		along_x((ay1 + by0) / 2, 1)
-	elseif math.abs(by1 - ay0) < E then along_x((by1 + ay0) / 2, -1) end
-	if #out == 0 then
+	elseif math.abs(by1 - ay0) < E then
+		along_x((by1 + ay0) / 2, -1)
+	end
 
+	if #out == 0 then
 		local ac, bc = a:GetCenter(), b:GetCenter()
 		out[1] = { p = (a:GetClosestPointOnArea(bc) + b:GetClosestPointOnArea(ac)) / 2, dir = flat(bc - ac) }
 	end
+
 	return out
 end
 
 local function scan_pair(a, b)
 	local key = pair_key(a, b)
 	if BLD.PairsDone[key] ~= nil then return BLD.PairsDone[key] end
+
 	BLD.PairsDone[key] = false
 	if not (BLD.AreaIndoor(a) or BLD.AreaIndoor(b)) then return false end
+
 	for _, smp in ipairs(edge_samples(a, b)) do
 		local p, dir = smp.p, smp.dir
 		local center, width
+
 		for _, off in ipairs({ 0, 12, -12 }) do
 			center, width = gap_at(p + dir * off, dir)
 			if center then break end
 		end
+
 		if center then
 			local g = line(center + Vector(0, 0, 20), center - Vector(0, 0, 60))
 			if g.Hit then
 				center = g.HitPos
 			end
+
 			local d = find_existing(center) or make_door(center, width, dir, a, b)
 			BLD.PairsDone[key] = d or false
+
 			if d then
 				BLD.Crossing[key] = d
 			end
+
 			return d
 		end
 	end
@@ -197,6 +219,7 @@ end
 
 local function scan_door_entity(ent)
 	if ent.tifDoorway then return ent.tifDoorway end
+
 	local mins, maxs = ent:OBBMins(), ent:OBBMaxs()
 	local size = maxs - mins
 
@@ -209,9 +232,11 @@ local function scan_door_entity(ent)
 	local a = navmesh.GetNearestNavArea(center - normal * 48, false, 120, false, true)
 	local b = navmesh.GetNearestNavArea(center + normal * 48, false, 120, false, true)
 	local d = find_existing(center) or make_door(center, width, normal, a, b, ent)
+
 	if d then
 		d.ent = ent
 		ent.tifDoorway = d
+
 		if IsValid(a) and IsValid(b) then
 			BLD.Crossing[pair_key(a, b)] = d
 		end
@@ -222,6 +247,7 @@ end
 
 function BLD.Scan(pos, radius)
 	radius = radius or 1000
+
 	for _, ent in ipairs(ents.FindInSphere(pos, radius)) do
 		if BLD.DOOR_CLASSES[ent:GetClass()] then
 			scan_door_entity(ent)
@@ -236,6 +262,7 @@ function BLD.Scan(pos, radius)
 
 	local out = {}
 	local r2 = radius * radius
+
 	for _, d in ipairs(BLD.Doors) do
 		if d.center:DistToSqr(pos) < r2 then
 			out[#out + 1] = d
@@ -252,6 +279,7 @@ end
 function BLD.Closed(d)
 	local e = d.ent
 	if not IsValid(e) then return false end
+
 	if e:GetClass() == "prop_door_rotating" then
 		local ok, st = pcall(e.GetInternalVariable, e, "m_eDoorState")
 		return ok and st == 0
@@ -264,6 +292,7 @@ end
 function BLD.Open(d, by)
 	local e = d.ent
 	if not IsValid(e) then return end
+
 	if e:GetClass() == "prop_door_rotating" and IsValid(by) then
 		e:Fire("OpenAwayFrom", "!activator", 0, by)
 	else
@@ -282,6 +311,7 @@ local function stair_end(a, upward)
 		steps = steps + 1
 		local z = cur:GetCenter().z
 		local nextA, nextZ
+
 		for _, b in ipairs(cur:GetAdjacentAreas()) do
 			local bz = b:GetCenter().z
 			if BLD.AreaIndoor(b) and ((upward and bz > z + 2) or (not upward and bz < z - 2)) then
@@ -290,7 +320,9 @@ local function stair_end(a, upward)
 				end
 			end
 		end
+
 		if not nextA then break end
+
 		prev, cur = cur, nextA
 	end
 
@@ -314,18 +346,22 @@ end
 
 function BLD.RoomOf(area)
 	if not IsValid(area) or not BLD.AreaIndoor(area) then return nil end
+
 	local cached = BLD.RoomOfArea[area:GetID()]
 	if cached then return cached end
+
 	local room = { id = NextRoom, areas = {}, set = {} }
 	NextRoom = NextRoom + 1
 	local z0 = area:GetCenter().z
 	local queue, head = { area }, 1
 	local climbs = {}
 	room.set[area:GetID()] = true
+
 	while queue[head] and #room.areas < BLD.MAX_ROOM_AREAS do
 		local a = queue[head]
 		head = head + 1
 		room.areas[#room.areas + 1] = a
+
 		for _, b in ipairs(a:GetAdjacentAreas()) do
 			local id = b:GetID()
 			if not room.set[id] and BLD.AreaIndoor(b) and scan_pair(a, b) == false then
@@ -342,7 +378,8 @@ function BLD.RoomOf(area)
 
 	local c = Vector()
 	for _, a in ipairs(room.areas) do
-		c:Add(a:GetCenter()) BLD.RoomOfArea[a:GetID()] = room
+		c:Add(a:GetCenter())
+		BLD.RoomOfArea[a:GetID()] = room
 	end
 
 	room.center = c / math.max(1, #room.areas)
@@ -352,7 +389,9 @@ function BLD.RoomOf(area)
 		if math.abs(far:GetCenter().z - z0) > BLD.FLOOR_BAND * 1.5 then
 			local nearPos = cl.from:GetClosestPointOnArea(cl.to:GetCenter())
 			local farPos = far:GetClosestPointOnArea(last:GetCenter())
-			if cl.up then add_stair(cl.from, nearPos, far, farPos)
+
+			if cl.up then
+				add_stair(cl.from, nearPos, far, farPos)
 			else
 				add_stair(far, farPos, cl.from, nearPos)
 			end
@@ -382,6 +421,7 @@ end
 function BLD.OtherSide(d, room)
 	local ra, rb = BLD.RoomOf(d.areaA), BLD.RoomOf(d.areaB)
 	if ra == room then return rb, 1 end
+
 	return ra, -1
 end
 
@@ -389,8 +429,10 @@ local hull = { mask = MASK_SOLID_BRUSHONLY, mins = Vector(-13, -13, 4), maxs = V
 local function free_spot(p)
 	local s = Move.Snap(p)
 	if not s or s:DistToSqr(p) > 40 * 40 then return nil end
+
 	hull.start, hull.endpos = s, s
 	if util.TraceHull(hull).Hit then return nil end
+
 	return s
 end
 
@@ -399,11 +441,13 @@ function BLD.StackSlots(d, inward, n)
 	local side = Vector(-inward.y, inward.x, 0)
 	local half = d.width / 2
 	local ok = { [1] = true, [-1] = true }
+
 	for k = 1, n do
 		for _, s in ipairs({ 1, -1 }) do
 			if #out < n and ok[s] then
 				local p = d.center - inward * 30 + side * s * (half + 24 + (k - 1) * 34)
 				local f = free_spot(p)
+
 				if f then
 					out[#out + 1] = { pos = f, side = s }
 				else
@@ -421,11 +465,14 @@ function BLD.StairPlan(d, goingUp, room, n)
 	local dir = flat(arr - dep)
 	local side = Vector(-dir.y, dir.x, 0)
 	local slots = {}
+
 	for k = 1, n * 2 do
 		if #slots >= n then break end
+
 		local s = (k % 2 == 1) and 1 or -1
 		local back = math.ceil(k / 2)
 		local f = free_spot(dep - dir * (30 + 30 * back) + side * s * 34)
+
 		if f then
 			slots[#slots + 1] = { pos = f, side = s }
 		end
@@ -442,18 +489,30 @@ function BLD.StairPlan(d, goingUp, room, n)
 		for _, a in ipairs(room.areas) do
 			list[#list + 1] = a:GetCenter()
 		end
+
 		table.sort(list, function(a, b) return a:DistToSqr(arr) < b:DistToSqr(arr) end)
+
 		for _, p in ipairs(list) do
 			if #points >= 4 then break end
+
 			local ok = p:DistToSqr(arr) > 120 * 120
-			for _, q in ipairs(points) do if q:DistToSqr(p) < 140 * 140 then ok = false break end end
+			for _, q in ipairs(points) do
+				if q:DistToSqr(p) < 140 * 140 then
+					ok = false
+					break
+				end
+			end
+
 			if ok then
 				points[#points + 1] = p
 			end
 		end
 	end
 
-	while #points < 4 do points[#points + 1] = points[#points] end
+	while #points < 4 do
+		points[#points + 1] = points[#points]
+	end
+
 	return slots, points
 end
 
@@ -478,6 +537,7 @@ function BLD.EntryPoints(d, inward, room)
 		start + inward * math.min(depth * 0.6, 260) - side * rr * 0.4,
 	}
 	local out = {}
+
 	for i, p in ipairs(raw) do
 		local s = Move.Snap(p)
 		if s and room then
@@ -486,6 +546,7 @@ function BLD.EntryPoints(d, inward, room)
 				s = nil
 			end
 		end
+
 		out[i] = s or Move.Snap(start + inward * 40) or start
 	end
 

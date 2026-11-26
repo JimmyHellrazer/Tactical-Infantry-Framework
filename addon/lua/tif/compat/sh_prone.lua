@@ -11,5 +11,6 @@ end
 function A.SequencesFor(holdtype)
 	local wa = A.Present() and prone.Animations.WeaponAnims
 	if not wa then return "prone_ar2", "prone_walktwohand" end
+
 	return wa.idle[holdtype] or wa.idle.ar2, wa.moving[holdtype] or wa.moving.ar2
 end

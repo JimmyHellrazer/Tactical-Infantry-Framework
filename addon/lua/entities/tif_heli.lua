@@ -35,12 +35,14 @@ if CLIENT then
 			tail = self:LookupBone(def.tailBone or ""),
 			doors = {},
 		}
+
 		for _, b in ipairs(def.doors and def.doors.bones or {}) do
 			local id = self:LookupBone(b)
 			if id then
 				table.insert(self.tifBones.doors, id)
 			end
 		end
+
 		self.rotorBG = self:FindBodygroupByName("rotor")
 		self.engines = { self:LookupAttachment("tag_engine_left"), self:LookupAttachment("tag_engine_right") }
 	end
@@ -52,29 +54,34 @@ if CLIENT then
 		local data = istable(TIF_AIR_INFIL) and TIF_AIR_INFIL[self:GetHeliType()]
 		local crew = data and data.crew
 		if not crew or not util.IsValidModel(CREW_HOST) then return end
+
 		local list = {}
 		for _, m in ipairs(crew.pilots or {}) do
 			list[#list + 1] = m
 		end
+
 		local set = data[self:GetNW2String("tif_crew_set", "")]
 		for _, i in ipairs(set and set.chiefs or {}) do
 			if crew.chiefs and crew.chiefs[i] then
 				list[#list + 1] = crew.chiefs[i]
 			end
 		end
+
 		local fac = TIF.Factions and TIF.Factions[self:GetNW2String("tif_crew_fac", "usmc")]
 		local models = fac and fac.models or {}
+
 		for k, m in ipairs(list) do
 			local clip = TIF.GTG and TIF.GTG.Clip(m.role, TIF.GTG.MW_HOST)
 			local id = self:LookupAttachment(m.tag)
 			local a = id and id > 0 and self:GetAttachment(id)
+
 			if clip and a then
 				local tp, ta = WorldToLocal(a.Pos, a.Ang, self:GetPos(), self:GetAngles())
 				local o = Vector(m.off[1], m.off[2], m.off[3])
 				o:Rotate(Angle(0, ta.y, 0))
 				local host = ClientsideModel(CREW_HOST, RENDERGROUP_TRANSLUCENT)
-				if IsValid(host) then
 
+				if IsValid(host) then
 					host:SetRenderMode(RENDERMODE_TRANSCOLOR)
 					host:SetColor(Color(255, 255, 255, 0))
 					host:DrawShadow(false)
@@ -85,6 +92,7 @@ if CLIENT then
 					host:ResetSequence(seq >= 0 and seq or 0)
 					local mdl = #models > 0 and models[(self:EntIndex() * 3 + k) % #models + 1] or nil
 					local vis = mdl and util.IsValidModel(mdl) and ClientsideModel(mdl, RENDERGROUP_OPAQUE)
+
 					if vis then
 						vis:SetParent(host)
 						vis:AddEffects(EF_BONEMERGE)
@@ -93,6 +101,7 @@ if CLIENT then
 					else
 						host:SetColor(Color(255, 255, 255, 255))
 					end
+
 					table.insert(self.tifCrew, { host = host, vis = vis, dur = math.max(0.1, clip.dur), phase = math.Rand(0, 1) })
 				end
 			end
@@ -114,16 +123,19 @@ if CLIENT then
 			if IsValid(c.vis) then
 				c.vis:Remove()
 			end
+
 			if IsValid(c.host) then
 				c.host:Remove()
 			end
 		end
+
 		self.tifCrew = nil
 	end
 
 	function ENT:Think()
 		local def = def_of(self)
 		if not def then return end
+
 		if not self.tifBones then
 			self:TIFInitBones(def)
 		end
@@ -131,6 +143,7 @@ if CLIENT then
 		if not self.tifCrew and self:GetNW2String("tif_crew_fac", "") ~= "" then
 			self:TIFMakeCrew(def)
 		end
+
 		self:TIFCrewThink()
 		self:TIFRopesThink()
 		local dt = FrameTime()
@@ -139,12 +152,15 @@ if CLIENT then
 
 		self.rotA = (self.rotA + ROTOR_DPS * rpm * dt) % 360
 		self.tailA = (self.tailA + ROTOR_DPS * 4.6 * rpm * dt) % 360
+
 		if B.rotor then
 			self:ManipulateBoneAngles(B.rotor, Angle(0, self.rotA, 0))
 		end
+
 		if B.tail then
 			self:ManipulateBoneAngles(B.tail, def.tailAxis == "roll" and Angle(0, 0, self.tailA) or Angle(self.tailA, 0, 0))
 		end
+
 		if self.rotorBG and self.rotorBG >= 0 then
 			local want = rpm > 0.55 and 1 or 0
 			if self:GetBodygroup(self.rotorBG) ~= want then
@@ -157,18 +173,24 @@ if CLIENT then
 			local goal = self:GetDoorsOpen() and 1 or 0
 			self.doorT = math.Approach(self.doorT, goal, dt / math.max(0.1, d.time))
 			local s = self.doorT * self.doorT * (3 - 2 * self.doorT)
+
 			for _, b in ipairs(B.doors) do
 				self:ManipulateBonePosition(b, d.travel * s)
 			end
 		end
+
 		self:RotorSound(def, rpm)
+
 		if self.emitter then
 			self.emitter:SetPos(self:GetPos())
 		end
+
 		self:Wash(rpm)
+
 		if self:GetDying() then
 			self:Smoke()
 		end
+
 		self:SetNextClientThink(CurTime())
 		return true
 	end
@@ -179,25 +201,31 @@ if CLIENT then
 			self.loop:SetSoundLevel(105)
 			self.loop:PlayEx(0, 70)
 		end
+
 		if self.loop then
-			self.loop:ChangeVolume(math.min(1, rpm * 1.4), 0.2) self.loop:ChangePitch(70 + 30 * rpm, 0.2)
+			self.loop:ChangeVolume(math.min(1, rpm * 1.4), 0.2)
+			self.loop:ChangePitch(70 + 30 * rpm, 0.2)
 		end
 	end
 
 	function ENT:Wash(rpm)
 		local now = CurTime()
 		if rpm < 0.6 or now < self.nextWash then return end
+
 		self.nextWash = now + 0.06
 		local pos = self:GetPos()
 		local tr = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, 900), mask = MASK_SOLID_BRUSHONLY })
 		if not tr.Hit then return end
+
 		local k = 1 - tr.Fraction
 		self.emitter = self.emitter or ParticleEmitter(pos)
 		local col = (tr.MatType == MAT_DIRT or tr.MatType == MAT_SAND or tr.MatType == MAT_GRASS) and { 150, 130, 100 } or { 140, 140, 135 }
+
 		for _ = 1, 3 do
 			local a = math.Rand(0, math.pi * 2)
 			local dir = Vector(math.cos(a), math.sin(a), 0)
 			local p = self.emitter:Add("particle/particle_smokegrenade", tr.HitPos + dir * math.Rand(120, 380) + Vector(0, 0, 12))
+
 			if p then
 				p:SetVelocity(dir * math.Rand(500, 900) * k + Vector(0, 0, math.Rand(10, 60)))
 				p:SetAirResistance(120)
@@ -216,8 +244,10 @@ if CLIENT then
 	function ENT:Smoke()
 		local now = CurTime()
 		if now < self.nextSmoke then return end
+
 		self.nextSmoke = now + 0.04
 		self.emitter = self.emitter or ParticleEmitter(self:GetPos())
+
 		for _, att in ipairs(self.engines or {}) do
 			local a = att and att > 0 and self:GetAttachment(att)
 			if a then
@@ -243,13 +273,16 @@ if CLIENT then
 	local function pose_rope(r)
 		local e = r.ent
 		local base = r.base
+
 		if not base then
 			base = e:LookupBone("j_rope_1")
 			r.base = base
 			if not base then return end
 		end
+
 		local A, G, now = r.A, r.G, CurTime()
 		if not (A and G) then return end
+
 		local drop = math.max(8, A.z - G.z)
 
 		local L = math.max(ROPE_N * ROPE_STEP, drop + 60)
@@ -260,22 +293,25 @@ if CLIENT then
 		m:SetTranslation(A)
 		e:SetBoneMatrix(0, m)
 		local prev = A
+
 		for i = 1, ROPE_N do
 			local s = math.min((i - 1) * ds, fallen)
 			local p
+
 			if s <= drop then
 				local w = s / drop
 				local sw = w * w * 9
 				p = Vector(A.x + math.sin(now * 1.3 + r.ph + w * 3) * sw, A.y + math.cos(now * 1.1 + r.ph * 2 + w * 2) * sw, A.z - s)
 			else
-
 				local g = s - drop
 				p = Vector(G.x + r.dir.x * g, G.y + r.dir.y * g, G.z + 1)
 			end
+
 			local t = p - prev
 			if i == 1 or t:LengthSqr() < 0.01 then
 				t = Vector(0, 0, -1)
 			end
+
 			m = Matrix()
 			m:SetAngles(t:Angle())
 			m:SetTranslation(p)
@@ -293,6 +329,7 @@ if CLIENT then
 			ropeWarned = true
 			MsgN("[TIF] Helicopter ropes need ", ROPE_MDL, " (tif_air addon); restart the game if it was just installed")
 		end
+
 		if on and #self.tifRopes == 0 and util.IsValidModel(ROPE_MDL) then
 			local def = def_of(self)
 			for k, tag in ipairs(def and def.ropeTags or {}) do
@@ -309,6 +346,7 @@ if CLIENT then
 				end
 			end
 		end
+
 		for i = #self.tifRopes, 1, -1 do
 			local r = self.tifRopes[i]
 			if not IsValid(r.ent) then
@@ -322,15 +360,17 @@ if CLIENT then
 						r.G = tr.HitPos
 					end
 				else
-
 					r.cut = r.cut or CurTime()
+
 					if r.A and r.G then
 						r.A = Vector(r.A.x, r.A.y, math.max(r.G.z + 2, r.A.z - 600 * FrameTime() * 1.5))
 					end
+
 					if CurTime() - r.cut > 8 then
 						r.ent:Remove()
 					end
 				end
+
 				if r.A and r.G then
 					local lo, hi = Vector(math.min(r.A.x, r.G.x) - 700, math.min(r.A.y, r.G.y) - 700, r.G.z - 20),
 						Vector(math.max(r.A.x, r.G.x) + 700, math.max(r.A.y, r.G.y) + 700, r.A.z + 20)
@@ -342,11 +382,19 @@ if CLIENT then
 	end
 
 	function ENT:TIFRemoveRopes()
-		for _, r in ipairs(self.tifRopes or {}) do if IsValid(r.ent) then r.ent:Remove() end end
+		for _, r in ipairs(self.tifRopes or {}) do
+			if IsValid(r.ent) then
+				r.ent:Remove()
+			end
+		end
+
 		self.tifRopes = nil
 	end
 
-	function ENT:Draw() self:DrawModel() end
+	function ENT:Draw()
+		self:DrawModel()
+	end
+
 	function ENT:DrawTranslucent()
 		self:DrawModel()
 	end
@@ -355,9 +403,11 @@ if CLIENT then
 		if self.loop then
 			self.loop:Stop()
 		end
+
 		if self.emitter then
 			self.emitter:Finish()
 		end
+
 		self:TIFRemoveCrew()
 		self:TIFRemoveRopes()
 	end
@@ -380,6 +430,7 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_VPHYSICS)
 	self:MakePhysicsObjectAShadow(false, false)
 	local phys = self:GetPhysicsObject()
+
 	if IsValid(phys) then
 		phys:SetMass(5000)
 	end
@@ -405,14 +456,19 @@ function ENT:SetRoute(route)
 	self.route = route
 	self.phase = "inbound"
 	self.phaseAt = CurTime()
+
 	if route and route.doorsOpen then
 		self:SetDoorsOpen(true)
 	end
 end
 
-function ENT:Phase() return self.phase end
+function ENT:Phase()
+	return self.phase
+end
 
-function ENT:Arrived() return self.phase == "hold" end
+function ENT:Arrived()
+	return self.phase == "hold"
+end
 
 function ENT:Release()
 	if self.phase == "hold" or self.phase == "descend" or self.phase == "approach" then
@@ -422,29 +478,37 @@ end
 
 function ENT:SetPhase(ph)
 	if self.phase == ph then return end
+
 	self.phase = ph
 	self.phaseAt = CurTime()
 	local r = self.route
+
 	if ph == "hold" then
 		self.holdUntil = r and r.hold and CurTime() + r.hold or nil
+
 		if r and r.onArrive then
 			pcall(r.onArrive, self)
 		end
+
 		hook.Run("TIF_HeliArrived", self)
 	elseif ph == "climb" then
 		if not (r and r.doorsOpen) then
 			self:SetDoorsOpen(false)
 		end
+
 		self:SetRopes(false)
 		hook.Run("TIF_HeliLeaving", self)
 	end
 end
 
-local function flat(v) return Vector(v.x, v.y, 0) end
+local function flat(v)
+	return Vector(v.x, v.y, 0)
+end
 
 local function clamp_len(v, max)
 	local l = v:Length()
 	if l > max and l > 0 then return v * (max / l) end
+
 	return v
 end
 
@@ -452,13 +516,16 @@ function ENT:GroundAhead(now)
 	if now < self.nextGround and self.groundAhead then
 		return self.groundAhead
 	end
+
 	self.nextGround = now + 0.25
 	local r = self.route
 	local top = (r and r.ceilZ or self.p.z + 4000) - 10
 	local best = -math.huge
+
 	for _, t in ipairs({ 0, 1.2, 2.5 }) do
 		local p = self.p + flat(self.v) * t
 		local tr = util.TraceLine({ start = Vector(p.x, p.y, top), endpos = Vector(p.x, p.y, top - 30000), mask = MASK_SOLID_BRUSHONLY })
+
 		if tr.Hit and not tr.StartSolid then
 			best = math.max(best, tr.HitPos.z)
 		end
@@ -479,6 +546,7 @@ function ENT:CruiseZ(now)
 	local r = self.route
 	local z = r.cruiseZ
 	local g = self:GroundAhead(now)
+
 	if g then
 		z = math.max(z, g + self.def.cruiseClearance * 0.6)
 	end
@@ -491,6 +559,7 @@ function ENT:Fly(dt, now)
 	local want = Vector()
 	local face
 	local ph = self.phase
+
 	if not r then
 		want = -self.v * 0.5
 	elseif ph == "inbound" or ph == "depart" then
@@ -499,8 +568,8 @@ function ENT:Fly(dt, now)
 		local dist = to:Length()
 		want = dist > 1 and to * (def.cruiseSpeed / dist) or Vector()
 		want.z = math.Clamp((self:CruiseZ(now) - self.p.z) * 0.8, -def.sinkRate, def.climbRate)
-		if ph == "inbound" then
 
+		if ph == "inbound" then
 			local speed = flat(self.v):Length()
 			if r.mode == "flyby" then
 				if dist < 300 then
@@ -516,8 +585,8 @@ function ENT:Fly(dt, now)
 	elseif ph == "approach" then
 		local hdist
 		local D = r.glideD
-		if D then
 
+		if D then
 			local decel = math.max(def.accel * 0.25, def.cruiseSpeed * def.cruiseSpeed / (2 * D))
 			want, hdist = arrive(self, r.hub, def.cruiseSpeed, decel)
 			local top = r.hub.z + (r.settle or 0)
@@ -529,18 +598,20 @@ function ENT:Fly(dt, now)
 			local ff = -grad * flat(self.v):Length()
 			want.z = math.Clamp(ff + (zt - self.p.z) * 1.5, -def.sinkRate * 1.8, def.climbRate)
 			face = r.heading
+
 			if hdist < 1500 and not self:GetDoorsOpen() then
 				self:SetDoorsOpen(true)
 			end
 		else
-
 			local hz = math.max(r.hub.z + 250, math.min(self.p.z, self:CruiseZ(now)))
 			want, hdist = arrive(self, r.hub, def.approachSpeed + (def.cruiseSpeed - def.approachSpeed) * 0.5, def.accel * 0.7)
 			want.z = math.Clamp((hz - self.p.z) * 0.6, -def.sinkRate, def.climbRate)
+
 			if hdist < 900 then
 				face = r.heading
 			end
 		end
+
 		if hdist < 40 and flat(self.v):Length() < 80 then
 			self:SetPhase("descend")
 		end
@@ -550,21 +621,24 @@ function ENT:Fly(dt, now)
 		local sink = math.min(def.sinkRate, math.sqrt(2 * 120 * math.abs(dz)) + 15)
 		want.z = math.Clamp(dz * 1.2, -sink, sink)
 		face = r.heading
+
 		if dz > -500 and not self:GetDoorsOpen() then
 			self:SetDoorsOpen(true)
 		end
+
 		if math.abs(dz) < 6 and math.abs(self.v.z) < 25 then
 			self:SetPhase("hold")
 		end
 	elseif ph == "hold" then
 		local target = r.hub
 		if r.mode == "rope" and not self.tifRiders then
-
 			local t = now - self.phaseAt
 			target = r.hub + Vector(math.sin(t * 0.7) * 10, math.cos(t * 0.53) * 8, math.sin(t * 0.9) * 6)
 		end
+
 		want = (target - self.p) * 2
 		face = r.heading
+
 		if self.holdUntil and now > self.holdUntil then
 			self:SetPhase("climb")
 		end
@@ -574,6 +648,7 @@ function ENT:Fly(dt, now)
 		local t = now - self.phaseAt
 		want = Vector(0, 0, def.climbRate) + fwd * math.min(def.cruiseSpeed * 0.4, t * 120)
 		face = r.heading
+
 		if self.p.z > math.min(up - 100, r.hub.z + 700) then
 			self:SetPhase("depart")
 		end
@@ -601,6 +676,7 @@ function ENT:Fly(dt, now)
 	local rgt = Angle(0, self.yaw, 0):Right()
 	local wantPitch = math.Clamp(self.a:Dot(f) * 0.03 + hv:Dot(f) * 0.005, -16, 14)
 	local wantRoll = math.Clamp(self.a:Dot(rgt) * 0.035, -22, 22)
+
 	if ph == "hold" and r and r.mode == "land" then
 		wantPitch, wantRoll = 0, 0
 	end
@@ -612,11 +688,13 @@ end
 function ENT:Think()
 	local now = CurTime()
 	local dt = engine.TickInterval()
+
 	if self.crashing then
 		self:CrashThink(now, dt)
 	else
 		self:Fly(dt, now)
 		if not IsValid(self) then return end
+
 		local phys = self:GetPhysicsObject()
 		if IsValid(phys) then
 			phys:UpdateShadow(self.p, Angle(self.pitch, self.yaw, self.roll), dt)
@@ -629,6 +707,7 @@ end
 
 function ENT:OnTakeDamage(dmg)
 	if self.crashing or self.exploded then return end
+
 	local n = dmg:GetDamage()
 	if dmg:IsExplosionDamage() then
 		n = n * 1.5
@@ -641,6 +720,7 @@ function ENT:OnTakeDamage(dmg)
 	e:SetMagnitude(1)
 	e:SetScale(1)
 	util.Effect("MetalSpark", e)
+
 	if self:Health() <= 0 then
 		self:Crash(dmg:GetAttacker())
 	end
@@ -654,6 +734,7 @@ function ENT:Crash(attacker)
 	self.crashAt = CurTime()
 	hook.Run("TIF_HeliDestroyed", self, attacker)
 	local r = self.route
+
 	if r and r.onDestroyed then
 		pcall(r.onDestroyed, self, attacker)
 	end
@@ -661,6 +742,7 @@ function ENT:Crash(attacker)
 	local v = self.v
 	self:PhysicsInit(SOLID_VPHYSICS)
 	local phys = self:GetPhysicsObject()
+
 	if IsValid(phys) then
 		phys:SetMass(5000)
 		phys:Wake()
@@ -676,8 +758,8 @@ function ENT:CrashThink(now, dt)
 	local phys = self:GetPhysicsObject()
 	local t = now - self.crashAt
 	self:SetRotor(math.max(0.35, self:GetRotor() - dt * 0.15))
-	if IsValid(phys) then
 
+	if IsValid(phys) then
 		local av = phys:GetAngleVelocity()
 		phys:AddAngleVelocity(Vector(0, 0, (av.z >= 0 and 1 or -1) * 60 * dt))
 		phys:ApplyForceCenter(Vector(0, 0, phys:GetMass() * 260 * dt))
@@ -691,6 +773,7 @@ end
 function ENT:PhysicsCollide(data)
 	if not self.crashing or self.exploded then return end
 	if CurTime() - self.crashAt < 0.4 then return end
+
 	if data.Speed > 120 or (data.HitEntity and data.HitEntity:IsWorld()) then
 		timer.Simple(0, function() if IsValid(self) then self:Explode() end end)
 	end
@@ -700,6 +783,7 @@ local cvWreck = CreateConVar("tif_heli_wreck_time", "120", FCVAR_ARCHIVE, "Secon
 
 function ENT:Explode()
 	if self.exploded then return end
+
 	self.exploded = true
 	local pos = self:GetPos()
 	local att = IsValid(self.attacker) and self.attacker or self
@@ -714,17 +798,21 @@ function ENT:Explode()
 	if def.wreck and util.IsValidModel(def.wreck) then
 		local tr = util.TraceLine({ start = pos + Vector(0, 0, 50), endpos = pos - Vector(0, 0, 2000), filter = self, mask = MASK_SOLID_BRUSHONLY })
 		local w = ents.Create("prop_physics")
+
 		if IsValid(w) then
 			w:SetModel(def.wreck)
 			w:SetPos(tr.HitPos + Vector(0, 0, 4))
 			w:SetAngles(Angle(0, self:GetAngles().y, 0))
 			w:Spawn()
 			local wp = w:GetPhysicsObject()
+
 			if IsValid(wp) then
 				wp:EnableMotion(false)
 			end
+
 			w:Ignite(40, 0)
 			local tm = cvWreck:GetFloat()
+
 			if tm > 0 then
 				SafeRemoveEntityDelayed(w, tm)
 			end

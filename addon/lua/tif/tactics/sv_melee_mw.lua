@@ -51,7 +51,9 @@ local function events(clip, ev)
 	local key = (clip.seq or "") .. ":" .. ev
 	local out = evCache[key]
 	if out then return out end
+
 	out = {}
+
 	for _, t in ipairs(clip.tags or {}) do
 		if t[1] == "MoveEvent" and istable(t[4]) and t[4].MoveEvent == ev then
 			out[#out + 1] = t[2]
@@ -62,6 +64,7 @@ local function events(clip, ev)
 	evCache[key] = out
 	return out
 end
+
 M.Events = events
 
 local function flat_dist(a, b)
@@ -73,6 +76,7 @@ end
 local function face_now(npc, pos)
 	local to = pos - npc:GetPos()
 	to.z = 0
+
 	if to:LengthSqr() > 1 then
 		npc:SetAngles(Angle(0, to:Angle().y, 0))
 	end
@@ -84,6 +88,7 @@ local function strike(npc, target, now)
 	local name = (m.pistol and "mwm_pmelee_" or "mwm_melee_") .. n
 	face_now(npc, target:GetPos())
 	local d = Act.Play(npc, name, { root = true, clear = true })
+
 	if not d then
 		npc.tifMelee = nil
 		return
@@ -91,6 +96,7 @@ local function strike(npc, target, now)
 
 	m.phase, m.clip, m.t0, m.dur = "strike", Act.Clip(npc, name), now, d
 	m.hits, m.done = events(m.clip, "fire"), 0
+
 	if #m.hits == 0 then
 		m.hits = { 0.2 }
 	end
@@ -100,10 +106,13 @@ end
 
 local function land(npc, target)
 	if not IsValid(target) then return end
+
 	local dist, to = flat_dist(npc, target)
 	if dist > M.HIT_RANGE then return end
+
 	to:Normalize()
 	if to:Dot(npc:GetForward()) < 0.5 then return end
+
 	local d = DamageInfo()
 	local amount = target:IsPlayer() and M.DMG_PLAYER or (target.TIFSoldier and M.DMG_SOLDIER or M.DMG_OTHER)
 	d:SetDamage(amount)
@@ -114,6 +123,7 @@ local function land(npc, target)
 	d:SetDamageForce(to * 9000)
 	target:TakeDamageInfo(d)
 	npc:EmitSound("physics/body/body_medium_impact_hard" .. math.random(1, 6) .. ".wav", 75, math.random(95, 105))
+
 	if target:IsPlayer() then
 		target:ViewPunch(Angle(math.Rand(-10, -6), math.Rand(-8, 8), math.Rand(-4, 4)))
 		target:SetVelocity(to * 180 + Vector(0, 0, 40))
@@ -123,13 +133,16 @@ end
 local function end_fight(npc)
 	local m = npc.tifMelee
 	npc.tifMelee = nil
+
 	if m and m.fight then
 		if npc.tifActLock == "melee" then
 			npc.tifActLock = nil
 		end
+
 		if npc.tifAct and (npc.tifAct.name == m.clipName) then
 			Act.Clear(npc)
 		end
+
 		if IsValid(npc) and m.group then
 			npc:SetCollisionGroup(m.group)
 		end
@@ -146,6 +159,7 @@ local function start_fight(att, def, now)
 	local rad = math.rad(dyaw)
 	local c, s = math.cos(rad), math.sin(rad)
 	local spot = def:GetPos() + Vector(F.x * c - F.y * s, F.x * s + F.y * c, 0)
+
 	if spot:DistToSqr(att:GetPos()) > M.FIGHT_SNAP * M.FIGHT_SNAP then
 		return false
 	end
@@ -159,8 +173,10 @@ local function start_fight(att, def, now)
 	local room = util.TraceHull({ start = sp + Vector(0, 0, 4), endpos = sp + Vector(0, 0, 4), mins = Vector(-13, -13, 0),
 		maxs = Vector(13, 13, 64), mask = MASK_NPCSOLID_BRUSHONLY })
 	if room.StartSolid then return false end
+
 	local path = util.TraceLine({ start = att:GetPos() + Vector(0, 0, 40), endpos = sp + Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY })
 	if path.Hit then return false end
+
 	TIF.Move.Stop(att)
 	TIF.Move.Stop(def)
 	att:SetPos(Vector(spot.x, spot.y, g.HitPos.z))
@@ -174,8 +190,10 @@ local function start_fight(att, def, now)
 
 	local da = Act.Play(att, F.att, { root = true, noTrace = true, lockOK = true })
 	local dd = Act.Play(def, F.def, { root = true, noTrace = true, lockOK = true })
+
 	if not (da and dd) then
-		Act.Clear(att) Act.Clear(def)
+		Act.Clear(att)
+		Act.Clear(def)
 		return false
 	end
 
@@ -183,6 +201,7 @@ local function start_fight(att, def, now)
 	local loser = F.loser == "att" and att or def
 	local lclip = Act.Clip(loser, F.loser == "att" and F.att or F.def)
 	local du = events(lclip, "melee_death")[1] or 0.75
+
 	for _, e in ipairs({ { att, "att", F.att, da }, { def, "def", F.def, dd } }) do
 		local npc = e[1]
 		npc.tifMelee = { fight = which, role = e[2], partner = e[2] == "att" and def or att, clipName = e[3],
@@ -194,6 +213,7 @@ local function start_fight(att, def, now)
 
 	att.tifMeleeFightAt, def.tifMeleeFightAt = now, now
 	TIF.Say(att, "attack", 0.6)
+
 	if TIF.Event then
 		TIF.Event("melee", "paired fight ", which, ": ", att:EntIndex(), " vs ", def:EntIndex())
 	end
@@ -207,6 +227,7 @@ local function fight_think(npc, m, now)
 	if m.loserDown then
 		local u = (now - m.t0) / math.max(0.01, m.dur)
 		local fireU = not m.fired and events(Act.Clip(npc, m.clipName) or {}, "fire")[1]
+
 		if fireU and u >= fireU then
 			m.fired = true
 			local def = npc.tifWep and npc.tifWep.def
@@ -214,10 +235,12 @@ local function fight_think(npc, m, now)
 			npc:EmitSound((snd and sound.GetProperties(snd) and snd) or (def and def.sound) or "Weapon_AR2.Single", 95, 100, 1, CHAN_WEAPON)
 			npc:SetTIFShotTime(now)
 		end
+
 		if u >= 1 then
 			end_fight(npc)
 			return false
 		end
+
 		return true
 	end
 
@@ -254,6 +277,7 @@ function M.Busy(npc, now)
 	local m = npc.tifMelee
 	if not m then return false end
 	if m.fight then return fight_think(npc, m, now) end
+
 	local target = m.target
 	if m.phase == "step" then
 		if now - m.t0 >= m.dur then
@@ -264,6 +288,7 @@ function M.Busy(npc, now)
 				return false
 			end
 		end
+
 		return true
 	end
 
@@ -286,6 +311,7 @@ function M.Try(npc, c, now)
 	if not (cvMelee:GetBool() and c and c.visible and IsValid(c.ent)) then
 		return false
 	end
+
 	if now < (npc.tifNextMelee or 0) or not body_ok(npc) or not free(npc, true) then
 		return false
 	end
@@ -309,11 +335,13 @@ function M.Try(npc, c, now)
 	end
 
 	if npc:GetTIFStance() ~= TIF.Anim.STANCE_STAND then return false end
+
 	to:Normalize()
 	local speed = npc.loco:GetVelocity():Length2D()
 	local pistol = is_pistol(npc)
 	local n = math.random(1, 4)
 	local m = { target = target, pistol = pistol, n = n }
+
 	if dist <= M.REACH then
 		npc.tifMelee = m
 		TIF.Move.Stop(npc)
@@ -322,13 +350,19 @@ function M.Try(npc, c, now)
 	end
 
 	local step
-	if speed > M.RUN_SPEED and dist <= M.RUN_REACH then step = pistol and "mwm_prun_to_melee_" or "mwm_run_to_melee_"
-	elseif dist <= M.STEP_REACH then step = pistol and "mwm_pto_melee_" or "mwm_to_melee_" end
+	if speed > M.RUN_SPEED and dist <= M.RUN_REACH then
+		step = pistol and "mwm_prun_to_melee_" or "mwm_run_to_melee_"
+	elseif dist <= M.STEP_REACH then
+		step = pistol and "mwm_pto_melee_" or "mwm_to_melee_"
+	end
+
 	if not step then return false end
+
 	TIF.Move.Stop(npc)
 	face_now(npc, target:GetPos())
 	local d = Act.Play(npc, step .. n, { root = true })
 	if not d then return false end
+
 	m.phase, m.t0, m.dur = "step", now, d
 	npc.tifMelee = m
 	npc.tifFire.want = false
@@ -341,18 +375,22 @@ M.PAIR_CHANCE = 0.9
 local function interruptible(npc)
 	local a = npc.tifAct
 	if not a then return true end
+
 	return (a.trans or a.loop) and not npc.tifCov and not npc.tifCQBActUntil and not npc.tifActLock
 end
 
 local function pair_free(npc)
 	if not body_ok(npc) or not interruptible(npc) then return false end
+
 	return not (npc.tifVeh or npc.tifProne or npc.tifCov or npc.tifDowned or npc.tifSurrendered or npc.tifKnock
 		or npc.tifMelee or npc.tifThrow or npc.tifBipod or npc.tifHeli or npc.tifShield)
 end
+
 M.PairFree = pair_free
 
 function M.PairScan(now)
 	if not (cvMelee:GetBool() and cvFights:GetBool()) then return end
+
 	local list = {}
 	for _, s in ipairs(TIF.Soldiers or {}) do
 		if IsValid(s) and now - (s.tifMeleeFightAt or -99) > M.FIGHT_COOLDOWN and pair_free(s) then
@@ -368,20 +406,23 @@ function M.PairScan(now)
 			if not used[a] and not used[b] and TIF.Relation(a, b) ~= TIF.REL_ALLY then
 				local dist = flat_dist(a, b)
 				local engaged = a.tifPrimary == b or b.tifPrimary == a
+
 				if engaged and dist > M.FIGHT_MIN and dist < M.FIGHT_MAX and math.abs(a:GetPos().z - b:GetPos().z) < 30 then
 					local tr = util.TraceLine({ start = a:GetPos() + Vector(0, 0, 40), endpos = b:GetPos() + Vector(0, 0, 40),
 						mask = MASK_NPCSOLID_BRUSHONLY })
-					if not tr.Hit and math.random() < M.PAIR_CHANCE then
 
+					if not tr.Hit and math.random() < M.PAIR_CHANCE then
 						local att, def = a, b
 						if b.tifPrimary == a and a.tifPrimary ~= b then
 							att, def = b, a
 						end
+
 						for _, s in ipairs({ att, def }) do
 							if s.tifAct and (s.tifAct.trans or s.tifAct.loop) then
 								Act.Clear(s)
 							end
 						end
+
 						if start_fight(att, def, now) or start_fight(def, att, now) then
 							used[a], used[b] = true, true
 						end
@@ -394,6 +435,7 @@ end
 
 timer.Create("tif_melee_pairs", M.PAIR_EVERY, 0, function()
 	if TIF.AIDisabled and TIF.AIDisabled() then return end
+
 	local ok, err = pcall(M.PairScan, CurTime())
 	if not ok then
 		TIF.Error("Melee pairs: ", tostring(err))
@@ -403,11 +445,13 @@ end)
 hook.Add("EntityTakeDamage", "tif_melee_fight", function(ent, dmg)
 	local m = ent.tifMelee
 	if not (m and m.fight) then return end
+
 	local att = dmg:GetAttacker()
 	if IsValid(att) and att == m.partner then return end
 
 	local p = m.partner
 	end_fight(ent)
+
 	if IsValid(p) and p.tifMelee and p.tifMelee.partner == ent then
 		end_fight(p)
 	end
