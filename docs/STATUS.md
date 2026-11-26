@@ -1147,6 +1147,29 @@ parts 11, slots + pose 12 ms/s; arm IK 53 us a solve (was 74-99).
     never both of a pair, at most every C.UNSTACK_GAP (2 s).
   - Move.SPREAD_R 56 -> 72, spread rings 64 -> 80 per ring.
   Harness crowd 43 (+6).
+- Oden with a foregrip (user: "the gun pose features a grip but the model doesn't, i simply wanna put one on the model"):
+  tif_gunbake roster oden + attachment_vm_ar_asierra12_vertgrip01, re-exported in game, rebuilt (lod0 6582 -> 7072 tris,
+  atlas 7 -> 8 tiles). gun_compile HAND_PIN keeps its hand points as they were (grip_v 11.365 -0.924 0.645, no grip_l
+  from the grip part), gun_holds not rerun: same hold, same class weapon_tifmw_oden. Old Oden backed up in
+  K:\jimmyproject\_addon_backups\2026-11-26_oden.
+- Eyes (user: "how do we direct eyes rn" ... "ok do that"): only codport-retarget / modular faction models had eye code
+  (sh_modular M.Eyes: 200 ahead of the head bone each frame); the four built-in factions (host-skeleton models) had none.
+  Server: tif_soldier Think networks NW2Vector tif_look (shooting at, else tifAimAt, else tifFace; resent on a 32 u move,
+  zero when there's nothing). Client npc/cl_eyes.lua TIF.Eyes.Update, from cl_body right after the bone build (on-screen
+  soldiers only), within E.RANGE 900: the eyes frame = host head bone x a per-model offset to the faction model's "eyes"
+  attachment (measured once, no extra bone build), target = the look point clamped to a 40 deg cone round the face's
+  forward, else straight ahead; SetEyeTarget in the eyes attachment's space. M.Eyes steps aside for models it handles
+  (tifEyesByBody). tif_eyes 0: off. Harness eyes 8 (new).
+- Panic fire (user: "i love the retreating as it is right now ... however the no shooting makes it really awkward when
+  forces then get close to each other for a push ... let broken people shoot panicked"): the retreat is unchanged (flee
+  point, hiding, 12 s minimum, recovery in quiet, surrender off). sv_morale BrokenThink sets npc.tifPanic (cleared when
+  the state leaves broken) and:
+  - running, enemy seen within MO.PANIC_RUN (400): an over-the-shoulder burst every 1-2 s through the covering-burst
+    path (tifCoverFire: the run-and-gun clips, back-left / back-right at 135 deg), still sprinting away;
+  - hiding, enemy seen within MO.PANIC_HIDE (1000): aim mode, fires from the crouch (tifFire.want / aimPos).
+  sv_weapon under tifPanic: spread x W.PANIC_SPREAD (3), bursts W.PANIC_BURST 6-12 (auto) / W.PANIC_SEMI 2-4, pauses x
+  W.PANIC_PAUSE (0.45) on every gun kind, reloads x W.PANIC_RELOAD (1.5). No grenades / peeks / weapon switches (the
+  brain's engage doesn't run). Harness morale 17 (+9).
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

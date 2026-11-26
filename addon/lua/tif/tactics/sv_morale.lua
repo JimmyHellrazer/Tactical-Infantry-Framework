@@ -50,6 +50,7 @@ local function set_state(npc, st, now)
 	npc.tifMoraleState = st
 	npc.tifMoraleSince = now
 	npc:SetNW2String("tif_morale", st)
+	if st ~= "broken" then npc.tifPanic = nil end
 	if st == "broken" then TIF.Say(npc, "retreat", 0.6) end
 end
 
@@ -203,11 +204,23 @@ end
 -- Broken -----------------------------------------------------------------------------------------
 
 -- Returns true while a broken soldier's fear is in charge.
+MO.PANIC_HIDE, MO.PANIC_RUN = 1000, 400
+MO.PANIC_RUN_GAP = { 1.0, 2.0 }
+
+local function panic_target(npc, c, now, range)
+	if not (c and IsValid(c.ent)) then return nil end
+	if not (c.visible or now - (c.seenAt or -99) < 1) then return nil end
+	if npc:GetPos():DistToSqr(c.pos) > range * range then return nil end
+	return c.visible and c.ent:WorldSpaceCenter() or (c.pos + Vector(0, 0, 40))
+end
+
 function MO.BrokenThink(npc, c, now)
 	if not MO.Enabled() or npc.tifMoraleState ~= "broken" then
 		npc.tifFlee = nil
+		npc.tifPanic = nil
 		return false
 	end
+	npc.tifPanic = true
 	local f = npc.tifFire
 	f.want = false
 	local threat = c and c.pos
@@ -236,16 +249,32 @@ function MO.BrokenThink(npc, c, now)
 		if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "broken") end
 	end
 	npc.tifMode = A.MODE_RELAXED
+	local W = TIF.Weapon
 	if fl.goal and npc:GetPos():DistToSqr(fl.goal) > 80 * 80 then
 		npc.tifAction = "broken: running"
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil
 		if not Move.SetGoal(npc, fl.goal, "sprint", "flee") then fl.goal = nil end
+		local aim = panic_target(npc, c, now, MO.PANIC_RUN)
+		local w = npc.tifWep
+		if aim and w and w.reloadEnd <= 0 and w.ammo > 0 and not (w.def and w.def.projectile)
+			and now >= (npc.tifPanicNext or 0) and not (W.CoverFiring and W.CoverFiring(npc, now)) then
+			npc.tifCoverFire = { untilT = now + math.Rand(0.7, 1.1), aim = aim, shots = math.random(5, 9) }
+			npc.tifPanicNext = now + math.Rand(MO.PANIC_RUN_GAP[1], MO.PANIC_RUN_GAP[2])
+			w.burstLeft = 0
+			npc.tifAction = "broken: running, firing back"
+		end
 	else
 		npc.tifAction = "broken: hiding"
 		npc.tifStance = A.STANCE_CROUCH
 		Move.Stop(npc)
 		npc.tifFace = threat and (threat + Vector(0, 0, 40)) or nil
+		local aim = panic_target(npc, c, now, MO.PANIC_HIDE)
+		if aim then
+			npc.tifMode = A.MODE_AIM
+			f.want, f.aimPos, f.target = true, aim, c.ent
+			npc.tifAction = "broken: panic firing"
+		end
 	end
 	return true
 end

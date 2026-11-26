@@ -102,6 +102,7 @@ local MANIFEST = {
 	"npc/cl_foley.lua",
 	"npc/cl_gunhold.lua",
 	"npc/cl_feet.lua",
+	"npc/cl_eyes.lua",
 	"npc/cl_flashlight.lua",
 	"npc/sv_rescue.lua",
 

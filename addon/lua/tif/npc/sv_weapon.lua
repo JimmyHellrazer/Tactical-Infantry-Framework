@@ -237,7 +237,7 @@ function W.StartReload(npc)
 	if not w or w.reloadEnd > 0 or w.ammo >= w.clip then return end
 	if w.rockets and w.rockets <= w.ammo then return end
 	local now = CurTime()
-	w.reloadEnd = now + ((w.def and w.def.reload_time) or 2.2)
+	w.reloadEnd = now + ((w.def and w.def.reload_time) or 2.2) * (npc.tifPanic and W.PANIC_RELOAD or 1)
 	w.burstLeft = 0
 	npc:SetTIFReloadStart(now)
 	if w.ammo <= 0 and not w.rockets then TIF.Say(npc, "no_ammo", 0.7) else TIF.Say(npc, "reloading", 0.65) end
@@ -309,7 +309,14 @@ local function kind_of(w)
 end
 
 -- Rounds in the next burst. braced: on a bipod / prone with an LMG. walking: moving at walk pace.
+W.PANIC_SPREAD, W.PANIC_PAUSE, W.PANIC_RELOAD = 3, 0.45, 1.5
+W.PANIC_BURST, W.PANIC_SEMI = { 6, 12 }, { 2, 4 }
+
 local function burst_size(npc, w, def, dist, braced, walking)
+	if npc.tifPanic then
+		local r = (def and def.auto) and W.PANIC_BURST or W.PANIC_SEMI
+		return math.random(r[1], r[2])
+	end
 	local arch = npc.tifArch
 	local b = arch.burst
 	-- The gun's own semi-auto pattern (W.SEMI), whoever carries it. Walking: at most a pair.
@@ -360,16 +367,17 @@ local function pause(npc, w, def, dist, walking)
 	if S then
 		local _, i = band(dist)
 		local p = S.pause[i]
-		return math.max(def.rate or 0.1, math.Rand(p[1], p[2]) * (walking and 1.2 or 1))
+		return math.max(def.rate or 0.1, math.Rand(p[1], p[2]) * (walking and 1.2 or 1) * (npc.tifPanic and W.PANIC_PAUSE or 1))
 	end
 	local P = W.PROFILES[kind_of(w)] or W.PROFILES.rifle
 	local _, i = band(dist)
 	if kind_of(w) == "pistol" then
 		local Q = W.PISTOL
-		return math.Rand(Q.gap[1], Q.gap[2]) * P.pause[i] * (walking and 1.2 or 1)
+		return math.Rand(Q.gap[1], Q.gap[2]) * P.pause[i] * (walking and 1.2 or 1) * (npc.tifPanic and W.PANIC_PAUSE or 1)
 	end
 	local p = npc.tifArch.burstPause
 	local t = math.Rand(p[1], p[2]) * P.pause[i] * (walking and 1.3 or 1)
+	if npc.tifPanic then t = t * W.PANIC_PAUSE end
 	return math.max(def and def.rate or 0.1, t)
 end
 
@@ -517,6 +525,7 @@ local function spread_deg(npc, now)
 	if npc.tifBlind then deg = deg * 4 end
 	-- Shaken soldiers shoot worse.
 	if TIF.Morale and TIF.Morale.Shaken(npc) then deg = deg * 1.25 end
+	if npc.tifPanic then deg = deg * W.PANIC_SPREAD end
 	-- Each round of a burst drifts further than the last (less with a braced LMG); covering bursts are
 	-- barely aimed.
 	local w = npc.tifWep

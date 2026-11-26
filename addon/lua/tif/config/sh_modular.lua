@@ -914,7 +914,7 @@ if CLIENT then
 					f:InvalidateBoneCache()
 					M.Healed = (M.Healed or 0) + 1
 				end
-				if f.tifMap and M.NeedsRetarget(f:GetModel()) and not ent:IsDormant() then M.Eyes(f) end
+				if f.tifMap and M.NeedsRetarget(f:GetModel()) and not ent:IsDormant() and not f.tifEyesByBody then M.Eyes(f) end
 				local str = ent:GetNW2String("tif_parts", "")
 				if str ~= "" or Parts[st.follower] then
 					local rec = M.Ensure(st.follower, str, ent)

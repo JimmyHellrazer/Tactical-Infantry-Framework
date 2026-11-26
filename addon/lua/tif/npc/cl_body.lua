@@ -1729,6 +1729,7 @@ local function update(ent, st, dt, now)
 		if TIF.GunHold then TIF.GunHold.Prepare(ent, st, now) end
 		ent:SetupBones()
 		place_gun_vb(st, ent)
+		if TIF.Eyes then TIF.Eyes.Update(ent, st) end
 		-- Baked MW guns: the mag out / in the left hand / back during reloads.
 		if TIF.GunMag and not st.hideGun then TIF.GunMag.Update(ent, st) end
 		-- The primary on the sling while the sidearm is out.

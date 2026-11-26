@@ -399,6 +399,18 @@ function ENT:Think()
 		end
 		self.tifPitch = math.Approach(self.tifPitch or 0, want, 220 * dt)
 		if math.abs(self.tifPitch - self:GetTIFAimPitch()) > 0.75 then self:SetTIFAimPitch(self.tifPitch) end
+		local fw = self.tifFire
+		local look = (fw and fw.want and fw.aimPos) or self.tifAimAt or self.tifFace
+		local sent = self.tifLookSent
+		if look then
+			if not sent or sent:DistToSqr(look) > 32 * 32 then
+				self.tifLookSent = Vector(look)
+				self:SetNW2Vector("tif_look", self.tifLookSent)
+			end
+		elseif sent then
+			self.tifLookSent = nil
+			self:SetNW2Vector("tif_look", vector_origin)
+		end
 		TIF.Weapon.Think(self, now)
 		if now > (self.tifNextSlotCheck or 0) then
 			self.tifNextSlotCheck = now + 2

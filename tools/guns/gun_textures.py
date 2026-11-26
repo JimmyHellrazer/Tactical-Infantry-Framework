@@ -20,7 +20,27 @@ import os
 import re
 import numpy as np
 from PIL import Image
-from srctools.vtf import VTF
+try:
+    from srctools.vtf import VTF
+except ImportError:
+    VTF = None
+import subprocess
+import tempfile
+VTFCMD = r"K:\MWBTOOL\vtfcmd\VTFCmd.exe"
+
+
+def vtf_image(p):
+    if VTF is not None:
+        with open(p, "rb") as f:
+            vtf = VTF.read(f)
+            vtf.load()
+            return vtf.get().to_PIL().convert("RGBA")
+    out = tempfile.mkdtemp(prefix="tifvtf_")
+    subprocess.run([VTFCMD, "-file", os.path.normpath(p), "-output", os.path.normpath(out), "-exportformat", "png", "-silent"], check=True)
+    tga = os.path.join(out, os.path.splitext(os.path.basename(p))[0] + ".png")
+    img = Image.open(tga).convert("RGBA")
+    img.load()
+    return img
 
 ADDONS = r"K:\SteamLibrary\steamapps\common\GarrysMod\garrysmod\addons"
 GAME = r"K:\SteamLibrary\steamapps\common\GarrysMod\garrysmod"
@@ -73,10 +93,7 @@ def load_texture(name, size):
     p = find(name + ".vtf") if name else None
     if not p:
         return None
-    with open(p, "rb") as f:
-        vtf = VTF.read(f)
-        vtf.load()
-        img = vtf.get().to_PIL().convert("RGBA")
+    img = vtf_image(p)
     if img.size == (size, size):
         return img
     # Colour and alpha resized apart: Pillow resizes RGBA premultiplied, and un-premultiplying where alpha is near

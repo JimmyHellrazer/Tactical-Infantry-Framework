@@ -23,6 +23,9 @@ VTEX = os.path.join(BIN, "vtex.exe")
 DATA = os.path.join(GAME, "data", "tif_gunbake")
 BUILD = r"K:\jimmyproject\tif_guns\build"
 ADDON = os.path.join(GAME, "addons", "tactical_infantry_framework")  # (TIF 0.37.0: guns ship in the base)
+HAND_PIN = {
+    "oden": {"grip_v": (11.365, -0.924, 0.645), "grip_l": False},
+}
 
 VMT = '''"VertexLitGeneric"
 {
@@ -154,12 +157,18 @@ def model(gid, meta, lod1, lod2):
     # (tag_folding_grip), along the gun's down (the muzzle tag's up is the gun's top).
     # (Only with a foregrip fitted: tag_folding_grip is the rail mount, on bare barrels too: the M680 had one.)
     asked = " ".join(meta.get("atts_asked") or [])
-    if "tag_folding_grip" in t and flash and ("vertgrip" in asked or "angledgrip" in asked or gid in ("oden",)):
+    pin = HAND_PIN.get(gid)
+    if pin:
+        if pin.get("grip_v"):
+            lines.append('$attachment "grip_v" "tif_gun" %.3f %.3f %.3f rotate 0 0 0' % pin["grip_v"])
+    elif "tag_folding_grip" in t and flash and ("vertgrip" in asked or "angledgrip" in asked or gid in ("oden",)):
         _, up = ang_vectors(far(t[flash])[1])
         gp, _ = t["tag_folding_grip"][-1]
         gv = tuple(gp[i] - up[i] * 2.8 for i in range(3))
         lines.append('$attachment "grip_v" "tif_gun" %.3f %.3f %.3f rotate 0 0 0' % gv)
     for name in ("tag_ik_loc_le", "tag_ik_hand_le"):
+        if pin and not pin.get("grip_l", True):
+            break
         if name in t:
             pos, _ = t[name][-1]  # the last one: a foregrip part's own, if it has one
             lines.append('$attachment "grip_l" "tif_gun" %.3f %.3f %.3f rotate 0 0 0' % tuple(pos))
