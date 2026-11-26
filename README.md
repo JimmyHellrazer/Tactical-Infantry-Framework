@@ -42,7 +42,7 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
   talking through a firefight, name what they're up against (machine gun, sniper, RPG), call friendly fire and
   their own wounds.
 - Medics, casualties and revives.
-- Command your own squad (`tif_menu`): follow, hold, advance, take cover, clear a building.
+- NEEDS OVERHAUL Command your own squad (`tif_menu`): follow, hold, advance, take cover, clear a building.
 
 **Room clearing (CQB)**
 - Squads stack on doors and breach them: opened by hand, kicked, sledgehammered, or cracked for a flashbang. Open
