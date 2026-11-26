@@ -14,7 +14,7 @@ Modern Warfare-style NextBot military AI for Garry's Mod. Drop `addon/` into `ga
 
 1. Ensure the map has a navmesh (run `nav_generate` in singleplayer if soldiers don't move). Included test maps: `tif_cqb`, `tif_range`.
 2. Spawn soldiers/squads via **Spawn Menu > NPCs > TIF - ...**.
-3. Configure settings via **Spawn Menu > Utilities > Tactical Infantry** (`tif_settings`) or run `tif_selftest`.
+3. Configure settings via **Spawn Menu > Options > Tactical Infantry** (`tif_settings`) or run `tif_selftest`.
 4. Optional addons: **Glide** (vehicles), **Decent Vehicle** (road waypoints).
 
 ## Reporting Bugs
