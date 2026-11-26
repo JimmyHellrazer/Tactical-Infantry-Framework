@@ -8,10 +8,13 @@ local Prof = TIF.Prof
 TIF.Supp = TIF.Supp or {}
 local S = TIF.Supp
 
-local NEAR = 90           -- a bullet passing within this distance of the chest counts
-local PER_ROUND = 0.16    -- pressure from one close round at zero distance
-local DECAY = 0.22        -- per second, before resistance
+local NEAR = 90
+local NEAR_SQR = NEAR * NEAR
+local PER_ROUND = 0.16
+local DECAY = 0.22
 local MAX_RANGE = 8000
+local BLAST_RANGE = 450
+local BLAST_RANGE_SQR = BLAST_RANGE * BLAST_RANGE
 
 function S.Add(npc, amount, srcPos, shooter)
 	if not IsValid(npc) or npc.tifDead then return end
@@ -45,41 +48,64 @@ end
 -- lay over whatever he's doing (cl_body, from NW2 tif_whizby_t / _n): standing, walking or crouched. He only checks
 -- his fire for a moment.
 S.WHIZBY_CHANCE, S.WHIZBY_COOLDOWN = 0.3, 4
+local whizbyCount = {}
 function S.Whizby(npc, now)
 	if now < (npc.tifNextWhizby or 0) or math.random() > S.WHIZBY_CHANCE then return end
 	npc.tifNextWhizby = now + S.WHIZBY_COOLDOWN
 	if npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifKnock or npc.tifDying then return end
 	if npc.loco:GetVelocity():Length2DSqr() > 200 * 200 then return end
 	local host = npc.tifHomeHost
-	if not (host and TIF.GTG.Clip("mwzw_1", host)) then return end
-	local n = 0
-	for i = 1, 9 do if TIF.GTG.Clip("mwzw_" .. i, host) then n = i end end
+	if not host then return end
+	local n = whizbyCount[host]
+	if n == nil then
+		n = 0
+		for i = 1, 9 do if TIF.GTG.Clip("mwzw_" .. i, host) then n = i end end
+		whizbyCount[host] = n
+	end
+	if n == 0 then return end
 	npc:SetNW2Int("tif_whizby_n", math.random(n))
 	npc:SetNW2Float("tif_whizby_t", now)
 	npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + 0.3)
 end
 
--- Every bullet: who did it pass close to? Plain vector math, no traces.
 hook.Add("EntityFireBullets", "tif_suppression", function(shooter, data)
-	if #TIF.Soldiers == 0 or not data.Dir then return end
+	local soldiers = TIF.Soldiers
+	local n = #soldiers
+	if n == 0 or not data.Dir then return end
 	if IsValid(shooter) and shooter:IsPlayer() and TIF.IgnorePlayers() then return end
 	Prof.Begin("suppression")
 	local src = data.Src or shooter:GetPos()
-	local dir = Vector(data.Dir)
-	dir:Normalize()
+	local d = data.Dir
+	local dx, dy, dz = d.x, d.y, d.z
+	local dl = math.sqrt(dx * dx + dy * dy + dz * dz)
+	if dl > 1e-6 then
+		local inv = 1 / dl
+		dx, dy, dz = dx * inv, dy * inv, dz * inv
+	end
+	local sx, sy, sz = src.x, src.y, src.z
 	local maxD = math.min(data.Distance or MAX_RANGE, MAX_RANGE)
 	local rounds = math.Clamp(data.Num or 1, 1, 8)
 	local dmg = data.Damage and data.Damage > 0 and math.Clamp(data.Damage / 25, 0.5, 2) or 1
-	for _, npc in ipairs(TIF.Soldiers) do
+	local mult = PER_ROUND * dmg * math.sqrt(rounds)
+	local ally = TIF.REL_ALLY
+	local relation = TIF.Relation
+	local now
+	for i = 1, n do
+		local npc = soldiers[i]
 		if npc ~= shooter and IsValid(npc) and not npc.tifDead then
-			local v = npc:WorldSpaceCenter() - src
-			local t = v:Dot(dir)
+			local c = npc:WorldSpaceCenter()
+			local vx, vy, vz = c.x - sx, c.y - sy, c.z - sz
+			local t = vx * dx + vy * dy + vz * dz
 			if t > 60 and t < maxD then
-				local perp = (v - dir * t):Length()
-				if perp < NEAR and TIF.Relation(npc, shooter) ~= TIF.REL_ALLY then
-					S.Add(npc, (1 - perp / NEAR) * PER_ROUND * dmg * math.sqrt(rounds), src, shooter)
-					-- A close one: sometimes MW19's whizby flinch (standing, free, not in cover).
-					if perp < NEAR * 0.5 and S.Whizby then S.Whizby(npc, CurTime()) end
+				local px, py, pz = vx - dx * t, vy - dy * t, vz - dz * t
+				local perp2 = px * px + py * py + pz * pz
+				if perp2 < NEAR_SQR and relation(npc, shooter) ~= ally then
+					local perp = math.sqrt(perp2)
+					S.Add(npc, (1 - perp / NEAR) * mult, src, shooter)
+					if perp < NEAR * 0.5 and S.Whizby then
+						now = now or CurTime()
+						S.Whizby(npc, now)
+					end
 				end
 			end
 		end
@@ -91,14 +117,18 @@ local lastBlast = { pos = Vector(), time = 0 }
 hook.Add("EntityTakeDamage", "tif_suppression", function(target, dmg)
 	if not dmg:IsDamageType(DMG_BLAST) then return end
 	local pos = dmg:GetDamagePosition()
-	-- One explosion damages many entities; count it once.
 	local now = CurTime()
 	if now - lastBlast.time < 0.15 and lastBlast.pos:DistToSqr(pos) < 64 * 64 then return end
 	lastBlast.pos, lastBlast.time = pos, now
-	for _, npc in ipairs(TIF.Soldiers) do
+	local soldiers = TIF.Soldiers
+	local att = dmg:GetAttacker()
+	for i = 1, #soldiers do
+		local npc = soldiers[i]
 		if IsValid(npc) and not npc.tifDead then
-			local d = npc:GetPos():Distance(pos)
-			if d < 450 then S.Add(npc, 0.7 * (1 - d / 450), pos, dmg:GetAttacker()) end
+			local d2 = npc:GetPos():DistToSqr(pos)
+			if d2 < BLAST_RANGE_SQR then
+				S.Add(npc, 0.7 * (1 - math.sqrt(d2) / BLAST_RANGE), pos, att)
+			end
 		end
 	end
 end)

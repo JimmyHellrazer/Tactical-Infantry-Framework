@@ -19,6 +19,9 @@ local SUSPICIOUS_TIMEOUT = 20
 local ALERTED_TIMEOUT = 30
 local HEIGHTENED_TIME = 90
 local UP40 = Vector(0, 0, 40)
+local UP60 = Vector(0, 0, 60)
+local HEAD_OFF = Vector(0, 0, 3)
+local CHEST_OFF = Vector(0, 0, 6)
 
 function B.Init(npc)
 	npc.tifAware = AW.UNAWARE
@@ -43,7 +46,8 @@ local function look_random(npc, around, spread, now)
 	npc.tifNextLook = now + math.Rand(2.5, 5)
 	local yaw = (around or npc:GetAngles().y) + math.Rand(-spread, spread)
 	local a = math.rad(yaw)
-	npc.tifFace = npc:GetPos() + Vector(math.cos(a), math.sin(a), 0) * 300 + Vector(0, 0, 60)
+	local p = npc:GetPos()
+	npc.tifFace = Vector(p.x + math.cos(a) * 300, p.y + math.sin(a) * 300, p.z + 60)
 end
 
 local function aim_point(npc, c, now)
@@ -52,8 +56,8 @@ local function aim_point(npc, c, now)
 		npc.tifAimPickAt = now + math.Rand(0.8, 2)
 		npc.tifAimHead = math.random() < npc.tifArch.headshotChance
 	end
-	if npc.tifAimHead then return TIF.EyeOf(e) - Vector(0, 0, 3) end
-	return e:WorldSpaceCenter() + Vector(0, 0, 6)
+	if npc.tifAimHead then return TIF.EyeOf(e) - HEAD_OFF end
+	return e:WorldSpaceCenter() + CHEST_OFF
 end
 
 -- How to move, picked per soldier and kept for a few seconds, so a squad doesn't all walk the
@@ -103,14 +107,17 @@ local LR_QUIET, LR_ENTER, LR_ENTER_CROSS, LR_MIN = 2.5, 0.4, 0.15, 0.8
 local CROSS_R, CROSS_W = 170, 26
 local function mate_across(npc)
 	local sq = npc.tifSquad
-	if not sq or not sq.members then return false end
+	local members = sq and sq.members
+	if not members then return false end
 	local pos, fwd = npc:GetPos(), npc:GetForward()
-	for _, m in ipairs(sq.members) do
+	for i = 1, #members do
+		local m = members[i]
 		if m ~= npc and IsValid(m) and not m.tifDead then
-			local d = m:GetPos() - pos
-			local ahead = d.x * fwd.x + d.y * fwd.y
-			if ahead > 8 and ahead < CROSS_R and math.abs(d.z) < 60 then
-				local side = d.x * fwd.y - d.y * fwd.x
+			local mp = m:GetPos()
+			local dx, dy, dz = mp.x - pos.x, mp.y - pos.y, mp.z - pos.z
+			local ahead = dx * fwd.x + dy * fwd.y
+			if ahead > 8 and ahead < CROSS_R and math.abs(dz) < 60 then
+				local side = dx * fwd.y - dy * fwd.x
 				if math.abs(side) < CROSS_W then return true end
 			end
 		end

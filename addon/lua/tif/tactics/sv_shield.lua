@@ -342,12 +342,14 @@ local function tick_scene(sc, now)
 end
 
 -- A soldier hostile to the captor takes the shot (see SH.AI_SHOT_AFTER). True if it landed.
-local shotTr = { mask = MASK_SHOT }
+local shotOut = {}
+local shotTr = { mask = MASK_SHOT, output = shotOut }
+local SH_BONE_M = Matrix and Matrix()
 function SH.AIShot(sc, now)
 	sc.nextAIShot = now + SH.AI_SHOT_RETRY
 	local npc, civ = sc.captor, sc.hostage
 	local hb = npc:LookupBone("ValveBiped.Bip01_Head1")
-	local hm = hb and npc:GetBoneMatrix(hb)
+	local hm = hb and (TIF.CopyBone and TIF.CopyBone(npc, hb, SH_BONE_M) or npc:GetBoneMatrix(hb))
 	local head = hm and hm:GetTranslation() or (npc:GetPos() + Vector(0, 0, 64))
 	local best, bd
 	for _, s in ipairs(TIF.Soldiers or {}) do

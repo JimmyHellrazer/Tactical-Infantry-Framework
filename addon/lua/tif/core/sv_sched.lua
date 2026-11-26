@@ -44,11 +44,14 @@ function B.Take(kind, n)
 	return false
 end
 
+local CurTime, SysTime, IsValid = CurTime, SysTime, IsValid
+local math_min, math_rand = math.min, math.Rand
+
 function TIF.Register(npc)
 	local list = TIF.Soldiers
-	for _, e in ipairs(list) do if e == npc then return end end
+	for i = 1, #list do if list[i] == npc then return end end
 	list[#list + 1] = npc
-	npc.tifNextThink = CurTime() + math.Rand(0, 0.3)
+	npc.tifNextThink = CurTime() + math_rand(0, 0.3)
 	npc.tifTier = 1
 end
 
@@ -58,9 +61,9 @@ end
 
 local errorsLogged = 0
 local function think_one(npc, now)
-	local dt = math.min(1, now - (npc.tifLastThink or now))
+	local dt = math_min(1, now - (npc.tifLastThink or now))
 	npc.tifLastThink = now
-	npc.tifNextThink = now + S.TIER_INTERVAL[npc.tifTier or 2] * math.Rand(0.9, 1.1)
+	npc.tifNextThink = now + S.TIER_INTERVAL[npc.tifTier or 2] * math_rand(0.9, 1.1)
 	local t0 = SysTime()
 	local ok, err = pcall(npc.TIFThink, npc, dt)
 	npc.tifThinkMs = (SysTime() - t0) * 1000
@@ -71,21 +74,24 @@ local function think_one(npc, now)
 	end
 end
 
--- Tiers: decided by distance to the nearest player and awareness.
 local function update_tiers()
 	local players = player.GetHumans()
-	for _, npc in ipairs(TIF.Soldiers) do
+	local np = #players
+	local soldiers = TIF.Soldiers
+	local awareEngaged, awareUnaware = TIF.AWARE.ENGAGED, TIF.AWARE.UNAWARE
+	for i = 1, #soldiers do
+		local npc = soldiers[i]
 		if IsValid(npc) then
 			local pos, best = npc:GetPos(), math.huge
-			for _, ply in ipairs(players) do
-				local d = pos:DistToSqr(ply:GetPos())
+			for j = 1, np do
+				local d = pos:DistToSqr(players[j]:GetPos())
 				if d < best then best = d end
 			end
 			local aware = npc.tifAware or 0
 			local tier
-			if aware == TIF.AWARE.ENGAGED then tier = best < 2500 * 2500 and 0 or 1
-			elseif aware > TIF.AWARE.UNAWARE then tier = 1
-			else tier = best < 3000 * 3000 and 2 or 3 end
+			if aware == awareEngaged then tier = best < 6250000 and 0 or 1
+			elseif aware > awareUnaware then tier = 1
+			else tier = best < 9000000 and 2 or 3 end
 			npc.tifTier = tier
 		end
 	end

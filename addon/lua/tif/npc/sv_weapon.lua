@@ -438,13 +438,15 @@ end
 local CHEST_Z = { [0] = 42, 30, 10 }
 local BODY = 24
 local PAST_TARGET = 500
+local CHEST_VEC = Vector()
 
 local function in_cone(src, dir, dist, tanc, chest)
-	local rel = chest - src
-	local along = rel:Dot(dir)
+	local rx, ry, rz = chest.x - src.x, chest.y - src.y, chest.z - src.z
+	local along = rx * dir.x + ry * dir.y + rz * dir.z
 	if along < 16 or along > dist + PAST_TARGET then return false end
-	local lateral = (rel - dir * along):Length()
-	return lateral < BODY + along * tanc
+	local rad = BODY + along * tanc
+	local lat2 = rx * rx + ry * ry + rz * rz - along * along
+	return lat2 < rad * rad
 end
 
 local function ally_in_line(npc, src, aim, deg)
@@ -452,36 +454,44 @@ local function ally_in_line(npc, src, aim, deg)
 	local dist = dir:Length()
 	if dist < 1 then return nil end
 	dir:Mul(1 / dist)
-	-- Nearly every round lands within ~0.7 of the cone's edge.
 	local tanc = math.tan(math.rad(math.min(deg, 60) * 0.7))
-	local reach2 = (dist + PAST_TARGET) ^ 2
-	for _, e in ipairs(TIF.Soldiers) do
-		if e ~= npc and IsValid(e) and not e.tifDead and e:GetPos():DistToSqr(src) < reach2
-			and TIF.Relation(npc, e) == TIF.REL_ALLY then
-			local chest = e:GetPos() + Vector(0, 0, CHEST_Z[e:GetTIFStance()] or 42)
-			if in_cone(src, dir, dist, tanc, chest) then return e end
+	local reach = dist + PAST_TARGET
+	local reach2 = reach * reach
+	local ally = TIF.REL_ALLY
+	local relation = TIF.Relation
+	local soldiers = TIF.Soldiers
+	for i = 1, #soldiers do
+		local e = soldiers[i]
+		if e ~= npc and IsValid(e) and not e.tifDead then
+			local ep = e:GetPos()
+			if ep:DistToSqr(src) < reach2 and relation(npc, e) == ally then
+				CHEST_VEC.x, CHEST_VEC.y, CHEST_VEC.z = ep.x, ep.y, ep.z + (CHEST_Z[e:GetTIFStance()] or 42)
+				if in_cone(src, dir, dist, tanc, CHEST_VEC) then return e end
+			end
 		end
 	end
 	for _, p in player.Iterator() do
-		if p:Alive() and p:GetPos():DistToSqr(src) < reach2 and TIF.Relation(npc, p) == TIF.REL_ALLY
+		if p:Alive() and p:GetPos():DistToSqr(src) < reach2 and relation(npc, p) == ally
 			and in_cone(src, dir, dist, tanc, p:WorldSpaceCenter()) then
 			return p
 		end
 	end
-	-- (0.38.15) allied HL2 / addon NPCs (rebels with the players' side...) too
-	for _, e in ipairs(TIF.NPCs or {}) do
-		if IsValid(e) and e:Health() > 0 and e:GetPos():DistToSqr(src) < reach2 and TIF.Relation(npc, e) == TIF.REL_ALLY
-			and in_cone(src, dir, dist, tanc, e:WorldSpaceCenter()) then
-			return e
+	local npcs = TIF.NPCs
+	if npcs then
+		for i = 1, #npcs do
+			local e = npcs[i]
+			if IsValid(e) and e:Health() > 0 and e:GetPos():DistToSqr(src) < reach2 and relation(npc, e) == ally
+				and in_cone(src, dir, dist, tanc, e:WorldSpaceCenter()) then
+				return e
+			end
 		end
 	end
-	-- (0.38.20) a hostage held as a human shield (TIF.Shield): nobody but her captor fires through her; the
-	-- others wait for a clean line on him (she kneels: her chest ~26 in up)
 	if TIF.Shield and next(TIF.Shield.List) ~= nil then
 		for h, captor in pairs(TIF.Shield.Hostages()) do
-			-- (only between him and the target, not past it: misses carrying on behind don't count here)
-			local hc = h:GetPos() + Vector(0, 0, 26)
-			if captor ~= npc and (hc - src):Dot(dir) < dist + 30 and in_cone(src, dir, dist, tanc, hc) then
+			local hp = h:GetPos()
+			CHEST_VEC.x, CHEST_VEC.y, CHEST_VEC.z = hp.x, hp.y, hp.z + 26
+			if captor ~= npc and ((CHEST_VEC.x - src.x) * dir.x + (CHEST_VEC.y - src.y) * dir.y + (CHEST_VEC.z - src.z) * dir.z) < dist + 30
+				and in_cone(src, dir, dist, tanc, CHEST_VEC) then
 				return h
 			end
 		end
@@ -540,14 +550,15 @@ local function spread_deg(npc, now)
 	return deg / math.max(0.1, cvAccuracy:GetFloat())
 end
 
--- Outdoors (open sky above): picks the MW atmosphere tail. Cached a few seconds per soldier.
-local skyTrace = { mask = MASK_SOLID_BRUSHONLY }
+local skyStart, skyEnd, skyOut = Vector(), Vector(), {}
+local skyTrace = { start = skyStart, endpos = skyEnd, mask = MASK_SOLID_BRUSHONLY, output = skyOut }
 function W.Outdoors(npc)
 	local now = CurTime()
 	if (npc.tifOutAt or 0) > now then return npc.tifOut end
 	npc.tifOutAt = now + 3
-	local p = npc:GetPos() + Vector(0, 0, 64)
-	skyTrace.start, skyTrace.endpos = p, p + Vector(0, 0, 1500)
+	local p = npc:GetPos()
+	skyStart.x, skyStart.y, skyStart.z = p.x, p.y, p.z + 64
+	skyEnd.x, skyEnd.y, skyEnd.z = p.x, p.y, p.z + 1564
 	local tr = util.TraceLine(skyTrace)
 	npc.tifOut = (not tr.Hit) or tr.HitSky
 	return npc.tifOut
@@ -578,6 +589,19 @@ local function shot_sound(npc, w, src)
 	npc:EmitSound((def and def.sound) or "Weapon_AR2.Single", 95, math.random(96, 104), 1, CHAN_WEAPON)
 end
 
+local BULLET_DATA = { Spread = vector_origin, Tracer = 0 }
+local function bullet_callback(att, tr, dmg)
+	local w = att and att.tifWep
+	local cb = w and falloff_cb(w.def)
+	if cb then cb(att, tr, dmg) end
+	tracerData = tracerData or (EffectData and EffectData())
+	if not tracerData then return end
+	tracerData:SetEntity(att)
+	tracerData:SetStart(tr.StartPos)
+	tracerData:SetOrigin(tr.HitPos)
+	util.Effect("tif_tracer", tracerData)
+end
+
 local function fire_one(npc, w, aimPos, now)
 	local def = w.def
 	local src = W.MuzzleSrc(npc, aimPos)
@@ -585,12 +609,11 @@ local function fire_one(npc, w, aimPos, now)
 	dir:Normalize()
 	local ang = dir:Angle()
 	local deg = spread_deg(npc, now)
-	-- Two uniform samples give a soft, centre-weighted cone.
 	ang:RotateAroundAxis(ang:Up(), (math.Rand(-1, 1) + math.Rand(-1, 1)) * 0.5 * deg)
 	ang:RotateAroundAxis(ang:Right(), (math.Rand(-1, 1) + math.Rand(-1, 1)) * 0.5 * deg * 0.7)
-	-- Launchers fire their GTG projectile (rocket, grenade) instead of bullets.
 	if def and def.projectile then
-		TIF.GTG.Launch(npc, def, w.class, src + ang:Forward() * 30, ang:Forward())
+		local fwd = ang:Forward()
+		TIF.GTG.Launch(npc, def, w.class, src + fwd * 30, fwd)
 		shot_sound(npc, w, src)
 		npc:SetTIFShotTime(now)
 		w.ammo = w.ammo - 1
@@ -598,20 +621,17 @@ local function fire_one(npc, w, aimPos, now)
 		if TIF.Launcher and npc.tifLaunch then TIF.Launcher.Fired(npc, now) end
 		return
 	end
-	npc:FireBullets({
-		Attacker = npc,
-		Inflictor = npc,
-		Damage = (def and def.damage or 20) * cvDamage:GetFloat() * TIF.SideDamageScale(npc),
-		Num = def and def.pellets or 1,
-		Src = src,
-		Dir = ang:Forward(),
-		Spread = vector_origin,
-		Distance = def and def.range or 56756,
-		Tracer = 0,
-		Force = def and math.min(10, (def.force or 75) / 20) or 3,
-		IgnoreEntity = npc,
-		Callback = W.TracerCallback(npc, falloff_cb(def)),
-	})
+	BULLET_DATA.Attacker = npc
+	BULLET_DATA.Inflictor = npc
+	BULLET_DATA.Damage = (def and def.damage or 20) * cvDamage:GetFloat() * TIF.SideDamageScale(npc)
+	BULLET_DATA.Num = def and def.pellets or 1
+	BULLET_DATA.Src = src
+	BULLET_DATA.Dir = ang:Forward()
+	BULLET_DATA.Distance = def and def.range or 56756
+	BULLET_DATA.Force = def and math.min(10, (def.force or 75) / 20) or 3
+	BULLET_DATA.IgnoreEntity = npc
+	BULLET_DATA.Callback = bullet_callback
+	npc:FireBullets(BULLET_DATA)
 	shot_sound(npc, w, src)
 	npc:SetTIFShotTime(now)
 	w.ammo = w.ammo - 1

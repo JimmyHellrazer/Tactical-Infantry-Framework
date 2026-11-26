@@ -144,14 +144,22 @@ end
 
 local function smooth(u) return u * u * (3 - 2 * u) end
 
+local ACT_MIN = Vector(-12, -12, 0)
+local ACT_MAX = Vector(12, 12, 40)
+local ACT_UP4 = Vector(0, 0, 4)
+local ACT_ANG = Angle(0, 0, 0)
+local actOut1, actOut2 = {}, {}
+local actHull1 = { mins = ACT_MIN, maxs = ACT_MAX, mask = MASK_NPCSOLID_BRUSHONLY, output = actOut1 }
+local actHull2 = { mins = ACT_MIN, maxs = ACT_MAX, mask = MASK_NPCSOLID_BRUSHONLY, output = actOut2 }
+
 -- Every tick: apply root motion / blending.
 function Act.Tick(npc, now)
 	local a = npc.tifAct
 	if not a or a.loop or a.finished then return end
 	local u = math.Clamp((now - a.t0) / math.max(0.01, a.dur), 0, 1)
-	-- Apply the last frame once, then let facing code take over (e.g. aiming after a pop-out).
 	if u >= 1 then a.finished = true end
-	local z = a.lift and Lerp(smooth(u), a.lift[1], a.lift[2]) or npc:GetPos().z
+	local curPos = npc:GetPos()
+	local z = a.lift and Lerp(smooth(u), a.lift[1], a.lift[2]) or curPos.z
 	local wk = a.warp and smooth(math.min(1, u / math.max(0.01, a.warpU or 1))) or 0
 	if a.rootz then z = a.startPos.z + Act.ZAt(a.clip, u) + ((a.warp and a.warp.dz) or 0) * wk end
 	if a.to then
@@ -159,7 +167,8 @@ function Act.Tick(npc, now)
 		local p = LerpVector(k, a.startPos, a.to.pos)
 		p.z = z
 		npc:SetPos(p)
-		npc:SetAngles(Angle(0, a.startYaw + math.AngleDifference(a.to.yaw, a.startYaw) * k, 0))
+		ACT_ANG.y = a.startYaw + math.AngleDifference(a.to.yaw, a.startYaw) * k
+		npc:SetAngles(ACT_ANG)
 	elseif a.root then
 		local x, y, r = Act.RootAt(a.clip, u)
 		local rad = math.rad(a.startYaw)
@@ -172,32 +181,30 @@ function Act.Tick(npc, now)
 		if a.noTrace then
 			npc:SetPos(p)
 		else
-			-- Don't let root motion push the soldier into walls.
-			local tr = util.TraceHull({
-				start = npc:GetPos() + Vector(0, 0, 4), endpos = p + Vector(0, 0, 4),
-				mins = Vector(-12, -12, 0), maxs = Vector(12, 12, 40),
-				mask = MASK_NPCSOLID_BRUSHONLY, filter = npc,
-			})
+			local pUp = p + ACT_UP4
+			actHull1.start, actHull1.endpos, actHull1.filter = curPos + ACT_UP4, pUp, npc
+			local tr = util.TraceHull(actHull1)
 			local hp = tr.HitPos
-			-- (2026-11-21, user: they "get caught alot on the cqb entry anims") Blocked: the rest of the step slides along
-			-- the wall instead of stopping dead (a clip clipping a door jamb hung there while it played on).
 			if tr.Hit and not tr.StartSolid and tr.HitNormal then
-				local n = Vector(tr.HitNormal.x, tr.HitNormal.y, 0)
-				if n:LengthSqr() > 0.01 then
-					n:Normalize()
-					local rest = (p + Vector(0, 0, 4)) - hp
-					rest.z = 0
-					local slide = rest - n * rest:Dot(n)
-					if slide:LengthSqr() > 0.01 then
-						local tr2 = util.TraceHull({ start = hp, endpos = hp + slide, mins = Vector(-12, -12, 0),
-							maxs = Vector(12, 12, 40), mask = MASK_NPCSOLID_BRUSHONLY, filter = npc })
+				local nx, ny = tr.HitNormal.x, tr.HitNormal.y
+				local nlen2 = nx * nx + ny * ny
+				if nlen2 > 0.01 then
+					local invN = 1 / math.sqrt(nlen2)
+					nx, ny = nx * invN, ny * invN
+					local rx, ry = pUp.x - hp.x, pUp.y - hp.y
+					local d = rx * nx + ry * ny
+					local sx, sy = rx - nx * d, ry - ny * d
+					if sx * sx + sy * sy > 0.01 then
+						actHull2.start, actHull2.endpos, actHull2.filter = hp, Vector(hp.x + sx, hp.y + sy, hp.z), npc
+						local tr2 = util.TraceHull(actHull2)
 						if not tr2.StartSolid then hp = tr2.HitPos end
 					end
 				end
 			end
-			npc:SetPos(hp - Vector(0, 0, 4))
+			npc:SetPos(hp - ACT_UP4)
 		end
-		npc:SetAngles(Angle(0, a.startYaw + r, 0))
+		ACT_ANG.y = a.startYaw + r
+		npc:SetAngles(ACT_ANG)
 	end
 	if a.finished and a.autoClear and npc.tifAct == a then Act.Clear(npc) end
 	if a.stopU and u >= a.stopU and npc.tifAct == a then Act.Clear(npc) end

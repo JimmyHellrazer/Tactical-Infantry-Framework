@@ -763,10 +763,11 @@ function ENT:OnKilled(dmg)
 			if force:Length() > 6000 then force = force:GetNormalized() * 6000 end
 			local hit = dmg:GetDamagePosition()
 			local nearest, nd
+			local bm = Matrix()
 			for i = 0, rag:GetPhysicsObjectCount() - 1 do
 				local phys = rag:GetPhysicsObjectNum(i)
 				local hb = self:LookupBone(rag:GetBoneName(rag:TranslatePhysBoneToBone(i)) or "")
-				local m = hb and self:GetBoneMatrix(hb)
+				local m = hb and TIF.CopyBone(self, hb, bm)
 				if IsValid(phys) and m then
 					phys:SetPos(m:GetTranslation())
 					phys:SetAngles(m:GetAngles())

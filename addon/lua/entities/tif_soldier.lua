@@ -361,12 +361,10 @@ function ENT:BodyUpdate()
 	if not ((self.tifProne and self.tifProne.phase == 2) or self.tifDowned) then self:FrameAdvance() end
 end
 
-local lastThink = setmetatable({}, { __mode = "k" })
 function ENT:Think()
 	local now = CurTime()
-	local dt = math.min(0.2, now - (lastThink[self] or now))
-	lastThink[self] = now
-	-- MW19 death clip playing: nothing but the clip until the ragdoll takes over.
+	local dt = math.min(0.2, now - (self.tifThinkAt or now))
+	self.tifThinkAt = now
 	if self.tifDying then
 		TIF.HitsMW.DyingThink(self, now)
 		self:NextThink(now)
@@ -375,8 +373,6 @@ function ENT:Think()
 	if not self.tifDead and not TIF.AIDisabled() then
 		TIF.Prof.Begin("tick")
 		TIF.Action.Tick(self, now)
-		-- Back to the home body (MW19) once a GTA-only action is over: no action for 0.6 s and not in or
-		-- boarding a vehicle (the delay stops back-to-back actions from swapping every frame).
 		if self.tifHostId ~= self.tifHomeHost then
 			if self.tifAct or self.tifVeh or self.tifBoard then
 				self.tifNoActSince = nil
@@ -389,8 +385,6 @@ function ENT:Think()
 			end
 		end
 		TIF.Move.Face(self, dt)
-		-- Aim pitch for the client's upper-body blend.
-		-- tifAimAt: aiming without turning the body (MW19 cover lean, the aim blend does it).
 		local face = self.tifFace or self.tifAimAt
 		local want = 0
 		if face and self.tifMode == 1 then
@@ -403,9 +397,14 @@ function ENT:Think()
 		local look = (fw and fw.want and fw.aimPos) or self.tifAimAt or self.tifFace
 		local sent = self.tifLookSent
 		if look then
-			if not sent or sent:DistToSqr(look) > 32 * 32 then
-				self.tifLookSent = Vector(look)
-				self:SetNW2Vector("tif_look", self.tifLookSent)
+			if not sent or sent:DistToSqr(look) > 1024 then
+				if sent then
+					sent.x, sent.y, sent.z = look.x, look.y, look.z
+				else
+					sent = Vector(look)
+					self.tifLookSent = sent
+				end
+				self:SetNW2Vector("tif_look", sent)
 			end
 		elseif sent then
 			self.tifLookSent = nil
@@ -563,7 +562,9 @@ end
 -- at the edge of the ragdoll's joint limits settles instead of springing.
 local BONE_VEL_MAX = 480
 local CORPSE_SETTLE, SETTLE_ANG_DAMP = 0.45, 6
-local floorTr = { mask = MASK_SOLID_BRUSHONLY }
+local floorOut = {}
+local floorTr = { mask = MASK_SOLID_BRUSHONLY, output = floorOut }
+local BONE_M = Matrix()
 -- clampUp: a death-clip handoff (no launching upward off it; blast knockdowns keep their throw). Safe to call again
 -- after re-posing (takedowns): the original damping is kept from the first call.
 local function settle_corpse(rag, clampUp)
@@ -680,7 +681,7 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 		local rb = rag:TranslatePhysBoneToBone(i)
 		-- The faction-model ragdoll's bones are found on the host by name.
 		local hb = byName and self:LookupBone(rag:GetBoneName(rb) or "") or (not byName and rb) or nil
-		local m = hb and self:GetBoneMatrix(hb)
+		local m = hb and TIF.CopyBone(self, hb, BONE_M)
 		if IsValid(phys) and m then
 			phys:SetPos(m:GetTranslation())
 			local off = restOff and restOff[string.lower(rag:GetBoneName(rb) or "")]
@@ -740,7 +741,7 @@ function ENT:TIFDropWeapon(which)
 	if spent then model = def.spentModel end
 	if not model or model == "" then return end
 	local hand = self:LookupBone("PH_R_Hand") or self:LookupBone("ValveBiped.Bip01_R_Hand")
-	local m = hand and self:GetBoneMatrix(hand)
+	local m = hand and TIF.CopyBone(self, hand, BONE_M)
 	local prop = ents.Create("prop_physics")
 	if not IsValid(prop) then return end
 	prop:SetModel(model)

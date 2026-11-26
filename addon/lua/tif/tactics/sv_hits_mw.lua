@@ -50,6 +50,8 @@ local function save_bans()
 end
 H.SaveBans = save_bans -- (the dev addon's tif_death_ban / tif_death_unban)
 H.Recent = H.Recent or {}
+local HIT_BONE_M = Matrix and Matrix()
+local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
 
 -- { death = { [situation] = { [region] = { clip, ... } } }, pain = ... } from the host's role names.
 local function pools(host)
@@ -364,7 +366,7 @@ hook.Add("EntityFireBullets", "tif_long_death_shot", function(shooter, data)
 		if dy and dy.chain and not dy.shotEnd and npc ~= shooter then
 			for _, bn in ipairs(SHOT_BONES) do
 				local b = npc:LookupBone(bn)
-				local m = b and npc:GetBoneMatrix(b)
+				local m = b and (TIF.CopyBone and TIF.CopyBone(npc, b, HIT_BONE_M) or npc:GetBoneMatrix(b))
 				if m then
 					local v = m:GetTranslation() - src
 					local t = v:Dot(dir)
@@ -434,8 +436,9 @@ function H.DyingThink(npc, now)
 		end
 		local span = old and (now - old.t) or 0
 		if old and span > 0.01 then
+			local cb = TIF.CopyBone
 			for b, p in pairs(old.pos) do
-				local m = npc:GetBoneMatrix(b)
+				local m = cb and cb(npc, b, HIT_BONE_M) or npc:GetBoneMatrix(b)
 				if m then vel[b] = (m:GetTranslation() - p) / span end
 			end
 		end
@@ -447,8 +450,9 @@ function H.DyingThink(npc, now)
 	if dt > 0 then
 		dy.prevT = now
 		local pos = {}
+		local cb = TIF.CopyBone
 		for b = 0, npc:GetBoneCount() - 1 do
-			local m = npc:GetBoneMatrix(b)
+			local m = cb and cb(npc, b, HIT_BONE_M) or npc:GetBoneMatrix(b)
 			if m then pos[b] = m:GetTranslation() end
 		end
 		dy.prev = pos
@@ -604,7 +608,7 @@ H.KnockPose = KNOCK_POSE
 -- (left -> right shoulder).
 local function bone_pos(rag, name)
 	local b = rag:LookupBone(name)
-	local m = b and rag:GetBoneMatrix(b)
+	local m = b and CopyBone(rag, b, HIT_BONE_M)
 	return m and m:GetTranslation() or nil
 end
 function H.LieOf(rag)
