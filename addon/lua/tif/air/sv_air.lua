@@ -7,7 +7,9 @@ Air.Active = Air.Active or {}
 
 function Air.Forget(heli)
 	for i = #Air.Active, 1, -1 do
-		if Air.Active[i] == heli or not IsValid(Air.Active[i]) then table.remove(Air.Active, i) end
+		if Air.Active[i] == heli or not IsValid(Air.Active[i]) then
+			table.remove(Air.Active, i)
+		end
 	end
 end
 
@@ -46,10 +48,14 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 		for _, o in ipairs({ Vector(170, 0, 0), Vector(-170, 0, 0), Vector(0, 110, 0), Vector(0, -110, 0),
 			Vector(240, 90, 0), Vector(-240, -90, 0), Vector(240, -90, 0), Vector(-240, 90, 0) }) do
 			local t = trace(ground + o + Vector(0, 0, 60), ground + o - Vector(0, 0, 80))
-			if not t.Hit or math.abs(t.HitPos.z - ground.z) > 24 then return false, "uneven ground" end
+			if not t.Hit or math.abs(t.HitPos.z - ground.z) > 24 then
+				return false, "uneven ground"
+			end
 		end
 
-		if ceil < ground.z + def.groundZ + 400 then return false, "no room above" end
+		if ceil < ground.z + def.groundZ + 400 then
+			return false, "no room above"
+		end
 		local top = math.min(ceil - 20, ground.z + def.groundZ + 500)
 		local body = hull(Vector(ground.x, ground.y, top), ground + Vector(0, 0, 30), 260, 0, 8)
 		if body.Hit then return false, "something in the way" end
@@ -57,10 +63,13 @@ function Air.CheckLZ(pos, typeId, want, ropeHub)
 		if disc.Hit then return false, "no room for the rotor" end
 		return true
 	end
+
 	local landWhy
 	if want ~= "rope" then
 		local ok, why = can_land()
-		if ok then return { mode = "land", ground = ground, hubZ = ground.z + def.groundZ, normal = g.HitNormal } end
+		if ok then
+			return { mode = "land", ground = ground, hubZ = ground.z + def.groundZ, normal = g.HitNormal }
+		end
 		if want == "land" then return nil, why end
 		landWhy = why
 	end
@@ -111,11 +120,15 @@ local function glide(lz, def, inDir, cruiseZ, settle)
 			local p = Vector(lz.ground.x, lz.ground.y, lz.hubZ + settle) + inDir * d
 			p.z = lz.hubZ + settle + H * (d / D)
 			local tr = hull(prev, p, R * 0.9, -def.groundZ + 30, 60, MASK_SOLID)
-			if tr.Hit then ok = false break end
+			if tr.Hit then
+				ok = false
+				break
+			end
 			prev = p
 		end
 		if ok then return D, ang end
 	end
+
 	return nil
 end
 
@@ -143,6 +156,7 @@ function Air.PlanRoute(lz, def, opts)
 			if opts.fromYaw and r.k == 0 then break end
 		end
 	end
+
 	if not best then return nil, "no clear way in" end
 	local inDir = Angle(0, best.yaw, 0):Forward()
 	local entry = top + inDir * math.max(MIN_DIST - 300, best.dist - 400)
@@ -154,13 +168,19 @@ function Air.PlanRoute(lz, def, opts)
 		r.exitDist = d
 		local ahead = math.abs(math.AngleDifference(r.yaw, best.yaw + 180)) < 50
 		local score = d * (ahead and 1.1 or 1)
-		if d >= MIN_DIST and (not out or score > outD) then out, outD = r, score end
+		if d >= MIN_DIST and (not out or score > outD) then
+			out, outD = r, score
+		end
 	end
+
 	out = out or best
 	local exit = top + Angle(0, out.yaw, 0):Forward() * math.max(MIN_DIST - 300, (out.exitDist or out.dist) - 400)
 	local settle = Air.SETTLE[lz.mode] or 0
 	local glideD, glideAng
-	if lz.mode ~= "flyby" then glideD, glideAng = glide(lz, def, inDir, cruiseZ, settle) end
+	if lz.mode ~= "flyby" then
+		glideD, glideAng = glide(lz, def, inDir, cruiseZ, settle)
+	end
+
 	return {
 		glideD = glideD, glideAng = glideAng, settle = settle,
 		entry = entry,
@@ -179,7 +199,10 @@ function Air.Call(opts)
 	local typeId = opts.type or "blackhawk"
 	local def = Air.Type(typeId)
 	if not def then return nil, "unknown helicopter type" end
-	if not Air.Available(typeId) then return nil, "model not installed (tif_air addon)" end
+	if not Air.Available(typeId) then
+		return nil, "model not installed (tif_air addon)"
+	end
+
 	local mode = opts.mode or "auto"
 	local P = opts.passengers
 
@@ -187,9 +210,14 @@ function Air.Call(opts)
 	if P and mode ~= "flyby" and TIF.AirRide then
 		ropeSet, ropeId = TIF.AirRide.SetFor(typeId, "rope", P.set)
 		local hasLand = TIF.AirRide.SetFor(typeId, "land", P.set) ~= nil
-		if mode == "auto" and not hasLand and ropeSet then mode = "rope" end
-		if mode == "auto" and not ropeSet and hasLand then mode = "land" end
+		if mode == "auto" and not hasLand and ropeSet then
+			mode = "rope"
+		end
+		if mode == "auto" and not ropeSet and hasLand then
+			mode = "land"
+		end
 	end
+
 	local lz, why
 	if mode == "flyby" then
 		local g = trace(opts.pos + Vector(0, 0, 64), opts.pos - Vector(0, 0, 4000))
@@ -199,6 +227,7 @@ function Air.Call(opts)
 		lz, why = Air.CheckLZ(opts.pos, typeId, mode, ropeSet and ropeSet.hub)
 		if not lz then return nil, why end
 	end
+
 	local route
 	route, why = Air.PlanRoute(lz, def, opts)
 	if not route then return nil, why end
@@ -206,16 +235,25 @@ function Air.Call(opts)
 	local set, setId
 	if P and lz.mode ~= "flyby" then
 		if lz.mode == "rope" and ropeSet then set, setId = ropeSet, ropeId
-		else set, setId = TIF.AirRide.SetFor(typeId, lz.mode, P.set) end
+		else
+			set, setId = TIF.AirRide.SetFor(typeId, lz.mode, P.set)
+		end
 		if not set then return nil, "no passenger seats for a " .. lz.mode .. " drop on this helicopter" end
 	end
+
 	route.hold = opts.hold
-	if route.hold == nil and not opts.holdUntilRelease and not set then route.hold = lz.mode == "land" and 8 or 10 end
+	if route.hold == nil and not opts.holdUntilRelease and not set then
+		route.hold = lz.mode == "land" and 8 or 10
+	end
+
 	route.onArrive, route.onDestroyed, route.onEmpty = opts.onArrive, opts.onDestroyed, opts.onEmpty
 
 	route.doorsOpen = (setId and def.doorsOpenSets and def.doorsOpenSets[setId]) or nil
 	route.setId = setId
-	if lz.mode == "flyby" then route.app = route.hub end
+	if lz.mode == "flyby" then
+		route.app = route.hub
+	end
+
 	local heli = ents.Create("tif_heli")
 	if not IsValid(heli) then return nil, "couldn't create the entity" end
 	heli:SetHeliType(typeId)
@@ -242,7 +280,9 @@ function Air.Call(opts)
 			if #arch == 0 then for i = 1, n do arch[i] = TIF.SquadMix[i] or "rifleman" end end
 
 			local pts = {}
-			for i = 1, #arch do pts[i] = heli:GetPos() end
+			for i = 1, #arch do
+				pts[i] = heli:GetPos()
+			end
 			sq, riders = TIF.API.SpawnSquad(P.faction or "usmc", heli:GetPos(), arch, { tight = true, points = pts })
 		else
 			sq = riders[1] and riders[1].tifSquad
@@ -254,12 +294,16 @@ function Air.Call(opts)
 		heli.tifAutoLeave = not opts.holdUntilRelease
 		heli.tifOrder = P.order
 	end
+
 	return heli, lz.mode
 end
 
 hook.Add("TIF_HeliEmpty", "tif_air_squad_order", function(heli)
 	local sq = heli.tifSquad
-	if not sq or not TIF.Squad.Members or #TIF.Squad.Members(sq) == 0 then return end
+	if not sq or not TIF.Squad.Members or #TIF.Squad.Members(sq) == 0 then
+		return
+	end
+
 	local o = heli.tifOrder
 	if o then
 		TIF.Squad.SetOrder(sq, o.kind or "advance", o.pos, o.yaw, o.opts)

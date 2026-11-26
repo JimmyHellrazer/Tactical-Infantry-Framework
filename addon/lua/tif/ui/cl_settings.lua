@@ -10,7 +10,9 @@ local function add_reset_button(form, convars)
 		for i = 1, #convars do
 			local name = convars[i]
 			local cv = GetConVar(name)
-			if cv then RunConsoleCommand(name, cv:GetDefault()) end
+			if cv then
+				RunConsoleCommand(name, cv:GetDefault())
+			end
 		end
 	end
 end
@@ -80,7 +82,9 @@ local function Section(panel, title, expanded, build)
 	end
 
 	build(ui)
-	if #convars > 0 then add_reset_button(form, convars) end
+	if #convars > 0 then
+		add_reset_button(form, convars)
+	end
 
 	return form
 end

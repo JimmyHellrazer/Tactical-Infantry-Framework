@@ -62,7 +62,12 @@ function Report:Info(label, detail)
 end
 
 function Report:Check(ok, label, detail)
-	if ok then self:Pass(label, detail) else self:Fail(label, detail) end
+	if ok then
+		self:Pass(label, detail)
+	else
+		self:Fail(label, detail)
+	end
+
 	return ok
 end
 
@@ -76,9 +81,13 @@ function Report:Save()
 	file.Write("tif/reports/" .. fname, text)
 	for _, l in ipairs(self.lines) do
 		if string.sub(l, 1, 6) == "[FAIL]" then TIF.Error(l)
-		elseif string.sub(l, 1, 6) == "[WARN]" then TIF.Warn(l)
-		else MsgN(l) end
+		elseif string.sub(l, 1, 6) == "[WARN]" then
+			TIF.Warn(l)
+		else
+			MsgN(l)
+		end
 	end
+
 	TIF.Log("Report written to garrysmod/data/tif/reports/", fname)
 	return fname
 end
@@ -101,6 +110,7 @@ function TIF.CopyBone(ent, bone, out)
 		if GetField(out, 4, 4) == 0 then return nil end
 		return out
 	end
+
 	return ent:GetBoneMatrix(bone)
 end
 

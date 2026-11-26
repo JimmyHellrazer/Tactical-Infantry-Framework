@@ -35,11 +35,15 @@ end
 
 function L.IsVehicle(e)
 	if not IsValid(e) then return false end
-	if e:IsVehicle() or e.tifVeh or e.IsGlideVehicle or e.tifHeli then return true end
+	if e:IsVehicle() or e.tifVeh or e.IsGlideVehicle or e.tifHeli then
+		return true
+	end
+
 	local c = e:GetClass()
 	if string.find(c, "glide", 1, true) or string.find(c, "heli", 1, true) or string.find(c, "lvs_", 1, true) then
 		return true
 	end
+
 	if e:IsPlayer() and e:InVehicle() then return true end
 	return false
 end
@@ -50,9 +54,13 @@ local function hostiles_near(npc, pos, r)
 		if IsValid(o) and o ~= npc and not o.tifDead and o:GetPos():DistToSqr(pos) < r2
 			and TIF.Relation(npc, o) == TIF.REL_HOSTILE then n = n + 1 end
 	end
+
 	for _, p in ipairs(player.GetAll()) do
-		if p:Alive() and p:GetPos():DistToSqr(pos) < r2 and TIF.Relation(npc, p) == TIF.REL_HOSTILE then n = n + 1 end
+		if p:Alive() and p:GetPos():DistToSqr(pos) < r2 and TIF.Relation(npc, p) == TIF.REL_HOSTILE then
+			n = n + 1
+		end
 	end
+
 	return n
 end
 
@@ -62,9 +70,13 @@ local function friendly_near(npc, pos, r)
 		if IsValid(o) and o ~= npc and not o.tifDead and o:GetPos():DistToSqr(pos) < r2
 			and TIF.Relation(npc, o) ~= TIF.REL_HOSTILE then return true end
 	end
+
 	for _, p in ipairs(player.GetAll()) do
-		if p:Alive() and p:GetPos():DistToSqr(pos) < r2 and TIF.Relation(npc, p) ~= TIF.REL_HOSTILE then return true end
+		if p:Alive() and p:GetPos():DistToSqr(pos) < r2 and TIF.Relation(npc, p) ~= TIF.REL_HOSTILE then
+			return true
+		end
 	end
+
 	return false
 end
 
@@ -96,6 +108,7 @@ local function track(npc, e, now)
 	elseif hp < t.hp then
 		t.since, t.hp = now, hp
 	end
+
 	return now - t.since
 end
 
@@ -103,19 +116,28 @@ function L.Worth(npc, c, now)
 	local e = c.ent
 	if not IsValid(e) then return nil end
 	if L.IsVehicle(e) then return "vehicle" end
-	if hostiles_near(npc, c.pos, L.CLUSTER_R) >= L.CLUSTER then return "cluster" end
+	if hostiles_near(npc, c.pos, L.CLUSTER_R) >= L.CLUSTER then
+		return "cluster"
+	end
+
 	if track(npc, e, now) >= L.DUG_IN then return "dug in" end
 	if now >= (npc.tifLaunchLoneAt or 0) then
 		npc.tifLaunchLoneAt = now + L.LONE_EVERY
 		if math.random() < cvLone:GetFloat() then return "lone" end
 	end
+
 	return nil
 end
 
 function L.Blocked(npc, c, now)
-	if npc.tifCQB or npc.tifVeh or npc.tifBoard or npc.tifDowned or npc.tifSurrendered then return "busy" end
+	if npc.tifCQB or npc.tifVeh or npc.tifBoard or npc.tifDowned or npc.tifSurrendered then
+		return "busy"
+	end
 	if TIF.ProneB and TIF.ProneB.Is(npc) then return "prone" end
-	if npc.tifBipod or npc.tifThrow or npc.tifShield or npc.tifMelee then return "busy" end
+	if npc.tifBipod or npc.tifThrow or npc.tifShield or npc.tifMelee then
+		return "busy"
+	end
+
 	if TIF.Morale and TIF.Morale.Shaken(npc) then return "shaken" end
 	if now < (npc.tifLaunchNext or 0) then return "cooldown" end
 	local sq = npc.tifSquad
@@ -135,22 +157,32 @@ function L.Consider(npc, c, now)
 		npc.tifLaunchNext = now + math.Rand(L.FIRST[1], L.FIRST[2])
 		return false
 	end
+
 	if L.Blocked(npc, c, now) then return false end
 	local e = c.ent
 	local kind = L.Worth(npc, c, now)
 	if not kind then return false end
-	if kind ~= "vehicle" and now < (e.tifRocketedAt or 0) + L.TARGET_GAP then return false end
+	if kind ~= "vehicle" and now < (e.tifRocketedAt or 0) + L.TARGET_GAP then
+		return false
+	end
+
 	if not outdoors(npc) then return false end
 	local aim = L.AimAt(e, kind)
 	if not clear_line(npc, e, aim) then return false end
 	if friendly_near(npc, aim, L.FRIENDLY_R) then return false end
-	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "launcher") end
+	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+		TIF.CoverBehave.Leave(npc, "launcher")
+	end
+
 	if not TIF.Weapon.Switch(npc, "launcher", now) then return false end
 	npc.tifLaunch = { target = e, kind = kind, started = now, seenAt = now }
 	TIF.Move.Stop(npc)
 	TIF.Say(npc, "cover_me", 0.6)
 	L.Warn(npc, now)
-	if TIF.Event then TIF.Event("launcher", npc, kind) end
+	if TIF.Event then
+		TIF.Event("launcher", npc, kind)
+	end
+
 	return true
 end
 
@@ -160,12 +192,17 @@ function L.Warn(npc, now)
 	for _, o in ipairs(TIF.Soldiers or {}) do
 		if IsValid(o) and not o.tifDead and TIF.Relation(o, npc) == TIF.REL_HOSTILE then
 			local d = o:GetPos():DistToSqr(pos)
-			if d < L.WARN_R * L.WARN_R and (not bd or d < bd) and o:Visible(npc) then best, bd = o, d end
+			if d < L.WARN_R * L.WARN_R and (not bd or d < bd) and o:Visible(npc) then
+				best, bd = o, d
+			end
 		end
 	end
+
 	if best then
 		timer.Simple(math.Rand(0.3, 0.7), function()
-			if IsValid(best) and not best.tifDead then TIF.Say(best, "contact_rpg", 1) end
+			if IsValid(best) and not best.tifDead then
+				TIF.Say(best, "contact_rpg", 1)
+			end
 		end)
 	end
 end
@@ -181,8 +218,13 @@ function L.Fired(npc, now)
 	la.firedAt = now
 	npc.tifLaunchNext = now + math.Rand(L.GAP[1], L.GAP[2])
 	local sq = npc.tifSquad
-	if sq then sq.tifLaunchNext = now + L.SQUAD_GAP end
-	if IsValid(la.target) then la.target.tifRocketedAt = now end
+	if sq then
+		sq.tifLaunchNext = now + L.SQUAD_GAP
+	end
+
+	if IsValid(la.target) then
+		la.target.tifRocketedAt = now
+	end
 	npc.tifLaunchTrack = nil
 end
 
@@ -192,6 +234,7 @@ function L.Stow(npc, now)
 		npc.tifLaunch = nil
 		return
 	end
+
 	local w = npc.tifArms.launcher
 	local drop = w and w.def and w.def.disposable and (w.rockets or 0) <= 0
 	local W = TIF.Weapon
@@ -205,7 +248,10 @@ function L.Stow(npc, now)
 	else
 		ok = W.Switch(npc, "primary", now)
 	end
-	if ok then la.stowing = true end
+
+	if ok then
+		la.stowing = true
+	end
 end
 
 function L.Think(npc, c, now)
@@ -214,35 +260,52 @@ function L.Think(npc, c, now)
 	local f = npc.tifFire
 	if la.stowing then
 		f.want = false
-		if not npc.tifSwitch then npc.tifLaunch = nil return false end
+		if not npc.tifSwitch then
+			npc.tifLaunch = nil
+			return false
+		end
 		return true
 	end
+
 	if npc.tifSwitch then
 		f.want = false
 		TIF.Move.Stop(npc)
-		if IsValid(la.target) then npc.tifFace = L.AimAt(la.target, la.kind) end
+		if IsValid(la.target) then
+			npc.tifFace = L.AimAt(la.target, la.kind)
+		end
 		return true
 	end
+
 	if npc.tifSlot ~= "launcher" then
 		npc.tifLaunch = nil
 		return false
 	end
-	if not la.readyAt then la.readyAt = now + math.Rand(L.SETTLE[1], L.SETTLE[2]) end
+
+	if not la.readyAt then
+		la.readyAt = now + math.Rand(L.SETTLE[1], L.SETTLE[2])
+	end
 	local e = la.target
-	if c and c.ent == e and c.visible then la.seenAt = now end
+	if c and c.ent == e and c.visible then
+		la.seenAt = now
+	end
+
 	local giveUp = not IsValid(e) or (e.Alive and e:IsPlayer() and not e:Alive()) or e.tifDead
 		or now - la.seenAt > L.LOST or now - la.started > L.GIVE_UP + L.SETTLE[2]
 		or npc.tifCQB or (TIF.Morale and TIF.Morale.Shaken(npc))
 	if la.firedAt then
 		f.want = false
-		if now >= la.firedAt + L.HOLD_AFTER then L.Stow(npc, now) end
+		if now >= la.firedAt + L.HOLD_AFTER then
+			L.Stow(npc, now)
+		end
 		return true
 	end
+
 	if giveUp then
 		f.want = false
 		L.Stow(npc, now)
 		return true
 	end
+
 	local aim = L.AimAt(e, la.kind)
 	TIF.Move.Stop(npc)
 	npc.tifMode = TIF.Anim.MODE_AIM

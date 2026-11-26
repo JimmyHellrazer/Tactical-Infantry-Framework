@@ -18,6 +18,7 @@ local function read(ent, bone, A, o)
 			a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12
 		return true
 	end
+
 	local m = GetBoneMatrix(ent, bone)
 	if not m then return false end
 	A[o + 1], A[o + 2], A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9], A[o + 10], A[o + 11], A[o + 12] = Unpack(m)
@@ -31,7 +32,9 @@ local function write(ent, bone, A, o)
 end
 
 local function copy(A, a, C, c)
-	for i = 1, 12 do C[c + i] = A[a + i] end
+	for i = 1, 12 do
+		C[c + i] = A[a + i]
+	end
 end
 
 local function mul(A, a, B, b, C, c)
@@ -88,6 +91,7 @@ local function place_merge(map, k, E, W, has, origin)
 		W[o + 8] = origin.y + (W[o + 8] - origin.y) * s
 		W[o + 12] = origin.z + (W[o + 12] - origin.z) * s
 	end
+
 	local fk, p = map.FK[k], map.P[k]
 	if fk and p ~= 0 and has[p] then
 		local po = p * 12 - 12
@@ -107,14 +111,19 @@ function PMS.Chain(src, map, origin, steps)
 		local ok
 		if K[k] == MERGE then
 			ok = read(src, map.LB[k], E, o)
-			if ok then place_merge(map, k, E, W, has, origin) end
+			if ok then
+				place_merge(map, k, E, W, has, origin)
+			end
 		else
 			ok = p ~= 0 and has[p]
-			if ok then mul(W, p * 12 - 12, RL[k], 0, W, o) end
+			if ok then
+				mul(W, p * 12 - 12, RL[k], 0, W, o)
+			end
 		end
 		has[k] = ok
 		if not ok then return false end
 	end
+
 	return true
 end
 

@@ -26,6 +26,7 @@ function FL.Dark()
 		local sky = GetConVar("sv_skyname")
 		FL.mapDark = has_word(game.GetMap(), FL.MAP_WORDS) or has_word(sky and sky:GetString() or "", FL.SKY_WORDS)
 	end
+
 	return FL.mapDark
 end
 
@@ -34,6 +35,7 @@ local function carries(npc)
 		local sq = npc.tifSquad
 		npc.tifHasLight = (sq and sq.leader == npc) or math.random() < FL.LIGHT_SHARE
 	end
+
 	return npc.tifHasLight
 end
 
@@ -43,7 +45,9 @@ timer.Create("tif_flashlights", 1, 0, function()
 		if IsValid(npc) then
 			local on = dark and not npc.tifDead and not npc.tifVeh and not npc.tifDowned and not npc.tifSurrendered
 				and npc:GetTIFWeapon() ~= "" and carries(npc)
-			if npc:GetNW2Bool("tif_light", false) ~= on then npc:SetNW2Bool("tif_light", on) end
+			if npc:GetNW2Bool("tif_light", false) ~= on then
+				npc:SetNW2Bool("tif_light", on)
+			end
 		end
 	end
 end)

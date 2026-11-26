@@ -20,7 +20,9 @@ hook.Add("OnEntityCreated", "tif_hl2npc", function(ent)
 end)
 
 hook.Add("EntityRemoved", "tif_hl2npc", function(ent)
-	if not (ent:IsNPC() or (ent.IsNextBot and ent:IsNextBot())) or ent.TIFSoldier then return end
+	if not (ent:IsNPC() or (ent.IsNextBot and ent:IsNextBot())) or ent.TIFSoldier then
+		return
+	end
 	for i = #TIF.NPCs, 1, -1 do if TIF.NPCs[i] == ent then table.remove(TIF.NPCs, i) end end
 end)
 

@@ -36,9 +36,12 @@ function R.Surface(area)
 
 			local h = util.TraceHull({ start = c + Vector(0, 0, 30), endpos = c + Vector(0, 0, 30),
 				mins = Vector(-55, -55, 0), maxs = Vector(55, 55, 50), mask = MASK_SOLID_BRUSHONLY })
-			if h.Hit then s = "no" end
+			if h.Hit then
+				s = "no"
+			end
 		end
 	end
+
 	surfaceCache[id] = s
 	return s
 end
@@ -78,11 +81,14 @@ local function nav_route(from, to)
 				if not g[nid] or cost < g[nid] then
 					g[nid], came[nid] = cost, best
 					f[nid] = cost + nc:Distance(goal)
-					if not inOpen[nid] then open[#open + 1] = n inOpen[nid] = true end
+					if not inOpen[nid] then
+						open[#open + 1] = n inOpen[nid] = true
+					end
 				end
 			end
 		end
 	end
+
 	return nil
 end
 
@@ -97,6 +103,7 @@ local function grounded(a, b)
 		local t = util.TraceLine(down)
 		if not t.Hit or math.abs(t.HitPos.z - p.z) > 60 then return false end
 	end
+
 	return true
 end
 
@@ -114,24 +121,31 @@ local function simplify(pts)
 		out[#out + 1] = pts[j]
 		i = j
 	end
+
 	return out
 end
 
 function R.Build(from, to)
 	local dv = TIF.DV.Route(from, to)
 	if dv then
-		if dv[#dv]:DistToSqr(to) > 200 * 200 then dv[#dv + 1] = to end
+		if dv[#dv]:DistToSqr(to) > 200 * 200 then
+			dv[#dv + 1] = to
+		end
 		return dv, "dv"
 	end
+
 	local areas = nav_route(from, to)
 	if areas and #areas > 0 then
 		local pts = { from }
-		for _, a in ipairs(areas) do pts[#pts + 1] = a:GetCenter() end
+		for _, a in ipairs(areas) do
+			pts[#pts + 1] = a:GetCenter()
+		end
 		pts[#pts + 1] = to
 		local s = simplify(pts)
 		table.remove(s, 1)
 		return s, "roads"
 	end
+
 	if from:DistToSqr(to) < 1500 * 1500 then return { to }, "direct" end
 	return nil, "no route"
 end
@@ -141,5 +155,6 @@ function R.Classify(pos, radius)
 	for _, a in ipairs(navmesh.Find(pos, radius or 3000, 100, 100)) do
 		out[#out + 1] = { area = a, surface = R.Surface(a) }
 	end
+
 	return out
 end

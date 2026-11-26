@@ -4,8 +4,11 @@ function EFFECT:Init(data)
 	local Bd = TIF and TIF.Body
 	if IsValid(ent) and Bd and Bd.MuzzleWorld then
 		local at = Bd.MuzzleWorld(ent)
-		if at then start = at.Pos end
+		if at then
+			start = at.Pos
+		end
 	end
+
 	local ed = EffectData()
 	ed:SetStart(start)
 	ed:SetOrigin(data:GetOrigin())

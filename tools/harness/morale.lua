@@ -80,7 +80,7 @@ npc.tifMoraleState = "steady"
 MO.BrokenThink(npc, nil, 104)
 check(npc.tifPanic == nil, "recovered: no more panic")
 local wsrc = io.open(ROOT .. "tif/npc/sv_weapon.lua"):read("*a")
-check(wsrc:find("if npc.tifPanic then deg = deg * W.PANIC_SPREAD end", 1, true) and wsrc:find("W.PANIC_SPREAD, W.PANIC_PAUSE, W.PANIC_RELOAD = 3, 0.45, 1.5", 1, true),
+check(wsrc:gsub("%s+", " "):find("if npc.tifPanic then deg = deg * W.PANIC_SPREAD end", 1, true) and wsrc:find("W.PANIC_SPREAD, W.PANIC_PAUSE, W.PANIC_RELOAD = 3, 0.45, 1.5", 1, true),
 	"panic: a third of the accuracy, short pauses, slow reloads")
 check(wsrc:find("local r = (def and def.auto) and W.PANIC_BURST or W.PANIC_SEMI", 1, true) ~= nil, "panic: long uncontrolled bursts")
 npc.tifMoraleState = "broken"

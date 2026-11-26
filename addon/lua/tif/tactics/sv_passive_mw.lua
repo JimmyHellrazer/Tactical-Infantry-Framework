@@ -32,7 +32,10 @@ end
 function P.Use(npc)
 	local home = npc.tifHomeHost
 	if not home or not TIF.GTG.IsVB(home) then return false end
-	if npc.tifMwPassive == nil then npc.tifMwPassive = has(npc, "mwa_idle") end
+	if npc.tifMwPassive == nil then
+		npc.tifMwPassive = has(npc, "mwa_idle")
+	end
+
 	return npc.tifMwPassive
 end
 
@@ -53,18 +56,24 @@ local function put_away(npc, now, hurry, startled, threatPos)
 	local d
 	if a.smart and TIF.SmartMW then
 		if a.phase == "exit" then d = math.max(0, a.untilT - now)
-		else d = TIF.SmartMW.Leave(npc, a, now, startled, threatPos, hurry) end
+		else
+			d = TIF.SmartMW.Leave(npc, a, now, startled, threatPos, hurry)
+		end
 	elseif a.phase == "end" then
 		d = math.max(0, a.untilT - now)
 	else
 		d = Act.Play(npc, "mwx_" .. a.name .. "_end", { rate = hurry and 1.6 or 1, clear = true })
 	end
+
 	if d and d > 0 then
 		busy(npc, now, d, "away")
 
-		if hurry then npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d) end
+		if hurry then
+			npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d)
+		end
 		return true
 	end
+
 	Act.Clear(npc)
 	return false
 end
@@ -77,6 +86,7 @@ function P.Duty(npc, now, still)
 		npc.tifStillSince = nil
 		return a ~= nil and put_away(npc, now, false)
 	end
+
 	npc.tifStillSince = npc.tifStillSince or now
 	local SM = TIF.SmartMW
 
@@ -91,8 +101,11 @@ function P.Duty(npc, now, still)
 			end
 		end
 	end
+
 	if not a then
-		if (npc.tifHeightenedUntil or 0) > now or now < (npc.tifNextActivity or 0) then return false end
+		if (npc.tifHeightenedUntil or 0) > now or now < (npc.tifNextActivity or 0) then
+			return false
+		end
 		if now - npc.tifStillSince < (npc.tifStillNeed or math.Rand(P.START_AFTER[1], P.START_AFTER[2])) then
 			npc.tifStillNeed = npc.tifStillNeed or math.Rand(P.START_AFTER[1], P.START_AFTER[2])
 			return false
@@ -119,9 +132,13 @@ function P.Duty(npc, now, still)
 		for _, g in ipairs(P.ACTIVITY_GROUPS) do
 			local ok = {}
 			for _, n in ipairs(g) do
-				if has(npc, "mwx_" .. n .. "_start") and has(npc, "mwx_" .. n .. "_loop") then ok[#ok + 1] = n end
+				if has(npc, "mwx_" .. n .. "_start") and has(npc, "mwx_" .. n .. "_loop") then
+					ok[#ok + 1] = n
+				end
 			end
-			if #ok > 0 then groups[#groups + 1] = ok end
+			if #ok > 0 then
+				groups[#groups + 1] = ok
+			end
 		end
 		if #groups == 0 then return false end
 		local g = groups[math.random(#groups)]
@@ -133,14 +150,18 @@ function P.Duty(npc, now, still)
 		npc.tifFace = nil
 		return true
 	end
+
 	npc.tifFace = nil
 	npc.tifAction = "duty: " .. a.name
 	if a.smart and SM then
-		if SM.Step(npc, a, now, math.Rand(P.LOOP_FOR[1], P.LOOP_FOR[2]) * 1.5) then return true end
+		if SM.Step(npc, a, now, math.Rand(P.LOOP_FOR[1], P.LOOP_FOR[2]) * 1.5) then
+			return true
+		end
 		npc.tifActivity = nil
 		npc.tifNextActivity = now + math.Rand(P.COOLDOWN[1], P.COOLDOWN[2])
 		return false
 	end
+
 	if a.phase == "start" and now >= a.untilT then
 
 		local lc = TIF.GTG.Clip("mwx_" .. a.name .. "_loop", npc.tifHomeHost)
@@ -160,6 +181,7 @@ function P.Duty(npc, now, still)
 		Act.Clear(npc)
 		return false
 	end
+
 	return true
 end
 
@@ -178,6 +200,7 @@ function P.Busy(npc, now)
 			pend.fn(now)
 		end
 	end
+
 	local r = npc.tifPassiveBusy
 	if r then
 
@@ -188,7 +211,9 @@ function P.Busy(npc, now)
 		end
 		if now < r.untilT then return true end
 		npc.tifPassiveBusy = nil
-		if r.after then r.after(npc, now) end
+		if r.after then
+			r.after(npc, now)
+		end
 		return false
 	end
 
@@ -197,6 +222,7 @@ function P.Busy(npc, now)
 		local threat = (c and c.pos) or (stim and stim.pos)
 		return put_away(npc, now, npc.tifAware == AW.ENGAGED or npc.tifAware == AW.ALERTED, true, threat)
 	end
+
 	return false
 end
 
@@ -235,17 +261,22 @@ local function mw22_variant(npc, grade, posture, mv, pos)
 	if d == 2 and pos then
 		ds = math.AngleDifference((pos - npc:GetPos()):Angle().y, npc:GetAngles().y) > 0 and "2l" or "2r"
 	end
+
 	for _, n in ipairs({ "mwr2_" .. posture .. "_" .. mv .. "_" .. kind .. "_" .. ds,
 		"mwr2_" .. posture .. "_idle_" .. kind .. "_" .. ds }) do
 		if has(npc, n) then return n end
 	end
+
 	return nil
 end
 
 local function react(npc, now, grade, pos, posture, opts)
 	local mv = moving(npc) and "walk" or "idle"
 	local name = "mwr_" .. posture .. "_" .. mv .. "_" .. grade .. "_" .. dir_to(npc, pos)
-	if not has(npc, name) then name = "mwr_" .. posture .. "_idle_" .. grade .. "_" .. dir_to(npc, pos) end
+	if not has(npc, name) then
+		name = "mwr_" .. posture .. "_idle_" .. grade .. "_" .. dir_to(npc, pos)
+	end
+
 	if grade ~= "look" and math.random() < P.MW22_SHARE then
 		name = mw22_variant(npc, grade, posture, mv, pos) or name
 	end
@@ -264,7 +295,11 @@ function P.OnAware(npc, old, new, now)
 	if not P.Use(npc) or npc.tifCov or npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifSurrendered then
 		return
 	end
-	if in_cqb(npc) then npc.tifPendingReact = nil return end
+	if in_cqb(npc) then
+		npc.tifPendingReact = nil
+		return
+	end
+
 	if npc.tifActivity then return end
 	if npc.tifPassiveBusy then return end
 	local calm = old == AW.UNAWARE and (npc.tifHeightenedUntil or 0) <= now
@@ -290,7 +325,9 @@ function P.OnAware(npc, old, new, now)
 		local clip = has(npc, name) and TIF.GTG.Clip(name, npc.tifHomeHost)
 		local rate = clip and math.Clamp(clip.dur / (wait + 0.5), 1.2, 2.4) or 1.6
 		local ok, d = react(npc, now, "lg", c and c.pos, "patrol", { rate = rate, engagedOk = true })
-		if ok then npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d) end
+		if ok then
+			npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d)
+		end
 	elseif new == AW.ENGAGED and (old == AW.SUSPICIOUS or old == AW.ALERTED) and c and not moving(npc)
 		and npc:GetPos():DistToSqr(c.pos) < P.NEWENEMY_R * P.NEWENEMY_R and npc:GetTIFStance() ~= TIF.Anim.STANCE_CROUCH then
 
@@ -312,12 +349,16 @@ function P.OnAware(npc, old, new, now)
 		local sq = npc.tifSquad
 		if sq and now < (sq.nextPointOut or 0) then return end
 		local name = "mwe_point" .. (math.random() < 0.5 and "2" or "") .. "_" .. dir_num(npc, c.pos)
-		if not has(npc, name) then name = "mwe_point_" .. dir8(npc, c.pos) end
+		if not has(npc, name) then
+			name = "mwe_point_" .. dir8(npc, c.pos)
+		end
 		if has(npc, name) then
 			npc.tifPendingReact = nil
 			local d = Act.Play(npc, name, { root = true, rate = 1.4, clear = true })
 			if d then
-				if sq then sq.nextPointOut = now + P.POINT_SQUAD_COOLDOWN end
+				if sq then
+					sq.nextPointOut = now + P.POINT_SQUAD_COOLDOWN
+				end
 				busy(npc, now, d, "react")
 				npc.tifPassiveBusy.engagedOk = true
 				npc.tifReactUntil = math.max(npc.tifReactUntil or 0, now + d * 0.6)
@@ -330,7 +371,9 @@ function P.OnAware(npc, old, new, now)
 		later(P.REACT_DELAY, function(t)
 			if moving(npc) or npc.tifAware ~= AW.SEARCHING then return end
 			local name = "mwe_look" .. (math.random() < 0.5 and "2" or "") .. "_" .. dir_num(npc, c.pos)
-			if not has(npc, name) then name = "mwe_look_" .. dir8(npc, c.pos) end
+			if not has(npc, name) then
+				name = "mwe_look_" .. dir8(npc, c.pos)
+			end
 			if not has(npc, name) then return end
 			local d = Act.Play(npc, name, { root = true, clear = true })
 			if d then
@@ -342,7 +385,9 @@ function P.OnAware(npc, old, new, now)
 		later(P.CALM_DELAY, function(t)
 			if moving(npc) or npc.tifAware ~= AW.UNAWARE then return end
 			local d = Act.Play(npc, "mwa_calm", { clear = true })
-			if d then busy(npc, t, d, "react") end
+			if d then
+				busy(npc, t, d, "react")
+			end
 		end)
 	end
 end
@@ -370,9 +415,14 @@ function P.Investigate(npc, now)
 				end
 			end
 		end
-		if d then busy(npc, now, d, "body", alarm) else alarm(npc, now) end
+		if d then
+			busy(npc, now, d, "body", alarm)
+		else
+			alarm(npc, now)
+		end
 		return true
 	end
+
 	if now < (npc.tifNextInvestigateIdle or 0) then return npc.tifAct ~= nil end
 	local pool = {}
 	for _, n in ipairs(INVESTIGATE) do if has(npc, n) then pool[#pool + 1] = n end end

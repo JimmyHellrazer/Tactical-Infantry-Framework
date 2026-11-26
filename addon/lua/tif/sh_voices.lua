@@ -121,9 +121,14 @@ end
 function V.FactionPacks(def)
 	local out = {}
 	for _, p in ipairs(istable(def and def.voices) and def.voices or {}) do
-		if V.PACKS[p] then out[#out + 1] = p end
+		if V.PACKS[p] then
+			out[#out + 1] = p
+		end
 	end
-	if #out == 0 and def and V.PACKS[def.voice or ""] then out[1] = def.voice end
+
+	if #out == 0 and def and V.PACKS[def.voice or ""] then
+		out[1] = def.voice
+	end
 	return out
 end
 
@@ -149,14 +154,20 @@ function V.Build(packId)
 			table.insert(byCat[cat], pack.folder .. "/" .. f)
 		end
 	end
+
 	local set = { id = packId, categories = byCat, events = {} }
 	for event, cats in pairs(pack.events) do
 		local list = {}
 		for _, c in ipairs(cats) do
-			for _, p in ipairs(byCat[c] or {}) do list[#list + 1] = p end
+			for _, p in ipairs(byCat[c] or {}) do
+				list[#list + 1] = p
+			end
 		end
-		if #list > 0 then set.events[event] = list end
+		if #list > 0 then
+			set.events[event] = list
+		end
 	end
+
 	V.Sets[packId] = set
 	return set
 end
@@ -190,9 +201,13 @@ function V.Pick(packId, event)
 	if not list then
 		for _, alt in ipairs(V.FALLBACK[event] or {}) do
 			list = set and set.events[alt]
-			if list then event = alt break end
+			if list then
+				event = alt
+				break
+			end
 		end
 	end
+
 	if not list then return nil end
 	if #list == 1 then return list[1] end
 	local last = set.last and set.last[event]
@@ -201,6 +216,7 @@ function V.Pick(packId, event)
 		pick = list[math.random(#list)]
 		if pick ~= last then break end
 	end
+
 	set.last = set.last or {}
 	set.last[event] = pick
 	return pick
@@ -253,7 +269,9 @@ if SERVER then
 			gt[gk] = now + V.GROUP_GAP
 			npc.tifSaidAt = now
 			local sq = npc.tifSquad
-			if sq then sq.tifSaidAt = now end
+			if sq then
+				sq.tifSaidAt = now
+			end
 		end
 		return snd
 	end

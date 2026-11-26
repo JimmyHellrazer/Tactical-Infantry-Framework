@@ -29,6 +29,7 @@ local function get_eye_offset(follower, ent, headBone)
 			offset = { pos = localPos, ang = localAng }
 		end
 	end
+
 	eyeOffsets[model] = offset
 	return offset or nil
 end
@@ -52,6 +53,7 @@ function Eyes.Update(ent, state)
 		headBone = ent:LookupBone(Eyes.HEAD) or false
 		state.eyeHead = headBone
 	end
+
 	if not headBone then return end
 	local offset = get_eye_offset(follower, ent, headBone)
 	if not offset then return end
@@ -68,6 +70,7 @@ function Eyes.Update(ent, state)
 			lookDir = clamp_to_cone(forward, toTarget)
 		end
 	end
+
 	follower:SetEyeTarget((WorldToLocal(eyePos + lookDir * Eyes.AHEAD, angle_zero, eyePos, eyeAng)))
 	follower.tifEyesByBody = true
 end

@@ -21,11 +21,16 @@ H.Banned = H.Banned or {}
 
 local function load_bans()
 	H.Banned = {}
-	for _, n in ipairs(H.DEFAULT_BANS) do H.Banned[n] = true end
+	for _, n in ipairs(H.DEFAULT_BANS) do
+		H.Banned[n] = true
+	end
+
 	local txt = file.Read(H.BAN_FILE, "DATA") or ""
 	for line in string.gmatch(txt, "[^\r\n]+") do
 		local n = string.Trim(line)
-		if n ~= "" then H.Banned[n] = true end
+		if n ~= "" then
+			H.Banned[n] = true
+		end
 	end
 end
 
@@ -34,7 +39,10 @@ load_bans()
 local function save_bans()
 	file.CreateDir("tif")
 	local t = {}
-	for n in pairs(H.Banned) do t[#t + 1] = n end
+	for n in pairs(H.Banned) do
+		t[#t + 1] = n
+	end
+
 	table.sort(t)
 	file.Write(H.BAN_FILE, table.concat(t, "\n"))
 	poolsByHost = {}
@@ -51,7 +59,9 @@ local function pools(host)
 	local clips = TIF.GTG.Clips(host) or {}
 	for name, c in pairs(clips) do
 		local kind, sit, region = string.match(name, "^mw([dh])_(.+)_(%a+)_%d+$")
-		if kind and (H.Banned[name] or H.Banned[c.from or ""] or H.Banned[c.seq or ""]) then kind = nil end
+		if kind and (H.Banned[name] or H.Banned[c.from or ""] or H.Banned[c.seq or ""]) then
+			kind = nil
+		end
 		if kind then
 			local t = kind == "d" and p.death or p.pain
 			t[sit] = t[sit] or {}
@@ -59,6 +69,7 @@ local function pools(host)
 			table.insert(t[sit][region], { name = name, clip = c })
 		end
 	end
+
 	poolsByHost[host] = p
 	return p
 end
@@ -76,6 +87,7 @@ local function push_local(npc, dmg)
 		local att = dmg and dmg:GetAttacker()
 		f = IsValid(att) and (npc:GetPos() - att:GetPos()) or npc:GetForward() * -1
 	end
+
 	local yaw = math.rad(npc:GetAngles().y)
 	local c, s = math.cos(yaw), math.sin(yaw)
 	local x, y = f.x * c + f.y * s, -f.x * s + f.y * c
@@ -96,6 +108,7 @@ local function pick(list, key, px, py)
 		end
 		scored[#scored + 1] = { e = e, s = s }
 	end
+
 	table.sort(scored, function(a, b) return a.s > b.s end)
 	return scored[math.random(1, math.min(3, #scored))].e
 end
@@ -120,8 +133,13 @@ local function base_situation(npc, dmg)
 	if real_blast(dmg) then return "explode" end
 	if npc.tifProne then return "prone" end
 	local act = npc.tifActivity
-	if act and act.smart and act.smart.kind == "sit" and act.phase == "loop" then return "sit" end
-	if cov and cov.mw and cov.t and not OUT_OF_COVER[cov.phase] then return "cover_" .. cov.t end
+	if act and act.smart and act.smart.kind == "sit" and act.phase == "loop" then
+		return "sit"
+	end
+
+	if cov and cov.mw and cov.t and not OUT_OF_COVER[cov.phase] then
+		return "cover_" .. cov.t
+	end
 	if npc:GetTIFStance() == A.STANCE_CROUCH then return "crouch" end
 	if npc.loco:GetVelocity():Length2D() > H.RUN_SPEED then return "run" end
 	return "stand"
@@ -142,14 +160,20 @@ local function ledge(npc)
 		return util.TraceLine({ start = pos + Vector(0, 0, z), endpos = pos + Vector(0, 0, z) + fwd * d,
 			mask = MASK_NPCSOLID_BRUSHONLY, filter = npc }).Hit
 	end
+
 	local function drop(d)
 		local p = pos + fwd * d
 		return not util.TraceLine({ start = p + Vector(0, 0, 12), endpos = p - Vector(0, 0, H.LEDGE_DROP),
 			mask = MASK_NPCSOLID_BRUSHONLY, filter = npc }).Hit
 	end
 
-	if blocked(36, 36) and not blocked(62, 44) and drop(60) then return "rail" end
-	if not blocked(20, 44) and not blocked(36, 44) and drop(44) then return "norail" end
+	if blocked(36, 36) and not blocked(62, 44) and drop(60) then
+		return "rail"
+	end
+	if not blocked(20, 44) and not blocked(36, 44) and drop(44) then
+		return "norail"
+	end
+
 	return nil
 end
 H.Ledge = ledge
@@ -170,14 +194,22 @@ local function situation(npc, dmg)
 		if npc.tifProne then return { "burn_prone", "prone" } end
 		return crouched and { "burn_crouch", "burn", "crouch" } or { "burn", "stand" }
 	end
+
 	if npc.tifProne then return { "prone" } end
 
 	local act = npc.tifActivity
-	if act and act.smart and act.smart.kind == "sit" and act.phase == "loop" then return { "sit", "stand" } end
+	if act and act.smart and act.smart.kind == "sit" and act.phase == "loop" then
+		return { "sit", "stand" }
+	end
 
 	local look = npc.tifLook
-	if look and LOOK_DEATH[look.kind] then return { "look_" .. look.kind, "stand" } end
-	if act and ACT_DEATH[act.name] then return { "act_" .. act.name, "stand" } end
+	if look and LOOK_DEATH[look.kind] then
+		return { "look_" .. look.kind, "stand" }
+	end
+
+	if act and ACT_DEATH[act.name] then
+		return { "act_" .. act.name, "stand" }
+	end
 	if cov and cov.mw and cov.t and not OUT_OF_COVER[cov.phase] then
 
 		if cov.t == "cr" and (cov.phase == "aim" or cov.phase == "aim_in" or cov.phase == "aim_out") then
@@ -236,6 +268,7 @@ local function long_chain(npc, sit)
 			kinds[#kinds + 1] = p
 		end
 	end
+
 	if #kinds == 0 then return nil end
 	local p = kinds[math.random(#kinds)]
 	return { { name = p .. "enter" }, { name = p .. "loop", hold = math.Rand(H.LONG_HOLD[1], H.LONG_HOLD[2]) },
@@ -245,7 +278,9 @@ H.LongChain = long_chain
 
 function H.Death(npc, dmg)
 
-	if not H.Use(npc) or npc.tifVeh or npc.tifDowned or npc.tifNoDeathClip then return false end
+	if not H.Use(npc) or npc.tifVeh or npc.tifDowned or npc.tifNoDeathClip then
+		return false
+	end
 	local P = pools(npc.tifHostId)
 	local region = REGION[npc.tifLastHitGroup] or "torso"
 
@@ -253,18 +288,28 @@ function H.Death(npc, dmg)
 	local sit, list = sits[1], nil
 	for _, s in ipairs(sits) do
 		list = region_list(P.death, s, region)
-		if list and #list > 0 then sit = s break end
+		if list and #list > 0 then
+			sit = s
+			break
+		end
 	end
+
 	if cvLong:GetBool() and region ~= "head" and (sit == "stand" or sit == "crouch" or sit == "run")
 		and math.random() < H.LONG_CHANCE then
 		local chain = long_chain(npc, sit)
 		local d = chain and (Move.Stop(npc) or true) and Act.Play(npc, chain[1].name, { root = true })
 		if d then
 			local now = CurTime()
-			if TIF.CoverBehave and TIF.CoverBehave.In(npc) then npc.tifCov = nil end
-			if TIF.SmartMW then TIF.SmartMW.Release(npc) end
+			if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+				npc.tifCov = nil
+			end
+			if TIF.SmartMW then
+				TIF.SmartMW.Release(npc)
+			end
 			table.insert(H.Recent, 1, { name = chain[1].name, src = "long death", sit = sit, t = now, who = npc:EntIndex() })
-			if #H.Recent > 10 then table.remove(H.Recent) end
+			if #H.Recent > 10 then
+				table.remove(H.Recent)
+			end
 			local c = TIF.GTG.Clip(chain[1].name, npc.tifHostId)
 			npc.tifDying = { untilT = math.huge, chain = chain, stage = 1, stageEnd = now + d, prev = {}, prevT = now,
 				seq = npc:LookupSequence(c.seq), t0 = now, dur = d }
@@ -274,25 +319,40 @@ function H.Death(npc, dmg)
 			return true
 		end
 	end
-	if not list or #list == 0 then list = region_list(P.death, "stand", region) end
+
+	if not list or #list == 0 then
+		list = region_list(P.death, "stand", region)
+	end
 	local px, py = push_local(npc, dmg)
 	local e = pick(list, "fall", px, py)
 	if not e then return false end
 	local now = CurTime()
 	Move.Stop(npc)
-	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then npc.tifCov = nil end
+	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+		npc.tifCov = nil
+	end
+
 	local d = Act.Play(npc, e.name, { root = true })
 	if not d then return false end
 
 	table.insert(H.Recent, 1, { name = e.name, src = e.clip.from or e.clip.seq, sit = sit, t = now, who = npc:EntIndex() })
-	if #H.Recent > 10 then table.remove(H.Recent) end
-	if TIF.SmartMW then TIF.SmartMW.Release(npc) end
+	if #H.Recent > 10 then
+		table.remove(H.Recent)
+	end
+
+	if TIF.SmartMW then
+		TIF.SmartMW.Release(npc)
+	end
 	local lying = sit == "prone" or sit == "burn_prone"
-	if lying then prone_death_shift(npc) end
+	if lying then
+		prone_death_shift(npc)
+	end
 
 	local cut = e.clip.cut or 0.6
 
-	if lying then cut = math.Clamp(cut, H.PRONE_CUT[1], H.PRONE_CUT[2]) end
+	if lying then
+		cut = math.Clamp(cut, H.PRONE_CUT[1], H.PRONE_CUT[2])
+	end
 	npc.tifDying = { untilT = now + d * cut, prev = {}, prevT = now,
 
 		seq = npc:LookupSequence(e.clip.seq), t0 = now, dur = d }
@@ -344,6 +404,7 @@ hook.Add("EntityFireBullets", "tif_long_death_shot", function(shooter, data)
 			end
 		end
 	end
+
 	if not best then return end
 
 	wallTr.start, wallTr.endpos, wallTr.filter = src, src + dir * (bestT - 6), { shooter, best }
@@ -381,9 +442,12 @@ function H.DyingThink(npc, now)
 			dy.untilT = now
 		end
 	end
+
 	Act.Tick(npc, now)
 
-	if npc.InvalidateBoneCache then npc:InvalidateBoneCache() end
+	if npc.InvalidateBoneCache then
+		npc:InvalidateBoneCache()
+	end
 	local dt = now - dy.prevT
 	if now >= dy.untilT then
 
@@ -394,14 +458,18 @@ function H.DyingThink(npc, now)
 		for i = #hist, 1, -1 do
 			local age = now - hist[i].t
 			local dd = math.abs(age - H.VEL_WINDOW)
-			if age >= 0.01 and (not bestD or dd < bestD) then old, bestD = hist[i], dd end
+			if age >= 0.01 and (not bestD or dd < bestD) then
+				old, bestD = hist[i], dd
+			end
 		end
 		local span = old and (now - old.t) or 0
 		if old and span > 0.01 then
 			local cb = TIF.CopyBone
 			for b, p in pairs(old.pos) do
 				local m = cb and cb(npc, b, HIT_BONE_M) or npc:GetBoneMatrix(b)
-				if m then vel[b] = (m:GetTranslation() - p) / span end
+				if m then
+					vel[b] = (m:GetTranslation() - p) / span
+				end
 			end
 		end
 		npc.tifDying = nil
@@ -409,13 +477,16 @@ function H.DyingThink(npc, now)
 		npc:TIFFinishDeath(vel)
 		return true
 	end
+
 	if dt > 0 then
 		dy.prevT = now
 		local pos = {}
 		local cb = TIF.CopyBone
 		for b = 0, npc:GetBoneCount() - 1 do
 			local m = cb and cb(npc, b, HIT_BONE_M) or npc:GetBoneMatrix(b)
-			if m then pos[b] = m:GetTranslation() end
+			if m then
+				pos[b] = m:GetTranslation()
+			end
 		end
 		dy.prev = pos
 
@@ -423,6 +494,7 @@ function H.DyingThink(npc, now)
 		table.insert(dy.hist, { t = now, pos = pos })
 		while #dy.hist > 2 and now - dy.hist[2].t > H.VEL_WINDOW do table.remove(dy.hist, 1) end
 	end
+
 	return true
 end
 
@@ -435,6 +507,7 @@ function H.Pain(npc, dmg)
 	if real_blast(dmg) and dmg:GetDamage() >= H.KNOCK_MIN and npc:Health() > 0 and H.Knockdown(npc, dmg) then
 		return true
 	end
+
 	local now = CurTime()
 
 	if dmg:IsDamageType(DMG_BURN) then
@@ -446,7 +519,9 @@ function H.Pain(npc, dmg)
 		for i = 1, 12 do if TIF.GTG.Clip(set .. i, npc.tifHostId) then list[#list + 1] = set .. i end end
 		if #list == 0 then return false end
 		Move.Stop(npc)
-		if not npc.tifProne then npc.tifStance = A.STANCE_STAND end
+		if not npc.tifProne then
+			npc.tifStance = A.STANCE_STAND
+		end
 		local d = Act.Play(npc, list[math.random(#list)], { root = true, clear = true })
 		if not d then return false end
 		npc.tifNextFireReact = now + H.FIRE_COOLDOWN
@@ -461,7 +536,9 @@ function H.Pain(npc, dmg)
 
 	local cov = npc.tifCov
 	if cov and cov.mw and now >= (npc.tifNextPain or 0) and not npc.tifDowned and TIF.CoverBehave.MW.Pain then
-		if math.random() > math.Clamp(dmg:GetDamage() / 30, 0.4, 0.9) then return false end
+		if math.random() > math.Clamp(dmg:GetDamage() / 30, 0.4, 0.9) then
+			return false
+		end
 		local px, py = push_local(npc, dmg)
 
 		local dir = math.abs(px) >= math.abs(py) and (px > 0 and "b" or "f") or (py > 0 and "r" or "l")
@@ -474,6 +551,7 @@ function H.Pain(npc, dmg)
 		end
 		return false
 	end
+
 	if now < (npc.tifNextPain or 0) or npc.tifAct or npc.tifCov or npc.tifVeh or npc.tifDowned
 		or npc.tifSurrendered or npc.tifPassiveBusy or npc.tifReact then return false end
 	local chance = math.Clamp(dmg:GetDamage() / 30, 0.35, 0.9)
@@ -486,6 +564,7 @@ function H.Pain(npc, dmg)
 		npc.tifNextPain = now + 4 + H.PAIN_COOLDOWN
 		return true
 	end
+
 	local P = pools(npc.tifHostId)
 	local sit = base_situation(npc, dmg)
 
@@ -506,7 +585,10 @@ function H.Pain(npc, dmg)
 
 	if sit == "prone" then return false end
 	if sit == "run" then return false end
-	if sit == "explode" then sit = "stand" end
+	if sit == "explode" then
+		sit = "stand"
+	end
+
 	local cqbMoving = sit == "stand" and npc:GetNW2Bool("tif_cqb", false) and moveSpeed > 30
 	if moving and not cqbMoving then return false end
 	local region = REGION[npc.tifLastHitGroup] or "torso"
@@ -515,21 +597,29 @@ function H.Pain(npc, dmg)
 	if TIF.CoverBehave.MW and TIF.CoverBehave.MW.HoldsPistol and TIF.CoverBehave.MW.HoldsPistol(npc) then
 		cands[#cands + 1] = "pstl"
 	end
-	if dmg:GetDamage() >= H.BIG_PAIN and (sit == "stand" or sit == "crouch") then cands[#cands + 1] = sit .. "big" end
+
+	if dmg:GetDamage() >= H.BIG_PAIN and (sit == "stand" or sit == "crouch") then
+		cands[#cands + 1] = sit .. "big"
+	end
 	local speed = npc.loco:GetVelocity():Length2D()
 	if sit == "stand" and npc:GetNW2Bool("tif_cqb", false) and speed > 30 then
 		cands[#cands + 1] = speed > H.RUN_SPEED * 0.75 and "cqbfast" or "cqbwalk"
 	end
+
 	cands[#cands + 1] = sit
 	local list
 	for _, s in ipairs(cands) do
 		list = region_list(P.pain, s, region)
 		if list and #list > 0 then break end
 	end
+
 	local px, py = push_local(npc, dmg)
 	local e = pick(list, "push", px, py)
 	if not e then return false end
-	if sit ~= "run" then Move.Stop(npc) end
+	if sit ~= "run" then
+		Move.Stop(npc)
+	end
+
 	local d = Act.Play(npc, e.name, { root = true, clear = true })
 	if not d then return false end
 	npc.tifPainUntil = now + d * H.PAIN_BUSY
@@ -573,7 +663,12 @@ function H.LieOf(rag)
 	local F = A:Cross(S)
 	F:Normalize()
 	local side
-	if F.z > 0.5 then side = "back" elseif F.z < -0.5 then side = "stomach" else side = S.z > 0 and "left" or "right" end
+	if F.z > 0.5 then
+		side = "back" elseif F.z < -0.5 then side = "stomach"
+	else
+		side = S.z > 0 and "left" or "right"
+	end
+
 	return side, pel, math.deg(math.atan2(A.y, A.x))
 end
 
@@ -582,19 +677,26 @@ function H.Knockdown(npc, dmg)
 		or npc.tifDying or npc.tifDead or not npc.TIFMakeCorpse then return false end
 	if not TIF.GTG.Clip("mwk_up_back_8", npc.tifHostId) then return false end
 	local now = CurTime()
-	if now < (npc.tifKnockNext or 0) or math.random() > H.KNOCK_CHANCE then return false end
+	if now < (npc.tifKnockNext or 0) or math.random() > H.KNOCK_CHANCE then
+		return false
+	end
+
 	local f = dmg:GetDamageForce()
 	if f:LengthSqr() < 1 then
 		f = npc:WorldSpaceCenter() - dmg:GetDamagePosition()
 		f:Normalize()
 		f = f * 12000
 	end
+
 	f.z = math.max(f.z, f:Length() * 0.25)
 	Move.Stop(npc)
 
 	local ok, rag = pcall(npc.TIFMakeCorpse, npc, { pos = dmg:GetDamagePosition(), force = f * 1.5 }, nil)
 	Act.Clear(npc)
-	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "knocked down") end
+	if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+		TIF.CoverBehave.Leave(npc, "knocked down")
+	end
+
 	if not ok or not IsValid(rag) then return false end
 	rag.tifKnockOwner = npc
 	npc.tifKnock = { rag = rag, untilT = now + math.Rand(H.KNOCK_TIME[1], H.KNOCK_TIME[2]) }
@@ -618,12 +720,21 @@ local function knock_think(npc, now)
 		npc.tifPainUntil = nil
 		return false
 	end
+
 	local side, pel, headYaw = H.LieOf(rag)
-	if pel then npc:SetPos(Vector(pel.x, pel.y, npc:GetPos().z)) end
+	if pel then
+		npc:SetPos(Vector(pel.x, pel.y, npc:GetPos().z))
+	end
+
 	if now < k.untilT then return true end
 	local phys = rag:GetPhysicsObject()
-	if IsValid(phys) and phys:GetVelocity():Length() > 40 and now < k.untilT + 2 then return true end
-	if not side then side = "back" end
+	if IsValid(phys) and phys:GetVelocity():Length() > 40 and now < k.untilT + 2 then
+		return true
+	end
+
+	if not side then
+		side = "back"
+	end
 
 	local c = npc.tifPrimaryC
 	local wantYaw = c and (c.pos - pel):Angle().y or nil
@@ -634,7 +745,9 @@ local function knock_think(npc, now)
 		if p and TIF.GTG.Clip(name, npc.tifHostId) then
 			local yaw = headYaw - p[3]
 			local e = wantYaw and math.abs(math.AngleDifference(yaw, wantYaw)) or math.random() * 180
-			if not bestE or e < bestE then best, bestE, bestYaw = name, e, yaw end
+			if not bestE or e < bestE then
+				best, bestE, bestYaw = name, e, yaw
+			end
 		end
 	end
 
@@ -645,7 +758,11 @@ local function knock_think(npc, now)
 	npc:SetNoDraw(false)
 	npc:SetNotSolid(false)
 	rag:Remove()
-	if not best then npc.tifPainUntil = nil return false end
+	if not best then
+		npc.tifPainUntil = nil
+		return false
+	end
+
 	local p = KNOCK_POSE[best]
 	local r = math.rad(bestYaw)
 	local cs, sn = math.cos(r), math.sin(r)
@@ -683,5 +800,7 @@ end
 local cvBlast = CreateConVar("tif_blast_scale", "1.6", FCVAR_ARCHIVE, "Multiplier on blast damage TIF soldiers take")
 
 hook.Add("EntityTakeDamage", "tif_blast_scale", function(ent, dmg)
-	if ent.TIFSoldier and real_blast(dmg) then dmg:ScaleDamage(math.max(0, cvBlast:GetFloat())) end
+	if ent.TIFSoldier and real_blast(dmg) then
+		dmg:ScaleDamage(math.max(0, cvBlast:GetFloat()))
+	end
 end)

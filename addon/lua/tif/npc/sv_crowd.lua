@@ -34,7 +34,9 @@ function Crowd.Bodies(now)
 	local function add_body(ent, isTif)
 		count = count + 1
 		local body = bodyPool[count]
-		if not body then body = { vel = Vector() } bodyPool[count] = body end
+		if not body then
+			body = { vel = Vector() } bodyPool[count] = body
+		end
 		local vel = (ent.loco and ent.loco:GetVelocity()) or ent:GetVelocity()
 		body.e = ent
 		body.pos = ent:GetPos()
@@ -42,33 +44,48 @@ function Crowd.Bodies(now)
 		body.tif = isTif
 		bodyList[count] = body
 	end
+
 	local soldiers = TIF.Soldiers
 	if soldiers then
 		for i = 1, #soldiers do
 			local soldier = soldiers[i]
-			if IsValid(soldier) and not soldier.tifDead and not soldier.tifVeh then add_body(soldier, true) end
+			if IsValid(soldier) and not soldier.tifDead and not soldier.tifVeh then
+				add_body(soldier, true)
+			end
 		end
 	end
+
 	if TIF.Civ and TIF.Civ.List then
 		local civs = TIF.Civ.List()
 		for i = 1, #civs do
 			local civ = civs[i]
-			if not civ.gone and not civ.dead then add_body(civ, true) end
+			if not civ.gone and not civ.dead then
+				add_body(civ, true)
+			end
 		end
 	end
+
 	local players = player.GetAll()
 	for i = 1, #players do
 		local ply = players[i]
-		if ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then add_body(ply, false) end
+		if ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then
+			add_body(ply, false)
+		end
 	end
+
 	local npcs = TIF.NPCs
 	if npcs then
 		for i = 1, #npcs do
 			local npc = npcs[i]
-			if IsValid(npc) and npc:Health() > 0 then add_body(npc, false) end
+			if IsValid(npc) and npc:Health() > 0 then
+				add_body(npc, false)
+			end
 		end
 	end
-	for i = #bodyList, count + 1, -1 do bodyList[i] = nil end
+
+	for i = #bodyList, count + 1, -1 do
+		bodyList[i] = nil
+	end
 	return bodyList
 end
 
@@ -92,15 +109,21 @@ function Crowd.SidePoint(ent, forward, dist, preferredSign)
 		local target = origin + right * (sign * dist) + forward * 10
 		local frac = side_clear_frac(ent, origin, target)
 		if frac > 0.9 then return target end
-		if not bestFrac or frac > bestFrac then bestPos, bestFrac = origin + (target - origin) * frac, frac end
+		if not bestFrac or frac > bestFrac then
+			bestPos, bestFrac = origin + (target - origin) * frac, frac
+		end
 	end
+
 	return (bestFrac and bestFrac > 0.4) and bestPos or nil
 end
 
 function Crowd.Steer(ent, forward, wantSpeed, goal, now)
 	if not cvCrowd:GetBool() or not forward then return wantSpeed, nil end
 	local state = ent.tifCrowd
-	if not state then state = {} ent.tifCrowd = state end
+	if not state then
+		state = {} ent.tifCrowd = state
+	end
+
 	if now >= (state.nextT or 0) then
 		state.nextT = now + Crowd.SCAN_T
 		prof_begin("crowd")
@@ -133,7 +156,9 @@ function Crowd.Steer(ent, forward, wantSpeed, goal, now)
 		if blocker then
 			local alongSpeed = blocker.vel.x * forward.x + blocker.vel.y * forward.y
 			if alongSpeed > Crowd.FOLLOW then
-				if blockerAhead < 60 and alongSpeed < wantSpeed then state.cap = math.max(alongSpeed, 30) end
+				if blockerAhead < 60 and alongSpeed < wantSpeed then
+					state.cap = math.max(alongSpeed, 30)
+				end
 			else
 				local sign = blockerLat > 6 and -1 or 1
 				local sideSpot = Crowd.SidePoint(ent, forward, Crowd.SIDE, sign)
@@ -150,12 +175,14 @@ function Crowd.Steer(ent, forward, wantSpeed, goal, now)
 		end
 		prof_end()
 	end
+
 	local speed = state.cap and math.min(wantSpeed, state.cap) or wantSpeed
 	if state.sgn then
 		local dir = state.fwd or forward
 		local steerTarget = ent:GetPos() + dir * 40 + Vector(dir.y, -dir.x, 0) * (state.sgn * Crowd.SIDE)
 		return speed, steerTarget
 	end
+
 	return speed, nil
 end
 
@@ -165,16 +192,24 @@ local function in_root_clip(ent)
 end
 
 local function can_ghost(ent)
-	if ent.tifVeh or ent.tifBoarding or ent.tifLeaving or ent.tifDead then return false end
+	if ent.tifVeh or ent.tifBoarding or ent.tifLeaving or ent.tifDead then
+		return false
+	end
 	local group = ent:GetCollisionGroup()
 	return group == COLLISION_GROUP_NPC or group == COLLISION_GROUP_NONE or group == Crowd.GHOST_GROUP
 end
 
 local function enable_ghost(ent, now)
-	if ent.tifCrowdGhost then ent.tifCrowdGhost.t = now return end
+	if ent.tifCrowdGhost then
+		ent.tifCrowdGhost.t = now
+		return
+	end
+
 	if not can_ghost(ent) then return end
 	ent.tifCrowdGhost = { old = ent:GetCollisionGroup(), t = now }
-	if ent.tifCrowdGhost.old ~= Crowd.GHOST_GROUP then ent:SetCollisionGroup(Crowd.GHOST_GROUP) end
+	if ent.tifCrowdGhost.old ~= Crowd.GHOST_GROUP then
+		ent:SetCollisionGroup(Crowd.GHOST_GROUP)
+	end
 end
 
 local function disable_ghost(ent)
@@ -187,13 +222,20 @@ end
 Crowd.Unghost = disable_ghost
 
 function Crowd.GhostPair(entA, entB, secs, now)
-	if not cvCrowd:GetBool() or not (IsValid(entA) and IsValid(entB)) then return false end
+	if not cvCrowd:GetBool() or not (IsValid(entA) and IsValid(entB)) then
+		return false
+	end
 	if not (can_ghost(entA) and can_ghost(entB)) then return false end
 	enable_ghost(entA, now)
 	enable_ghost(entB, now)
 	local holdUntil = now + secs - Crowd.GHOST_MIN
-	if entA.tifCrowdGhost then entA.tifCrowdGhost.t = math.max(entA.tifCrowdGhost.t, holdUntil) end
-	if entB.tifCrowdGhost then entB.tifCrowdGhost.t = math.max(entB.tifCrowdGhost.t, holdUntil) end
+	if entA.tifCrowdGhost then
+		entA.tifCrowdGhost.t = math.max(entA.tifCrowdGhost.t, holdUntil)
+	end
+
+	if entB.tifCrowdGhost then
+		entB.tifCrowdGhost.t = math.max(entB.tifCrowdGhost.t, holdUntil)
+	end
 	return entA.tifCrowdGhost ~= nil and entB.tifCrowdGhost ~= nil
 end
 
@@ -250,7 +292,10 @@ function Crowd.Unstack(ent, now)
 	local spot = move.Spread(ent, origin)
 	if not spot or spot:DistToSqr(origin) < 400 then return false end
 	if not move.SetGoal(ent, spot, "walk", "unstack") then return false end
-	if ent.tifPost and ent.tifPost:DistToSqr(origin) < 10000 then ent.tifPost = spot end
+	if ent.tifPost and ent.tifPost:DistToSqr(origin) < 10000 then
+		ent.tifPost = spot
+	end
+
 	return true
 end
 
@@ -267,8 +312,14 @@ function Crowd.Tick(now)
 			tifBodies[tifCount] = body
 		end
 	end
-	for i = #tifBodies, tifCount + 1, -1 do tifBodies[i] = nil end
-	for k in pairs(nearEntities) do nearEntities[k] = nil end
+
+	for i = #tifBodies, tifCount + 1, -1 do
+		tifBodies[i] = nil
+	end
+	for k in pairs(nearEntities) do
+		nearEntities[k] = nil
+	end
+
 	if enabled then
 		for i = 1, tifCount do
 			local bodyA = tifBodies[i]
@@ -281,7 +332,9 @@ function Crowd.Tick(now)
 					nearEntities[bodyA.e], nearEntities[bodyB.e] = true, true
 					if dx < Crowd.OVERLAP and dy < Crowd.OVERLAP then
 						local overlaps = bodyA.e.tifCrowdOv
-						if not overlaps then overlaps = {} bodyA.e.tifCrowdOv = overlaps end
+						if not overlaps then
+							overlaps = {} bodyA.e.tifCrowdOv = overlaps
+						end
 						overlaps[bodyB.e] = overlaps[bodyB.e] or now
 						if now - overlaps[bodyB.e] >= Crowd.GHOST_AFTER or in_root_clip(bodyA.e) or in_root_clip(bodyB.e) then
 							enable_ghost(bodyA.e, now)
@@ -290,7 +343,9 @@ function Crowd.Tick(now)
 						if now - overlaps[bodyB.e] >= Crowd.UNSTACK_AFTER and not is_unstacking(bodyA.e) and not is_unstacking(bodyB.e) then
 							local idleA, idleB = is_idle_soldier(bodyA.e), is_idle_soldier(bodyB.e)
 							local mover = (idleA and idleB) and (bodyA.e:EntIndex() > bodyB.e:EntIndex() and bodyA.e or bodyB.e) or (idleA and bodyA.e) or (idleB and bodyB.e)
-							if mover then Crowd.Unstack(mover, now) end
+							if mover then
+								Crowd.Unstack(mover, now)
+							end
 						end
 					elseif bodyA.e.tifCrowdOv then
 						bodyA.e.tifCrowdOv[bodyB.e] = nil
@@ -301,21 +356,27 @@ function Crowd.Tick(now)
 			end
 		end
 	end
+
 	for i = 1, tifCount do
 		local ent = tifBodies[i].e
-		if not nearEntities[ent] then ent.tifCrowdOv = nil end
+		if not nearEntities[ent] then
+			ent.tifCrowdOv = nil
+		end
 		local ghostData = ent.tifCrowdGhost
 		if ghostData and (not enabled or (not nearEntities[ent] and now - ghostData.t >= Crowd.GHOST_MIN)) then
 			disable_ghost(ent)
 		end
 	end
+
 	prof_end()
 end
 
 timer.Create("tif_crowd_tick", 0.25, 0, function()
 	if TIF.AIDisabled and TIF.AIDisabled() then return end
 	local ok, err = pcall(Crowd.Tick, CurTime())
-	if not ok and TIF.Error then TIF.Error("crowd: ", tostring(err)) end
+	if not ok and TIF.Error then
+		TIF.Error("crowd: ", tostring(err))
+	end
 end)
 
 cvars.AddChangeCallback("tif_crowd", function(_, _, new)

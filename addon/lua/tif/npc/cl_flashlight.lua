@@ -25,6 +25,7 @@ local function get_hand_light_matrix(ent, state)
 		bone = ent:LookupBone("ValveBiped.Bip01_L_Hand") or false
 		leftHandCache[model] = bone
 	end
+
 	return bone and CopyBone(ent, bone, HAND_MAT) or nil
 end
 
@@ -35,7 +36,10 @@ local function compute_beam(ent, state)
 	local pitch = aiming and ent:GetTIFAimPitch() or 28
 	BEAM_ANG.p, BEAM_ANG.y, BEAM_ANG.r = pitch, yaw, 0
 	local handMat = get_hand_light_matrix(ent, state)
-	if handMat then return handMat:GetTranslation() + BEAM_ANG:Forward() * 6, BEAM_ANG end
+	if handMat then
+		return handMat:GetTranslation() + BEAM_ANG:Forward() * 6, BEAM_ANG
+	end
+
 	local pos = ent:GetPos()
 	local forward, right = BEAM_ANG:Forward(), BEAM_ANG:Right()
 	return Vector(
@@ -55,16 +59,23 @@ hook.Add("Think", "tif_flashlights", function()
 	if torchModel == nil then
 		torchModel = false
 		for i = 1, #TORCH_MODELS do
-			if util.IsValidModel(TORCH_MODELS[i]) then torchModel = TORCH_MODELS[i] break end
+			if util.IsValidModel(TORCH_MODELS[i]) then
+				torchModel = TORCH_MODELS[i]
+				break
+			end
 		end
 	end
+
 	for ent, torch in pairs(torchModels) do
 		local state = states[ent]
 		if not IsValid(ent) or not state or not ent:GetNW2Bool("tif_light", false) or ent:IsDormant() or not state.handLight then
-			if IsValid(torch) then torch:Remove() end
+			if IsValid(torch) then
+				torch:Remove()
+			end
 			torchModels[ent] = nil
 		end
 	end
+
 	local localPly = LocalPlayer()
 	if not IsValid(localPly) then return end
 	local eyePos = localPly:EyePos()
@@ -91,14 +102,22 @@ hook.Add("Think", "tif_flashlights", function()
 			if distSqr < maxDistSqr then
 				litCount = litCount + 1
 				local entry = litEntryPool[litCount]
-				if not entry then entry = {} litEntryPool[litCount] = entry end
+				if not entry then
+					entry = {} litEntryPool[litCount] = entry
+				end
 				entry.ent, entry.state, entry.distSqr = ent, state, distSqr
 				litSoldiers[litCount] = entry
 			end
 		end
 	end
-	for i = #litSoldiers, litCount + 1, -1 do litSoldiers[i] = nil end
-	if litCount > 1 then table.sort(litSoldiers, by_dist_sqr) end
+
+	for i = #litSoldiers, litCount + 1, -1 do
+		litSoldiers[i] = nil
+	end
+	if litCount > 1 then
+		table.sort(litSoldiers, by_dist_sqr)
+	end
+
 	local maxActive = math.max(0, cvMaxLights:GetInt())
 	for i = 1, math.max(maxActive, #lightPool) do
 		local entry = i <= maxActive and litSoldiers[i] or nil

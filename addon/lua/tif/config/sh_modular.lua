@@ -4,7 +4,10 @@ local M = TIF.Modular
 
 M.Retarget = M.Retarget or {}
 
-if M.ForearmPalm == nil then M.ForearmPalm = false end
+if M.ForearmPalm == nil then
+	M.ForearmPalm = false
+end
+
 function M.NeedsRetarget(model)
 	return isstring(model) and M.Retarget[string.lower(model)] == true
 end
@@ -13,7 +16,9 @@ do
 	local PMS = TIFG and TIFG.PMS
 	if PMS and istable(PMS.Required) then
 		for i = #PMS.Required, 1, -1 do
-			if PMS.Required[i] == "valvebiped.bip01_spine" then table.remove(PMS.Required, i) end
+			if PMS.Required[i] == "valvebiped.bip01_spine" then
+				table.remove(PMS.Required, i)
+			end
 		end
 	end
 end
@@ -27,6 +32,7 @@ local function prep_follower(sk)
 
 		sk.proc[i] = 99
 	end
+
 	return sk
 end
 
@@ -36,7 +42,9 @@ do
 		PMS.tifAllBonesWrapped = true
 		local mapFor = PMS.MapFor
 		PMS.MapFor = function(leader, follower)
-			if not (M.NeedsRetarget(follower) and PMS.Skeleton) then return mapFor(leader, follower) end
+			if not (M.NeedsRetarget(follower) and PMS.Skeleton) then
+				return mapFor(leader, follower)
+			end
 			prep_follower(PMS.Skeleton(follower))
 
 			local palm, saved = PMS.Palm, {}
@@ -58,8 +66,12 @@ do
 				end
 			end
 			local map = mapFor(leader, follower)
-			for k, v in pairs(saved) do palm[k] = v end
-			for k, v in pairs(savedAim) do aim[k] = v[1] end
+			for k, v in pairs(saved) do
+				palm[k] = v
+			end
+			for k, v in pairs(savedAim) do
+				aim[k] = v[1]
+			end
 			return map
 		end
 	end
@@ -71,11 +83,15 @@ local function phys_bones(model)
 	if physNames[key] ~= nil then return physNames[key] or nil end
 	local text = file.Read(string.gsub(key, "%.mdl$", ".phy"), "GAME")
 	local set = {}
-	for name in string.gmatch(text or "", '"name"%s*"([^"]+)"') do set[string.lower(name)] = true end
+	for name in string.gmatch(text or "", '"name"%s*"([^"]+)"') do
+		set[string.lower(name)] = true
+	end
+
 	if next(set) == nil then
 		physNames[key] = false
 		return nil
 	end
+
 	set["valvebiped.bip01_head1"], set["valvebiped.bip01_neck1"] = true, true
 	physNames[key] = set
 	return set
@@ -91,6 +107,7 @@ function M.CorpseMap(leaderModel, model)
 		corpseMaps[key] = false
 		return nil
 	end
+
 	local only = setmetatable({}, { __index = lsk })
 	only.index = {}
 	for name, i in pairs(lsk.index) do if trusted[name] then only.index[name] = i end end
@@ -101,6 +118,7 @@ function M.CorpseMap(leaderModel, model)
 			m.angle, m.vector = Angle(m.ang[1], m.ang[2], m.ang[3]), Vector(m.pos[1], m.pos[2], m.pos[3])
 		end
 	end
+
 	corpseMaps[key] = map or false
 	return map
 end
@@ -116,6 +134,7 @@ function M.RestOffsets(host, model)
 		restOff[key] = false
 		return nil
 	end
+
 	local out = {}
 	for k = 1, map.n do
 		local o = map.OFF[k]
@@ -123,6 +142,7 @@ function M.RestOffsets(host, model)
 			out[fsk.name[map.B[k]]] = Matrix({ { o[1], o[2], o[3], 0 }, { o[4], o[5], o[6], 0 }, { o[7], o[8], o[9], 0 }, { 0, 0, 0, 1 } })
 		end
 	end
+
 	restOff[key] = out
 	return out
 end
@@ -134,12 +154,16 @@ function M.Prepare(def)
 	if not istable(def.models) or #def.models == 0 then
 		def.models = table.Copy(mod.slots[mod.main] or {})
 	end
+
 	if mod.retarget then
 
 		for _, list in pairs(mod.slots) do
-			for _, m in ipairs(list) do M.Retarget[string.lower(m)] = true end
+			for _, m in ipairs(list) do
+				M.Retarget[string.lower(m)] = true
+			end
 		end
 	end
+
 	return def
 end
 
@@ -149,6 +173,7 @@ local function combos_of(mod)
 		mod.tifCombos = false
 		return nil
 	end
+
 	local seen, out = {}, {}
 	for _, c in ipairs(mod.combos) do
 		local keys = {}
@@ -159,14 +184,18 @@ local function combos_of(mod)
 		local function walk(i, cur)
 			if i > #keys then
 				local id = {}
-				for _, k in ipairs(keys) do id[#id + 1] = k .. "=" .. cur[k] end
+				for _, k in ipairs(keys) do
+					id[#id + 1] = k .. "=" .. cur[k]
+				end
 				id = archKey .. ":" .. table.concat(id, ",")
 				if not seen[id] then
 					seen[id] = true
 					local e = table.Copy(cur)
 					if arch then
 						e.tifArch = {}
-						for _, a in ipairs(arch) do e.tifArch[a] = true end
+						for _, a in ipairs(arch) do
+							e.tifArch[a] = true
+						end
 					end
 					out[#out + 1] = e
 				end
@@ -180,6 +209,7 @@ local function combos_of(mod)
 		end
 		walk(1, {})
 	end
+
 	mod.tifCombos = out
 	return out
 end
@@ -194,7 +224,9 @@ if SERVER then
 		if not precached[mod] then
 			precached[mod] = true
 			for _, list in pairs(mod.slots) do
-				for _, m in ipairs(list) do util.PrecacheModel(m) end
+				for _, m in ipairs(list) do
+					util.PrecacheModel(m)
+				end
 			end
 		end
 		local pick = {}
@@ -204,7 +236,9 @@ if SERVER then
 			local fit, free = {}, {}
 			for _, e in ipairs(list) do
 				if e.tifArch then
-					if archId and e.tifArch[archId] then fit[#fit + 1] = e end
+					if archId and e.tifArch[archId] then
+						fit[#fit + 1] = e
+					end
 				else
 					free[#free + 1] = e
 				end
@@ -215,7 +249,9 @@ if SERVER then
 		end
 		local chance = istable(mod.chance) and mod.chance or {}
 		local slots = {}
-		for slot in pairs(mod.slots) do slots[#slots + 1] = slot end
+		for slot in pairs(mod.slots) do
+			slots[#slots + 1] = slot
+		end
 		table.sort(slots)
 		local model, parts = nil, {}
 		for _, slot in ipairs(slots) do
@@ -224,14 +260,20 @@ if SERVER then
 				local i = pick[slot]
 				if not i then
 					local idx = {}
-					for x = 1, #l do idx[x] = x end
+					for x = 1, #l do
+						idx[x] = x
+					end
 					i = (TIF.VarietyPick and TIF.VarietyPick(def.id, "slot#" .. slot, idx)) or math.random(#l)
 				end
 				local worn = slot == main or pick[slot] ~= nil or math.random() < (chance[slot] or 1)
 				local m = i > 0 and l[i] or nil
 				if m and worn then
 					local seed = mod.skins == false and 0 or math.random(0, 9999)
-					if slot == main then model = m else parts[#parts + 1] = m .. "#" .. seed end
+					if slot == main then
+						model = m
+					else
+						parts[#parts + 1] = m .. "#" .. seed
+					end
 				end
 			end
 		end
@@ -248,12 +290,14 @@ if CLIENT then
 		local t = m:ToTable()
 		return { t[1][1], t[1][2], t[1][3], t[2][1], t[2][2], t[2][3], t[3][1], t[3][2], t[3][3] }, Vector(t[1][4], t[2][4], t[3][4])
 	end
+
 	local function mul(a, b)
 		return {
 			a[1] * b[1] + a[2] * b[4] + a[3] * b[7], a[1] * b[2] + a[2] * b[5] + a[3] * b[8], a[1] * b[3] + a[2] * b[6] + a[3] * b[9],
 			a[4] * b[1] + a[5] * b[4] + a[6] * b[7], a[4] * b[2] + a[5] * b[5] + a[6] * b[8], a[4] * b[3] + a[5] * b[6] + a[6] * b[9],
 			a[7] * b[1] + a[8] * b[4] + a[9] * b[7], a[7] * b[2] + a[8] * b[5] + a[9] * b[8], a[7] * b[3] + a[8] * b[6] + a[9] * b[9] }
 	end
+
 	local function tr(a) return { a[1], a[4], a[7], a[2], a[5], a[8], a[3], a[6], a[9] } end
 	local function axis_rot(a, ang)
 		local c, s = math.cos(ang), math.sin(ang)
@@ -269,10 +313,12 @@ if CLIENT then
 		local vx, vy, vz = (d[8] - d[6]) / (4 * w), (d[3] - d[7]) / (4 * w), (d[4] - d[2]) / (4 * w)
 		return 2 * math.atan2(vx * a[1] + vy * a[2] + vz * a[3], w)
 	end
+
 	local function unit(v)
 		local l = math.sqrt(v[1] * v[1] + v[2] * v[2] + v[3] * v[3])
 		return l > 1e-6 and { v[1] / l, v[2] / l, v[3] / l } or { 1, 0, 0 }
 	end
+
 	local function set(ent, i, R, p)
 		ent:SetBoneMatrix(i, Matrix({ { R[1], R[2], R[3], p.x }, { R[4], R[5], R[6], p.y }, { R[7], R[8], R[9], p.z }, { 0, 0, 0, 1 } }))
 	end
@@ -302,11 +348,19 @@ if CLIENT then
 					local p, skip = sk.parent[i], i == h or i == w
 					local under = false
 					while p and p >= 0 and not skip do
-						if p == h then skip = true break end
-						if p == f then under = true break end
+						if p == h then
+							skip = true
+							break
+						end
+						if p == f then
+							under = true
+							break
+						end
 						p = sk.parent[p]
 					end
-					if under and not skip then carry[#carry + 1] = i end
+					if under and not skip then
+						carry[#carry + 1] = i
+					end
 				end
 
 				local carryU = {}
@@ -314,11 +368,19 @@ if CLIENT then
 					local p, skip = sk.parent[i], i == f or i == s
 					local under = false
 					while p and p >= 0 and not skip do
-						if p == f then skip = true break end
-						if p == u then under = true break end
+						if p == f then
+							skip = true
+							break
+						end
+						if p == u then
+							under = true
+							break
+						end
 						p = sk.parent[p]
 					end
-					if under and not skip then carryU[#carryU + 1] = i end
+					if under and not skip then
+						carryU[#carryU + 1] = i
+					end
 				end
 
 				local fr = loc(u, h)
@@ -352,6 +414,7 @@ if CLIENT then
 		b = { b[1] - k[1] * pb, b[2] - k[2] * pb, b[3] - k[3] * pb }
 		return math.atan2(dot(k, cross(a, b)), dot(a, b))
 	end
+
 	local MOD_M, MOD_MC, MOD_MU, MOD_MF, MOD_MH = Matrix(), Matrix(), Matrix(), Matrix(), Matrix()
 	local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
 
@@ -471,7 +534,9 @@ if CLIENT then
 			local kids = {}
 			for i = 0, sk.n - 1 do
 				local p = sk.parent[i]
-				if p and p >= 0 then kids[p] = kids[p] or {} kids[p][#kids[p] + 1] = i end
+				if p and p >= 0 then
+					kids[p] = kids[p] or {} kids[p][#kids[p] + 1] = i
+				end
 			end
 			local function cosmetic(i) return string.find(sk.name[i] or "", "j_cosmetic", 1, true) ~= nil end
 			for i = 0, sk.n - 1 do
@@ -491,7 +556,9 @@ if CLIENT then
 							local desc, stack = {}, { i }
 							while #stack > 0 do
 								local j = table.remove(stack)
-								for _, k in ipairs(kids[j] or {}) do desc[#desc + 1] = k stack[#stack + 1] = k end
+								for _, k in ipairs(kids[j] or {}) do
+									desc[#desc + 1] = k stack[#stack + 1] = k
+								end
 							end
 							out[#out + 1] = { b = i, off = app(R, d), len = len, desc = desc,
 								stiff = cloth and 4 or 1, limit = cloth and 0.5 or 1 }
@@ -504,6 +571,7 @@ if CLIENT then
 		swayData[key] = #out > 0 and out or false
 		return swayData[key] or nil
 	end
+
 	M.SwayChains = sway_data
 
 	function M.Sway(ent)
@@ -513,7 +581,9 @@ if CLIENT then
 		local data = sway_data(model)
 		if not data then return end
 		local over = M.SwayModels[string.lower(model)]
-		if istable(over) then S = setmetatable(over, { __index = M.SwaySettings }) end
+		if istable(over) then
+			S = setmetatable(over, { __index = M.SwaySettings })
+		end
 		local st = ent.tifSway
 		local m0 = CopyBone(ent, data[1].b, MOD_M)
 		if not m0 then return end
@@ -524,11 +594,17 @@ if CLIENT then
 		end
 		local now, frame = RealTime(), FrameNumber()
 		local step = true
-		if st and st.frame == frame then step = false end
+		if st and st.frame == frame then
+			step = false
+		end
 		local dt = st and (now - st.t) or 0
 		local reset = not st or dt > 0.25 or dt < 0
-		if reset then st = { p = {}, v = {}, o = {} } ent.tifSway = st end
-		if step then st.frame, st.t = frame, now end
+		if reset then
+			st = { p = {}, v = {}, o = {} } ent.tifSway = st
+		end
+		if step then
+			st.frame, st.t = frame, now
+		end
 		local n = step and not reset and math.min(4, math.max(1, math.ceil(dt * 90))) or 0
 		local h = n > 0 and dt / n or 0
 		local K, drag, g = S.stiffness, S.drag, S.gravity
@@ -551,7 +627,9 @@ if CLIENT then
 				local va = { 0, 0, 0 }
 				if n > 0 and po then
 					va = { (ov[1] - po[1]) / dt, (ov[2] - po[2]) / dt, (ov[3] - po[3]) / dt }
-					if dot(va, va) > 1000000 then va = { 0, 0, 0 } end
+					if dot(va, va) > 1000000 then
+						va = { 0, 0, 0 }
+					end
 				end
 				for _ = 1, n do
 					local f = math.exp(-drag * h)
@@ -582,7 +660,9 @@ if CLIENT then
 					p[1], p[2], p[3] = ov[1] + dir[1] * c.len, ov[2] + dir[2] * c.len, ov[3] + dir[3] * c.len
 				end
 				st.p[k], st.v[k] = p, v
-				if step then st.o[k] = ov end
+				if step then
+					st.o[k] = ov
+				end
 				local d = { p[1] - ov[1], p[2] - ov[2], p[3] - ov[3] }
 				local D = swing_rot(tdir, unit(d))
 				if D then
@@ -605,6 +685,7 @@ if CLIENT then
 		eyeData[key] = h and { head = h, fwd = app(tr(sk.R[h]), { 1, 0, 0 }) } or false
 		return eyeData[key] or nil
 	end
+
 	function M.Eyes(f)
 		if not cvEyes:GetBool() then return end
 		local d = eye_data(f:GetModel() or "")
@@ -629,7 +710,9 @@ if CLIENT then
 
 	local function blank_option(bg)
 		for k, sm in pairs(bg.submodels or {}) do
-			if not isstring(sm) or sm == "" or string.lower(sm) == "blank" then return k end
+			if not isstring(sm) or sm == "" or string.lower(sm) == "blank" then
+				return k
+			end
 		end
 		return math.max(0, (bg.num or 1) - 1)
 	end
@@ -637,7 +720,10 @@ if CLIENT then
 	local PELVIS = "ValveBiped.Bip01_Pelvis"
 	local function check_merge(fe)
 		local leader = fe:GetParent()
-		if not IsValid(leader) then fe.tifBroken = (fe.tifBroken or 0) + 1 return end
+		if not IsValid(leader) then
+			fe.tifBroken = (fe.tifBroken or 0) + 1
+			return
+		end
 		fe.tifPelvis = fe.tifPelvis or fe:LookupBone(PELVIS) or -1
 		if leader.tifPelvisModel ~= leader:GetModel() then
 			leader.tifPelvisModel, leader.tifPelvis = leader:GetModel(), leader:LookupBone(PELVIS) or -1
@@ -650,6 +736,7 @@ if CLIENT then
 			fe.tifBroken = nil
 		end
 	end
+
 	M.CheckMerge = check_merge
 
 	local function solve_part(fe)
@@ -681,7 +768,9 @@ if CLIENT then
 		end
 		if map then
 			local seq = e:LookupSequence("reference")
-			if seq and seq >= 0 then e:ResetSequence(seq) end
+			if seq and seq >= 0 then
+				e:ResetSequence(seq)
+			end
 			e:SetCycle(0)
 			e:SetPlaybackRate(0)
 			for _, m in ipairs(map.MAN or {}) do
@@ -704,7 +793,9 @@ if CLIENT then
 	local function clear(rec)
 		for _, e in ipairs(rec.ents) do
 			AllParts[e] = nil
-			if IsValid(e) then e:Remove() end
+			if IsValid(e) then
+				e:Remove()
+			end
 		end
 		rec.ents = {}
 	end
@@ -724,7 +815,9 @@ if CLIENT then
 	end)
 
 	hook.Add("PostCleanupMap", "tif_modular_cleanup", function()
-		for owner, rec in pairs(Parts) do clear(rec) Parts[owner] = nil end
+		for owner, rec in pairs(Parts) do
+			clear(rec) Parts[owner] = nil
+		end
 		for e in pairs(AllParts) do if IsValid(e) then e:Remove() end AllParts[e] = nil end
 	end)
 
@@ -733,14 +826,18 @@ if CLIENT then
 		if not (IsValid(owner) and IsValid(leader)) then return end
 		local rec = Parts[owner]
 		if rec and rec.str == str and rec.leader == leader then return rec end
-		if rec then clear(rec) end
+		if rec then
+			clear(rec)
+		end
 		rec = rec or { ents = {} }
 		rec.str, rec.leader = str, leader
 		Parts[owner] = rec
 		for piece in string.gmatch(str or "", "[^;]+") do
 			local model, seed = string.match(piece, "^(.-)#(%d+)$")
 			local e = make_part(leader, model or piece, tonumber(seed) or 0)
-			if e then rec.ents[#rec.ents + 1] = e end
+			if e then
+				rec.ents[#rec.ents + 1] = e
+			end
 		end
 		return rec
 	end
@@ -767,12 +864,16 @@ if CLIENT then
 				recs = recs + 1
 				for _, e in ipairs(rec.ents) do
 					parts = parts + 1
-					if IsValid(e) and (e.tifBroken or 0) > 0 then broken = broken + 1 end
+					if IsValid(e) and (e.tifBroken or 0) > 0 then
+						broken = broken + 1
+					end
 				end
 				print(string.format("  owner %s  leader %s  parts %d  hidden %s", tostring(owner), tostring(rec.leader), #rec.ents, tostring(rec.hidden)))
 			end
 			local all = 0
-			for _ in pairs(AllParts) do all = all + 1 end
+			for _ in pairs(AllParts) do
+				all = all + 1
+			end
 			print(string.format("tif_modular: %d records, %d parts (%d alive in total), %d off their leader now, %d re-attaches, %d strays swept",
 				recs, parts, all, broken, M.Healed or 0, M.Swept or 0))
 		end)
@@ -780,7 +881,9 @@ if CLIENT then
 
 	local corpses = {}
 	hook.Add("OnEntityCreated", "tif_modular_corpse", function(ent)
-		if IsValid(ent) and ent:GetClass() == "prop_ragdoll" then corpses[ent] = RealTime() + 4 end
+		if IsValid(ent) and ent:GetClass() == "prop_ragdoll" then
+			corpses[ent] = RealTime() + 4
+		end
 	end)
 
 	hook.Add("Think", "tif_modular_parts", function()
@@ -837,7 +940,10 @@ if CLIENT then
 					owner = rag
 				else
 					for _, r in ipairs(Bd and Bd.Rags or {}) do
-						if r.rag == rag and IsValid(r.ent) then owner = r.ent break end
+						if r.rag == rag and IsValid(r.ent) then
+							owner = r.ent
+							break
+						end
 					end
 				end
 				if str ~= "" and owner then
@@ -865,7 +971,9 @@ if CLIENT then
 				local hidden = owner:GetNoDraw() or (owner:EntIndex() > 0 and owner:IsDormant())
 					or (leader ~= owner and (leader:GetNoDraw() or (leader:EntIndex() > 0 and leader:IsDormant())))
 				if hidden ~= rec.hidden then
-					if rec.hidden and not hidden then reattach(owner, rec) end
+					if rec.hidden and not hidden then
+						reattach(owner, rec)
+					end
 					rec.hidden = hidden
 					for _, e in ipairs(rec.ents) do if IsValid(e) then e:SetNoDraw(hidden) end end
 				elseif not hidden and rec.ents[1] and IsValid(rec.ents[1])

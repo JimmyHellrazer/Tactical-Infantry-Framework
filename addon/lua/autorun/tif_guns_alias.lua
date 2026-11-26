@@ -1,4 +1,6 @@
-if SERVER then AddCSLuaFile() end
+if SERVER then
+	AddCSLuaFile()
+end
 
 local P = "weapon_tifmw_"
 local A = {
@@ -26,4 +28,6 @@ local A = {
 }
 
 TIF_WEAPON_ALIAS = TIF_WEAPON_ALIAS or {}
-for gta, mw in pairs(A) do TIF_WEAPON_ALIAS["weapon_gtg_" .. gta] = P .. mw end
+for gta, mw in pairs(A) do
+	TIF_WEAPON_ALIAS["weapon_gtg_" .. gta] = P .. mw
+end

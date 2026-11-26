@@ -25,8 +25,11 @@ function P.End()
 		a = { t = 0, n = 0, max = 0 }
 		P.acc[key] = a
 	end
+
 	a.t, a.n = a.t + dt, a.n + 1
-	if dt > a.max then a.max = dt end
+	if dt > a.max then
+		a.max = dt
+	end
 end
 
 function P.Count(key, n)
@@ -42,10 +45,12 @@ local function roll()
 		times[k] = { ms = a.t * 1000 / window, calls = a.n / window, max = a.max * 1000 }
 		a.t, a.n, a.max = 0, 0, 0
 	end
+
 	for k, v in pairs(P.cnt) do
 		counts[k] = v / window
 		P.cnt[k] = 0
 	end
+
 	P.Last = { times = times, counts = counts, window = window }
 
 	depth = 0

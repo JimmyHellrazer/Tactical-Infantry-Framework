@@ -16,13 +16,18 @@ function API.SpawnSquad(faction, pos, archetypes, opts)
 	local sq = out[1] and out[1].tifSquad or nil
 	if not sq and #out == 1 and not opts.noSquad then
 		sq = TIF.Squad.Create(faction, out)
-		if opts.order then TIF.Squad.SetOrder(sq, opts.order, opts.orderPos, opts.orderYaw) end
+		if opts.order then
+			TIF.Squad.SetOrder(sq, opts.order, opts.orderPos, opts.orderYaw)
+		end
 	end
+
 	return sq, out
 end
 
 function API.SetCamo(owner, faction, mode)
-	if TIF.SetVariantOverride then TIF.SetVariantOverride(owner, faction, mode) end
+	if TIF.SetVariantOverride then
+		TIF.SetVariantOverride(owner, faction, mode)
+	end
 end
 
 function API.SquadMembers(sq)
@@ -48,14 +53,19 @@ function API.SquadAdvance(sq, pos, opts) TIF.Squad.SetOrder(sq, "advance", pos, 
 function API.SquadPatrol(sq, points)
 	TIF.Squad.SetOrder(sq, "patrol")
 	local route = {}
-	for i, p in ipairs(points) do route[i] = TIF.Move.Snap(p) or p end
+	for i, p in ipairs(points) do
+		route[i] = TIF.Move.Snap(p) or p
+	end
+
 	sq.order.route = route
 	TIF.Squad.Publish(sq)
 end
 
 function API.SquadSearch(sq, pos, dir)
 	local now = CurTime()
-	for _, m in ipairs(TIF.Squad.Members(sq)) do TIF.Brain.StartSearch(m, pos, dir, now) end
+	for _, m in ipairs(TIF.Squad.Members(sq)) do
+		TIF.Brain.StartSearch(m, pos, dir, now)
+	end
 end
 
 function API.SquadKnowsEnemy(sq, ent, pos)
@@ -79,12 +89,16 @@ function API.SetCaptive(npc, on)
 	if on then
 		if npc.tifSurrendered then return end
 		npc.tifCaptive, npc.tifSurrendered = true, true
-		if TIF.CoverBehave and TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "captive") end
+		if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+			TIF.CoverBehave.Leave(npc, "captive")
+		end
 		npc.tifProne = nil
 		TIF.Move.Stop(npc)
 		npc:SetTIFWeapon("")
 		npc.tifFire.want = false
-		if npc.tifSquad then TIF.Squad.Remove(npc) end
+		if npc.tifSquad then
+			TIF.Squad.Remove(npc)
+		end
 		npc:SetNW2Bool("tif_surrendered", true)
 		npc:SetNW2String("tif_morale", "captive")
 
@@ -127,7 +141,9 @@ function API.SquadClearDoor(sq) return sq and sq.cqb and sq.cqb.door or nil end
 function API.SquadSetLeader(sq, ent) if sq and IsValid(ent) then TIF.Squad.SetLeader(sq, ent) end end
 
 function API.SquadFormation(sq, f)
-	if sq and table.HasValue(TIF.Squad.FORMATIONS, f) then sq.formation = f TIF.Squad.Publish(sq) end
+	if sq and table.HasValue(TIF.Squad.FORMATIONS, f) then
+		sq.formation = f TIF.Squad.Publish(sq)
+	end
 end
 
 function API.RoomAt(pos) return TIF.Building.RoomAt(pos) end
@@ -145,7 +161,10 @@ end
 function API.RoomCenter(room)
 	if not (room and room.areas and #room.areas > 0) then return nil end
 	local c = Vector()
-	for _, a in ipairs(room.areas) do c:Add(a:GetCenter()) end
+	for _, a in ipairs(room.areas) do
+		c:Add(a:GetCenter())
+	end
+
 	return c / #room.areas
 end
 
@@ -154,8 +173,13 @@ function API.Stun(npc, seconds)
 	local untilT = CurTime() + seconds
 	npc.tifBlindUntil = math.max(npc.tifBlindUntil or 0, untilT)
 	npc.tifLowReadyUntil = math.max(npc.tifLowReadyUntil or 0, untilT)
-	if npc.tifFire then npc.tifFire.want = false end
-	if TIF.Morale then TIF.Morale.Add(npc, -0.15) end
+	if npc.tifFire then
+		npc.tifFire.want = false
+	end
+
+	if TIF.Morale then
+		TIF.Morale.Add(npc, -0.15)
+	end
 	npc:SetNW2Float("tif_stun_until", untilT)
 end
 
@@ -176,7 +200,10 @@ function API.DoorInfo(d)
 	if not d then return nil end
 	local e = d.ent
 	local lockedOk, locked = false, false
-	if IsValid(e) then lockedOk, locked = pcall(e.GetInternalVariable, e, "m_bLocked") end
+	if IsValid(e) then
+		lockedOk, locked = pcall(e.GetInternalVariable, e, "m_bLocked")
+	end
+
 	return { center = d.center, normal = d.normal, width = d.width, exterior = d.exterior,
 		closed = TIF.Building.Closed(d), locked = lockedOk and locked == true, ent = e }
 end
@@ -205,11 +232,18 @@ end
 function API.SquadWithdraw(sq, pos)
 	if not sq then return end
 	local SQ = TIF.Squad
-	if TIF.CQB and sq.cqb then TIF.CQB.Stop(sq, "withdraw") end
+	if TIF.CQB and sq.cqb then
+		TIF.CQB.Stop(sq, "withdraw")
+	end
+
 	local fighting = false
 	for _, m in ipairs(SQ.Members(sq)) do
-		if m.tifAware == TIF.AWARE.ENGAGED or m.tifAware == TIF.AWARE.ALERTED then fighting = true break end
+		if m.tifAware == TIF.AWARE.ENGAGED or m.tifAware == TIF.AWARE.ALERTED then
+			fighting = true
+			break
+		end
 	end
+
 	SQ.SetOrder(sq, "advance", pos)
 	if fighting then
 		sq.tactic = { kind = "withdraw", goal = pos, started = CurTime() }
@@ -232,6 +266,7 @@ function API.SquadState(sq)
 		elseif a == TIF.AWARE.ALERTED then st.fighting = true end
 		st.supp = st.supp + (m.tifSupp or 0)
 	end
+
 	st.centroid = c / n
 	st.supp = st.supp / n
 	st.pinned = st.supp > 0.6
@@ -245,12 +280,14 @@ function API.SquadState(sq)
 			end
 		end
 	end
+
 	st.mount = sq.mount and sq.mount.phase or nil
 	local cq = sq.cqb
 	if cq then
 		st.clear = { phase = cq.phase, stacked = cq.stackReady or 0, total = #(cq.team or {}),
 			holding = cq.hold and not cq.go and cq.firstDoor or false, rooms = table.Count(cq.cleared or {}) }
 	end
+
 	return st
 end
 
@@ -261,6 +298,7 @@ function API.SquadEnemies(sq, maxAge)
 			out[#out + 1] = { ent = ent, pos = Vector(k.pos), time = k.time }
 		end
 	end
+
 	return out
 end
 
@@ -280,11 +318,13 @@ function API.GarrisonRelease(base, list)
 			out[#out + 1] = m
 		end
 	end
+
 	if base and base.members then
 		local keep = {}
 		for _, m in ipairs(base.members) do if not set[m] then keep[#keep + 1] = m end end
 		base.members = keep
 	end
+
 	if #out == 0 then return nil end
 	return API.FormSquad(out)
 end
@@ -292,8 +332,11 @@ end
 function API.GarrisonSoldiers(base)
 	local out = {}
 	for _, m in ipairs(base and base.members or {}) do
-		if IsValid(m) and not m.tifDead then out[#out + 1] = m end
+		if IsValid(m) and not m.tifDead then
+			out[#out + 1] = m
+		end
 	end
+
 	return out
 end
 
@@ -304,6 +347,7 @@ function API.SetPerception(target, profile)
 	for _, m in ipairs(list) do
 		m.tifPerception, m.tifProfAt = profile, nil
 	end
+
 	return #list
 end
 
@@ -322,8 +366,11 @@ end
 function API.Fighters(faction)
 	local out = {}
 	for _, e in ipairs(TIF.Soldiers) do
-		if fighter(e) and (not faction or e:GetTIFFaction() == faction) then out[#out + 1] = e end
+		if fighter(e) and (not faction or e:GetTIFFaction() == faction) then
+			out[#out + 1] = e
+		end
 	end
+
 	return out
 end
 
@@ -335,6 +382,7 @@ function API.FightersNear(pos, radius, faction)
 			out[#out + 1] = e
 		end
 	end
+
 	return #out, out
 end
 
@@ -353,8 +401,12 @@ function API.PaintVehicle(veh, c, c2)
 	if not IsValid(veh) or not c then return end
 	if veh.SetGTGPaint then
 		veh:SetGTGPaint(Vector(c.r / 255, c.g / 255, c.b / 255))
-		if veh.SetGTGPaint2 then local d = c2 or c veh:SetGTGPaint2(Vector(d.r / 255, d.g / 255, d.b / 255)) end
-		if veh.SetGTGLivery then veh:SetGTGLivery(0) end
+		if veh.SetGTGPaint2 then
+			local d = c2 or c veh:SetGTGPaint2(Vector(d.r / 255, d.g / 255, d.b / 255))
+		end
+		if veh.SetGTGLivery then
+			veh:SetGTGLivery(0)
+		end
 		veh:SetColor(Color(255, 255, 255, veh:GetColor().a))
 	else
 		veh:SetColor(Color(c.r, c.g, c.b, veh:GetColor().a))
@@ -381,7 +433,10 @@ function API.MountPhase(sq) return sq and sq.mount and sq.mount.phase or nil end
 
 function API.Convoy(squads, pos, stay)
 	local cv = TIF.Convoy and TIF.Convoy.Create(squads)
-	if cv then TIF.Convoy.DriveTo(cv, pos, stay) end
+	if cv then
+		TIF.Convoy.DriveTo(cv, pos, stay)
+	end
+
 	return cv
 end
 
@@ -395,7 +450,10 @@ end
 function API.VehicleSeats(class)
 	local stored = scripted_ents.GetStored(class)
 	local t = stored and stored.t
-	if t and istable(t.GTGData) and istable(t.GTGData.seats) then return #t.GTGData.seats end
+	if t and istable(t.GTGData) and istable(t.GTGData.seats) then
+		return #t.GTGData.seats
+	end
+
 	return nil
 end
 
@@ -405,5 +463,6 @@ function API.VehicleRoute(from, to, dvOnly)
 		if pts then return pts, "dv" end
 		return nil, "no dv route"
 	end
+
 	return TIF.Routes.Build(from, to)
 end

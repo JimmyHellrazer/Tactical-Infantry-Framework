@@ -28,14 +28,18 @@ if SERVER then
 
 	function ENT:Initialize()
 		local kind = self:GetKind()
-		if kind == "" then kind = "frag" self:SetKind(kind) end
+		if kind == "" then
+			kind = "frag" self:SetKind(kind)
+		end
 		self:SetModel(model_for(kind))
 		self:PhysicsInit(SOLID_VPHYSICS)
 		self:SetMoveType(MOVETYPE_VPHYSICS)
 		self:SetSolid(SOLID_VPHYSICS)
 		self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 		local ph = self:GetPhysicsObject()
-		if IsValid(ph) then ph:Wake() ph:SetDamping(0.2, 1.5) end
+		if IsValid(ph) then
+			ph:Wake() ph:SetDamping(0.2, 1.5)
+		end
 		self.tifFuseAt = self.tifFuseAt or (CurTime() + 3)
 
 		self.tifDodgeable = kind == "frag"
@@ -65,13 +69,17 @@ if SERVER then
 
 			local v = ph:GetVelocity()
 			local out = v:Dot(f.inward)
-			if out < 0 then ph:SetVelocity(v - f.inward * (2 * out)) end
+			if out < 0 then
+				ph:SetVelocity(v - f.inward * (2 * out))
+			end
 		end
 	end
 
 	function ENT:Think()
 		if self.tifDone then return end
-		if self.tifForce then self:GuideThink() end
+		if self.tifForce then
+			self:GuideThink()
+		end
 		if CurTime() >= (self.tifFuseAt or 0) then
 			self.tifDone = true
 			local f = self.tifForce
@@ -79,7 +87,11 @@ if SERVER then
 				self:SetPos(f.pos + Vector(0, 0, 6))
 				self.tifForced = true
 			end
-			if self:GetKind() == "flash" then self:Flash() else self:Frag() end
+			if self:GetKind() == "flash" then
+				self:Flash()
+			else
+				self:Frag()
+			end
 			SafeRemoveEntityDelayed(self, 0)
 			return
 		end
@@ -122,7 +134,9 @@ if SERVER then
 		end
 
 		local thrower = IsValid(self:GetOwner()) and self:GetOwner() or nil
-		if TIF and TIF.FlashAt then TIF.FlashAt(pos, FLASH_R, self, thrower) end
+		if TIF and TIF.FlashAt then
+			TIF.FlashAt(pos, FLASH_R, self, thrower)
+		end
 
 		flashTr.start = pos
 		flashTr.filter[1] = self
@@ -139,7 +153,9 @@ if SERVER then
 						local facing = ply:GetAimVector():Dot((pos - eye):GetNormalized())
 						local k = (1 - d / R) * Lerp((facing + 1) / 2, 0.35, 1)
 						ply:ScreenFade(SCREENFADE.IN, color_white, (0.6 + 3.5 * k) * s, (0.2 + 2.5 * k) * s)
-						if k > 0.25 and s >= 0.5 then ply:SetDSP(37, false) end
+						if k > 0.25 and s >= 0.5 then
+							ply:SetDSP(37, false)
+						end
 					end
 				end
 			end

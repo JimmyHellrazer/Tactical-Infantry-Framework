@@ -18,14 +18,21 @@ local function precache()
 	hook.Run("TIF_PrecacheFactions", want)
 	for id, fac in pairs(TIF.Factions or {}) do
 		if not fac.pack or want[id] then
-			for _, m in ipairs(fac.models or {}) do add(m) end
+			for _, m in ipairs(fac.models or {}) do
+				add(m)
+			end
 			if fac.host and TIF.GTG and TIF.GTG.HostModel then
 				add(TIF.GTG.HostModel(fac.host))
-				if TIF.GTG.HostFor then add(TIF.GTG.HostModel(TIF.GTG.HostFor(fac))) end
+				if TIF.GTG.HostFor then
+					add(TIF.GTG.HostModel(TIF.GTG.HostFor(fac)))
+				end
 			end
 		end
 	end
-	for _, w in pairs(TIFG and TIFG.Weapons or {}) do add(w.WorldModel) end
+
+	for _, w in pairs(TIFG and TIFG.Weapons or {}) do
+		add(w.WorldModel)
+	end
 	TIF.Log("Precached ", n, " soldier and gun models")
 end
 

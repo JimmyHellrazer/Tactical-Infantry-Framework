@@ -11,7 +11,9 @@ end
 local function say(ply, ...)
 	local msg = table.concat({ ... }, "")
 	TIF.Log(msg)
-	if IsValid(ply) then ply:ChatPrint("[TIF] " .. msg) end
+	if IsValid(ply) then
+		ply:ChatPrint("[TIF] " .. msg)
+	end
 end
 
 dev("tif_base_garrison", function(ply, args)
@@ -21,14 +23,22 @@ dev("tif_base_garrison", function(ply, args)
 		say(ply, "No base '", tostring(name or "(preset)"), "' for ", game.GetMap(), ". tif_base_list shows what exists; tif_base_new builds one.")
 		return
 	end
-	if navmesh.GetNavAreaCount() == 0 then say(ply, "This map has no navmesh: run nav_generate first.") return end
+
+	if navmesh.GetNavAreaCount() == 0 then
+		say(ply, "This map has no navmesh: run nav_generate first.")
+		return
+	end
+
 	local base = B.Garrison(def)
 	say(ply, "Base '", base.name, "' garrisoned with ", base.startSize, " soldiers")
 end, "tif_base_garrison [name|draft]: spawn a base's garrison")
 
 dev("tif_base_clear", function(ply)
 	local n = 0
-	for _, base in pairs(table.Copy(B.List)) do B.Remove(base) n = n + 1 end
+	for _, base in pairs(table.Copy(B.List)) do
+		B.Remove(base) n = n + 1
+	end
+
 	say(ply, "Removed ", n, " base(s)")
 end, "Remove all bases and their soldiers")
 
@@ -43,17 +53,26 @@ dev("tif_base_info", function(ply)
 			jobs[j] = (jobs[j] or 0) + 1
 		end
 		local parts = {}
-		for j, n in pairs(jobs) do parts[#parts + 1] = j .. " " .. n end
+		for j, n in pairs(jobs) do
+			parts[#parts + 1] = j .. " " .. n
+		end
 		say(ply, "Base '", base.name, "': ", string.upper(B.LEVEL_NAMES[base.level]), " for ", math.floor(now - base.levelSince),
 			" s, ", #base.members, "/", base.startSize, " alive (", table.concat(parts, ", "), ")",
 			base.reinforced and ", reinforced" or "")
 	end
-	if not any then say(ply, "No bases. tif_base_garrison spawns one.") end
+
+	if not any then
+		say(ply, "No bases. tif_base_garrison spawns one.")
+	end
 end, "Print each base's alert level and garrison")
 
 dev("tif_base_level", function(ply, args)
 	local want = ({ calm = B.CALM, alert = B.ALERT, alarm = B.ALARM })[args[1] or ""]
-	if not want then say(ply, "tif_base_level <calm|alert|alarm>") return end
+	if not want then
+		say(ply, "tif_base_level <calm|alert|alarm>")
+		return
+	end
+
 	local now = CurTime()
 	for _, base in pairs(B.List) do
 		if want == B.ALARM then
@@ -66,22 +85,29 @@ dev("tif_base_level", function(ply, args)
 			B.SetLevel(base, want, now, "forced")
 		end
 	end
+
 	say(ply, "Bases set to ", args[1])
 end, "tif_base_level <calm|alert|alarm>: force every base's level (alarm points them at you)")
 
 dev("tif_base_list", function(ply)
 	local presets = {}
-	for name in pairs(B.Presets()) do presets[#presets + 1] = name end
+	for name in pairs(B.Presets()) do
+		presets[#presets + 1] = name
+	end
+
 	local saved = {}
 	for _, f in ipairs(file.Find("tif/bases/" .. game.GetMap() .. "_*.json", "DATA")) do
 		saved[#saved + 1] = f:sub(#game.GetMap() + 2, -6)
 	end
+
 	say(ply, "Presets: ", #presets > 0 and table.concat(presets, ", ") or "none",
 		"   Saved: ", #saved > 0 and table.concat(saved, ", ") or "none")
 end, "List saved and preset bases for this map")
 
 local function draft(ply)
-	if not B.Draft then say(ply, "No draft: tif_base_new <name> first") end
+	if not B.Draft then
+		say(ply, "No draft: tif_base_new <name> first")
+	end
 	return B.Draft
 end
 
@@ -115,7 +141,11 @@ dev("tif_base_point", function(ply)
 	local d = draft(ply)
 	if not d or not IsValid(ply) then return end
 	local r = d.routes[#d.routes]
-	if not r then say(ply, "No route: tif_base_route first") return end
+	if not r then
+		say(ply, "No route: tif_base_route first")
+		return
+	end
+
 	r.pts[#r.pts + 1] = ply:GetPos()
 	d.lastAdd = "point"
 	say(ply, "Route #", #d.routes, " point ", #r.pts)
@@ -134,7 +164,9 @@ dev("tif_base_undo", function(ply)
 	if d.lastAdd == "point" and #d.routes > 0 then
 		local r = d.routes[#d.routes]
 		table.remove(r.pts)
-		if #r.pts == 0 then table.remove(d.routes) end
+		if #r.pts == 0 then
+			table.remove(d.routes)
+		end
 		say(ply, "Removed the last route point")
 	elseif #d.posts > 0 then
 		table.remove(d.posts)

@@ -299,8 +299,9 @@ do
 	c.tifHeld = nil
 	c:SetState("flee")
 	check(c.state == "flee", "let go: it can")
-	check(csrc:find("self.gone or self.tifHeld then return \"interrupted\" end", 1, true) and csrc:find("or self.tifHeld then done = false break end", 1, true)
-		and csrc:find("or self.tifHeld then return false end", 1, true) and csrc:find("or self.tifHeld then return leaving() end", 1, true),
+	local cflat = csrc:gsub("%s+", " ")
+	check(cflat:find("self.gone or self.tifHeld then return \"interrupted\" end", 1, true) and cflat:find("or self.tifHeld then done = false break end", 1, true)
+		and cflat:find("or self.tifHeld then return false end", 1, true) and cflat:find("or self.tifHeld then return leaving() end", 1, true),
 		"her walk / one-shot / wait / hide loops stop when she's grabbed")
 	check(csrc:find("self.civRole ~= self.civHoldLast then", 1, true) ~= nil and csrc:find("self:SetCycle(0)", 1, true) ~= nil, "released: her last scene clip doesn't loop")
 	-- the real Act.Play / Act.Clear honour the lock

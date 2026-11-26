@@ -74,7 +74,9 @@ local function record(pt)
 	if not TIF.Dev then return end
 	local r = C.Recent
 	r[#r + 1] = pt
-	if #r > 160 then table.remove(r, 1) end
+	if #r > 160 then
+		table.remove(r, 1)
+	end
 end
 
 local function spend(traces, n)
@@ -86,63 +88,116 @@ local function evaluate(p, threat, threatEye, traces)
 	local pt = { probe = p, time = CurTime() }
 	local dir = flat(threat - p)
 
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	local pWaist = p + VEC_WAIST
 	local w = line(pWaist, pWaist + dir * 90)
 	local wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
 	if not wallOk then
-		if not spend(traces, 1) then pt.reject = "budget" return pt end
+		if not spend(traces, 1) then
+			pt.reject = "budget"
+			return pt
+		end
 		local pChest = p + VEC_CHEST
 		w = line(pChest, pChest + dir * 90)
 		wallOk = w.Hit and not w.HitSky and math_abs(w.HitNormal.z) <= 0.55
 	end
-	if not wallOk then pt.reject = "no wall" return pt end
+
+	if not wallOk then
+		pt.reject = "no wall"
+		return pt
+	end
+
 	local n = flat(w.HitNormal)
-	if n:Dot(-dir) < 0.35 then pt.reject = "wall angled away" return pt end
+	if n:Dot(-dir) < 0.35 then
+		pt.reject = "wall angled away"
+		return pt
+	end
+
 	pt.normal = n
 	pt.ny = n:Angle().y
 	pt.material = IsValid(w.Entity) and (w.Entity.IsGlideVehicle and "vehicle" or "prop") or "world"
 	pt.ent = IsValid(w.Entity) and w.Entity or nil
 
 	local origin = w.HitPos + n * C.HUG
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	local g = line(origin + VEC_24, origin - VEC_64)
-	if not g.Hit then pt.reject = "no ground" return pt end
+	if not g.Hit then
+		pt.reject = "no ground"
+		return pt
+	end
+
 	origin = Vector(g.HitPos)
 	pt.pos = origin
 	if not IsValid(navmesh.GetNearestNavArea(origin, false, 72, false, true)) then
 		pt.reject = "off navmesh" return pt
 	end
 
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	hull.start, hull.endpos = origin, origin
 	local h = util.TraceHull(hull)
-	if h.Hit or h.StartSolid then pt.reject = "no room" return pt end
+	if h.Hit or h.StartSolid then
+		pt.reject = "no room"
+		return pt
+	end
 
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	local oHead = origin + VEC_HEAD
 	local wallBack = n * (C.HUG + 24)
 	local head = line(oHead, oHead - wallBack)
 	pt.high = head.Hit
 	if not pt.high then
-		if not spend(traces, 1) then pt.reject = "budget" return pt end
+		if not spend(traces, 1) then
+			pt.reject = "budget"
+			return pt
+		end
 		local oChest = origin + VEC_CHEST
 		pt.mid = line(oChest, oChest - wallBack).Hit
 	end
 
 	local tL, tR = yaw_dir(pt.ny - 90), yaw_dir(pt.ny + 90)
 	local probeZ = pt.high and VEC_HEAD or VEC_WAIST
-	if not spend(traces, 2) then pt.reject = "budget" return pt end
+	if not spend(traces, 2) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	local sL = origin + tL * C.EDGE_STEP + probeZ
 	pt.edgeL = not line(sL, sL - wallBack).Hit
 	local sR = origin + tR * C.EDGE_STEP + probeZ
 	pt.edgeR = not line(sR, sR - wallBack).Hit
 
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
-	pt.protected = blocked_before(threatEye, origin + (pt.high and VEC_56 or VEC_34), 6)
-	if not pt.protected then pt.reject = "exposed" return pt end
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
 
-	if not spend(traces, 1) then pt.reject = "budget" return pt end
+	pt.protected = blocked_before(threatEye, origin + (pt.high and VEC_56 or VEC_34), 6)
+	if not pt.protected then
+		pt.reject = "exposed"
+		return pt
+	end
+
+	if not spend(traces, 1) then
+		pt.reject = "budget"
+		return pt
+	end
+
 	local target = threat + VEC_40
 	if not pt.high then
 		pt.canShoot = reaches(origin + VEC_62, target, 40)
@@ -162,6 +217,7 @@ local function evaluate(p, threat, threatEye, traces)
 			pt.canShoot = false
 		end
 	end
+
 	return pt
 end
 
@@ -179,33 +235,52 @@ end
 
 local function too_close_to_reserved(pos, npc)
 	for _, r in pairs(C.Reserved) do
-		if r.npc ~= npc and IsValid(r.npc) and r.pos:DistToSqr(pos) < C.EXCLUSION * C.EXCLUSION then return true end
+		if r.npc ~= npc and IsValid(r.npc) and r.pos:DistToSqr(pos) < C.EXCLUSION * C.EXCLUSION then
+			return true
+		end
 	end
+
 	return false
 end
 
 local function score(pt, npc, threat)
 	local arch = npc.tifArch
 	local s, why = 0, {}
-	if pt.canShoot then s = s + 3 why[#why + 1] = "can shoot" else s = s + 0.3 why[#why + 1] = "hide only" end
+	if pt.canShoot then
+		s = s + 3 why[#why + 1] = "can shoot"
+	else
+		s = s + 0.3 why[#why + 1] = "hide only"
+	end
+
 	local d = pt.pos:Distance(threat)
 	local lo, hi = arch.prefRange[1], arch.prefRange[2]
 	local off = d < lo and lo - d or (d > hi and d - hi or 0)
 	s = s - off / 400
-	if off > 0 then why[#why + 1] = string.format("%d off range", off) end
+	if off > 0 then
+		why[#why + 1] = string.format("%d off range", off)
+	end
+
 	local travel = npc:GetPos():Distance(pt.pos)
 	s = s - travel / 350
 	why[#why + 1] = string.format("%du away", travel)
-	if pt.high and pt.canShoot then s = s + 0.4 end
-	if pt.material == "vehicle" then s = s - 0.3 why[#why + 1] = "vehicle" end
+	if pt.high and pt.canShoot then
+		s = s + 0.4
+	end
 
-	if pt.ent and pt.ent.tifCover then s = s + 1.5 why[#why + 1] = "fortification" end
+	if pt.material == "vehicle" then
+		s = s - 0.3 why[#why + 1] = "vehicle"
+	end
+
+	if pt.ent and pt.ent.tifCover then
+		s = s + 1.5 why[#why + 1] = "fortification"
+	end
 
 	local to = flat(pt.pos - npc:GetPos())
 	if travel > 120 and to:Dot(flat(threat - npc:GetPos())) > 0.6 then
 		s = s - (1 - arch.aggression) * 1.2
 		why[#why + 1] = "toward enemy"
 	end
+
 	for _, other in ipairs(TIF.Soldiers) do
 		if other ~= npc and IsValid(other) and other:GetPos():DistToSqr(pt.pos) < 80 * 80 then
 			s = s - 2
@@ -213,6 +288,7 @@ local function score(pt, npc, threat)
 			break
 		end
 	end
+
 	return s, table.concat(why, ", ")
 end
 
@@ -236,6 +312,7 @@ function C.Find(npc, threat, opts)
 			probes[#probes + 1] = p
 		end
 	end
+
 	local function fan(origin, yawCenter, spread, count, len)
 		local low, high = origin + Vector(0, 0, C.WAIST), origin + Vector(0, 0, C.CHEST)
 
@@ -257,13 +334,16 @@ function C.Find(npc, threat, opts)
 			if TIF.Dev then
 				local rays = C.RecentRays
 				rays[#rays + 1] = { a = Vector(start), b = hit, kind = ok and 1 or (solid and 2 or 0), time = now }
-				if #rays > 300 then table.remove(rays, 1) end
+				if #rays > 300 then
+					table.remove(rays, 1)
+				end
 			end
 			if ok then
 				add_probe(hit - toThreatHere * (C.HUG - 4), origin.z)
 			end
 		end
 	end
+
 	local toThreat = (threat - center):Angle().y
 
 	fan(center, toThreat, 200, 18, radius)
@@ -271,7 +351,9 @@ function C.Find(npc, threat, opts)
 	for _, off in ipairs({ side * radius * 0.45, -side * radius * 0.45, fwd * radius * 0.35 }) do
 		local o = center + off
 		local g = line(o + Vector(0, 0, 40), o - Vector(0, 0, 120))
-		if g.Hit and not g.StartSolid then fan(Vector(g.HitPos), toThreat, 110, 6, radius * 0.6) end
+		if g.Hit and not g.StartSolid then
+			fan(Vector(g.HitPos), toThreat, 110, 6, radius * 0.6)
+		end
 	end
 
 	table.sort(probes, function(a, b) return a:DistToSqr(center) < b:DistToSqr(center) end)
@@ -295,9 +377,13 @@ function C.Find(npc, threat, opts)
 			end
 		end
 	end
+
 	table.sort(propProbes, function(a, b) return a:DistToSqr(center) < b:DistToSqr(center) end)
 	stats.props = #propProbes
-	for _, p in ipairs(probes) do propProbes[#propProbes + 1] = p end
+	for _, p in ipairs(probes) do
+		propProbes[#propProbes + 1] = p
+	end
+
 	probes = propProbes
 
 	local best, bestScore
@@ -318,7 +404,9 @@ function C.Find(npc, threat, opts)
 			pt = evaluate(p, threat, threatEye, traces)
 			pt.key = key
 			pt.threat = Vector(threat)
-			if pt.reject ~= "budget" then C.Cache[key] = pt end
+			if pt.reject ~= "budget" then
+				C.Cache[key] = pt
+			end
 			record(pt)
 		end
 		local why = pt.reject or "usable"
@@ -326,7 +414,10 @@ function C.Find(npc, threat, opts)
 		if not pt.reject then
 			local unreachable = false
 			for _, a in ipairs(opts.avoid or {}) do
-				if a:DistToSqr(pt.pos) < 64 * 64 then unreachable = true break end
+				if a:DistToSqr(pt.pos) < 64 * 64 then
+					unreachable = true
+					break
+				end
 			end
 			if unreachable then
 				pt.lastReject = "unreachable"
@@ -338,14 +429,20 @@ function C.Find(npc, threat, opts)
 			else
 				local s, sw = score(pt, npc, threat)
 				pt.score, pt.why = s, sw
-				if not bestScore or s > bestScore then best, bestScore = pt, s end
+				if not bestScore or s > bestScore then
+					best, bestScore = pt, s
+				end
 			end
 		end
 	end
+
 	Prof.Count("cover_searches", 1)
 	Prof.Count("cover_traces", traces.n)
 	Prof.End()
-	if best then best.chosenBy, best.chosenAt = npc, now end
+	if best then
+		best.chosenBy, best.chosenAt = npc, now
+	end
+
 	stats.obstacles, stats.tested, stats.traces = #probes, tested, traces.n
 	C.LastStats = stats
 	return best, stats
@@ -356,6 +453,7 @@ function C.StillGood(pt, threat)
 	if not blocked_before(threat + VEC_60, pt.pos + (pt.high and VEC_56 or VEC_34), 6) then
 		return false, "exposed"
 	end
+
 	local dir = flat(threat - pt.pos)
 	if pt.normal:Dot(-dir) < 0.25 then return false, "flanked" end
 	return true
@@ -369,16 +467,24 @@ end
 
 function C.Release(npc)
 	local k = npc.tifCoverKey
-	if k and C.Reserved[k] and C.Reserved[k].npc == npc then C.Reserved[k] = nil end
+	if k and C.Reserved[k] and C.Reserved[k].npc == npc then
+		C.Reserved[k] = nil
+	end
+
 	npc.tifCoverKey = nil
 end
 
 timer.Create("tif_cover_gc", 5, 0, function()
 	local now = CurTime()
 	for k, pt in pairs(C.Cache) do
-		if now - pt.time > C.CACHE_TIME * 2 then C.Cache[k] = nil end
+		if now - pt.time > C.CACHE_TIME * 2 then
+			C.Cache[k] = nil
+		end
 	end
+
 	for k, r in pairs(C.Reserved) do
-		if not IsValid(r.npc) or r.npc.tifDead then C.Reserved[k] = nil end
+		if not IsValid(r.npc) or r.npc.tifDead then
+			C.Reserved[k] = nil
+		end
 	end
 end)

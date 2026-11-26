@@ -33,6 +33,7 @@ function Budget.Take(kind, amount)
 		Prof.Count(kind, amount)
 		return true
 	end
+
 	Prof.Count(kind .. "_denied", 1)
 	return false
 end
@@ -78,13 +79,18 @@ local function update_tiers()
 			local pos, nearestDistSqr = npc:GetPos(), math.huge
 			for j = 1, playerCount do
 				local distSqr = pos:DistToSqr(players[j]:GetPos())
-				if distSqr < nearestDistSqr then nearestDistSqr = distSqr end
+				if distSqr < nearestDistSqr then
+					nearestDistSqr = distSqr
+				end
 			end
 			local aware = npc.tifAware or 0
 			local tier
 			if aware == awareEngaged then tier = nearestDistSqr < 6250000 and 0 or 1
-			elseif aware > awareUnaware then tier = 1
-			else tier = nearestDistSqr < 9000000 and 2 or 3 end
+			elseif aware > awareUnaware then
+				tier = 1
+			else
+				tier = nearestDistSqr < 9000000 and 2 or 3
+			end
 			npc.tifTier = tier
 		end
 	end
@@ -105,7 +111,9 @@ hook.Add("Tick", "tif_sched", function()
 	local budgetSec = cvBudgetMs:GetFloat() / 1000
 	local startTime, now = SysTime(), CurTime()
 	for _ = 1, count do
-		if Sched.idx > #soldiers then Sched.idx = 1 end
+		if Sched.idx > #soldiers then
+			Sched.idx = 1
+		end
 		local npc = soldiers[Sched.idx]
 		Sched.idx = Sched.idx + 1
 		if IsValid(npc) then
@@ -120,5 +128,6 @@ hook.Add("Tick", "tif_sched", function()
 			table.RemoveByValue(soldiers, npc)
 		end
 	end
+
 	Prof.End()
 end)

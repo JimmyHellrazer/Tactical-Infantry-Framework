@@ -30,25 +30,42 @@ local function get_leg_rig(ent)
 			local thigh = ent:LookupBone(prefix .. "Thigh")
 			local calf = ent:LookupBone(prefix .. "Calf")
 			local foot = ent:LookupBone(prefix .. "Foot")
-			if not (thigh and calf and foot) then rig = false break end
+			if not (thigh and calf and foot) then
+				rig = false
+				break
+			end
 			rig.sides[#rig.sides + 1] = { u = thigh, f = calf, h = foot, gov = {} }
 		end
 		if rig then
 			for bone = 0, ent:GetBoneCount() - 1 do
 				local parent, depth, underPelvis = bone, 0, false
 				while parent and parent >= 0 and depth < 64 do
-					if parent == pelvis then underPelvis = true break end
+					if parent == pelvis then
+						underPelvis = true
+						break
+					end
 					parent = ent:GetBoneParent(parent)
 					depth = depth + 1
 				end
-				if underPelvis then rig.sub[#rig.sub + 1] = bone end
+				if underPelvis then
+					rig.sub[#rig.sub + 1] = bone
+				end
 				for _, leg in ipairs(rig.sides) do
 					if bone ~= leg.u and bone ~= leg.f and bone ~= leg.h then
 						local cur, steps = ent:GetBoneParent(bone), 0
 						while cur and cur >= 0 and steps < 64 do
-							if cur == leg.h then leg.gov[bone] = "h" break end
-							if cur == leg.f then leg.gov[bone] = "f" break end
-							if cur == leg.u then leg.gov[bone] = "u" break end
+							if cur == leg.h then
+								leg.gov[bone] = "h"
+								break
+							end
+							if cur == leg.f then
+								leg.gov[bone] = "f"
+								break
+							end
+							if cur == leg.u then
+								leg.gov[bone] = "u"
+								break
+							end
 							cur = ent:GetBoneParent(cur)
 							steps = steps + 1
 						end
@@ -57,6 +74,7 @@ local function get_leg_rig(ent)
 			end
 		end
 	end
+
 	legRigCache[model] = rig
 	return rig or nil
 end
@@ -100,6 +118,7 @@ local function build_body_matrix(ent, rig, drop, leanAngle)
 		fromPivot:SetTranslation(-pivot)
 		return toPivot * rotMat * fromPivot
 	end
+
 	local mat = Matrix()
 	mat:SetTranslation(Feet.UP * drop)
 	return mat
@@ -107,7 +126,10 @@ end
 
 local function on_build_bones(ent)
 	local state = Body.State and Body.State(ent)
-	if not state or not state.feetOn or state.writeFrame ~= FrameNumber() then return end
+	if not state or not state.feetOn or state.writeFrame ~= FrameNumber() then
+		return
+	end
+
 	local footWeight, leanWeight = state.footW or 0, state.leanW or 0
 	local rig = get_leg_rig(ent)
 	if not rig then return end
@@ -116,8 +138,14 @@ local function on_build_bones(ent)
 	if footWeight > 0.01 and state.footOff then
 		drop = math.Clamp(math.min(state.footOff[1], state.footOff[2], 0), -Feet.DROP_MAX, 0) * footWeight
 	end
-	if drop > -0.05 then drop = 0 end
-	if math.abs(leanWeight) < 0.05 then leanWeight = 0 end
+
+	if drop > -0.05 then
+		drop = 0
+	end
+	if math.abs(leanWeight) < 0.05 then
+		leanWeight = 0
+	end
+
 	if drop ~= 0 or leanWeight ~= 0 then
 		local bodyMat = build_body_matrix(ent, rig, drop, leanWeight)
 		if bodyMat then
@@ -125,10 +153,13 @@ local function on_build_bones(ent)
 			for i = 1, #subBones do
 				local bone = subBones[i]
 				local mat = CopyBone(ent, bone, BONE_MAT)
-				if mat then ent:SetBoneMatrix(bone, bodyMat * mat) end
+				if mat then
+					ent:SetBoneMatrix(bone, bodyMat * mat)
+				end
 			end
 		end
 	end
+
 	if footWeight > 0.01 and state.footOff then
 		local solveTwoBone = TIF.GunHold and TIF.GunHold.SolveTwoBone
 		if solveTwoBone then
@@ -138,11 +169,14 @@ local function on_build_bones(ent)
 				local offset = state.footOff[i] * footWeight
 				if math.abs(offset - drop) > 0.05 then
 					local footMat = CopyBone(ent, leg.h, BONE_MAT)
-					if footMat then solveTwoBone(ent, leg, footMat:GetTranslation() + Feet.UP * (offset - drop)) end
+					if footMat then
+						solveTwoBone(ent, leg, footMat:GetTranslation() + Feet.UP * (offset - drop))
+					end
 				end
 			end
 		end
 	end
+
 	local prof = TIF.Prof
 	if prof then
 		prof.Count("cl_feet_us", (SysTime() - startTime) * 1e6)
@@ -151,9 +185,14 @@ local function on_build_bones(ent)
 end
 
 function Feet.Prepare(ent, state, now, dt)
-	if not ent.tifFeetCb then ent.tifFeetCb = ent:AddCallback("BuildBonePositions", on_build_bones) end
+	if not ent.tifFeetCb then
+		ent.tifFeetCb = ent:AddCallback("BuildBonePositions", on_build_bones)
+	end
 	local frame = FrameNumber()
-	if frame ~= lastFrame then lastFrame, frameUsed = frame, 0 end
+	if frame ~= lastFrame then
+		lastFrame, frameUsed = frame, 0
+	end
+
 	local speed = state.speed2d or 0
 	local range = cvRange:GetFloat()
 	local near = ent:GetPos():DistToSqr(EyePos()) < range * range
@@ -167,6 +206,7 @@ function Feet.Prepare(ent, state, now, dt)
 	if allowed and cvLean:GetBool() and speed > Feet.LEAN_SPEED then
 		targetLean = math.Clamp(-yawRate * speed * Feet.LEAN_K / 100, -Feet.LEAN_MAX, Feet.LEAN_MAX)
 	end
+
 	state.leanW = Lerp(math.min(1, dt * 5), state.leanW or 0, targetLean)
 	state.feetOn = state.footW > 0.01 or math.abs(state.leanW) >= 0.05
 	if not state.feetOn then return end
@@ -182,7 +222,9 @@ function Feet.Prepare(ent, state, now, dt)
 				local sides = rig.sides
 				for i = 1, #sides do
 					local footMat = CopyBone(ent, sides[i].h, BONE_MAT)
-					if footMat then state.footTgt[i] = sample_ground(ent, footMat:GetTranslation(), baseZ) end
+					if footMat then
+						state.footTgt[i] = sample_ground(ent, footMat:GetTranslation(), baseZ)
+					end
 				end
 			end
 		end

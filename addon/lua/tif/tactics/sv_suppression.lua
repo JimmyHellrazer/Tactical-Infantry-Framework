@@ -20,8 +20,13 @@ function Supp.Add(npc, amount, srcPos, shooter)
 	npc.tifSupp = after
 	npc.tifSuppAt = CurTime()
 	local synced = npc:GetTIFSupp()
-	if math.abs(synced - after) > 0.03 or (after == 1 and synced < 1) then npc:SetTIFSupp(after) end
-	if before < 0.45 and after >= 0.45 then TIF.Say(npc, "swear", 0.5) end
+	if math.abs(synced - after) > 0.03 or (after == 1 and synced < 1) then
+		npc:SetTIFSupp(after)
+	end
+
+	if before < 0.45 and after >= 0.45 then
+		TIF.Say(npc, "swear", 0.5)
+	end
 	if IsValid(shooter) and srcPos and TIF.Perception.OnSuppressed then
 		TIF.Perception.OnSuppressed(npc, shooter, srcPos)
 	end
@@ -34,15 +39,22 @@ function Supp.Decay(npc, dt)
 	if CurTime() - (npc.tifSuppAt or 0) < 0.6 then return end
 	level = math.max(0, level - dt * DECAY_RATE * (1 + resist))
 	npc.tifSupp = level
-	if math.abs(npc:GetTIFSupp() - level) > 0.03 or level == 0 then npc:SetTIFSupp(level) end
+	if math.abs(npc:GetTIFSupp() - level) > 0.03 or level == 0 then
+		npc:SetTIFSupp(level)
+	end
 end
 
 Supp.WHIZBY_CHANCE, Supp.WHIZBY_COOLDOWN = 0.3, 4
 local whizbyCounts = {}
 function Supp.Whizby(npc, now)
-	if now < (npc.tifNextWhizby or 0) or math.random() > Supp.WHIZBY_CHANCE then return end
+	if now < (npc.tifNextWhizby or 0) or math.random() > Supp.WHIZBY_CHANCE then
+		return
+	end
 	npc.tifNextWhizby = now + Supp.WHIZBY_COOLDOWN
-	if npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifKnock or npc.tifDying then return end
+	if npc.tifProne or npc.tifVeh or npc.tifDowned or npc.tifKnock or npc.tifDying then
+		return
+	end
+
 	if npc.loco:GetVelocity():Length2DSqr() > 200 * 200 then return end
 	local host = npc.tifHomeHost
 	if not host then return end
@@ -52,6 +64,7 @@ function Supp.Whizby(npc, now)
 		for i = 1, 9 do if TIF.GTG.Clip("mwzw_" .. i, host) then count = i end end
 		whizbyCounts[host] = count
 	end
+
 	if count == 0 then return end
 	npc:SetNW2Int("tif_whizby_n", math.random(count))
 	npc:SetNW2Float("tif_whizby_t", now)
@@ -62,7 +75,10 @@ hook.Add("EntityFireBullets", "tif_suppression", function(shooter, data)
 	local soldiers = TIF.Soldiers
 	local soldierCount = #soldiers
 	if soldierCount == 0 or not data.Dir then return end
-	if IsValid(shooter) and shooter:IsPlayer() and TIF.IgnorePlayers() then return end
+	if IsValid(shooter) and shooter:IsPlayer() and TIF.IgnorePlayers() then
+		return
+	end
+
 	Prof.Begin("suppression")
 	local src = data.Src or shooter:GetPos()
 	local rawDir = data.Dir
@@ -72,6 +88,7 @@ hook.Add("EntityFireBullets", "tif_suppression", function(shooter, data)
 		local invLen = 1 / dirLen
 		dirX, dirY, dirZ = dirX * invLen, dirY * invLen, dirZ * invLen
 	end
+
 	local srcX, srcY, srcZ = src.x, src.y, src.z
 	local maxDist = math.min(data.Distance or MAX_RANGE, MAX_RANGE)
 	local rounds = math.Clamp(data.Num or 1, 1, 8)
@@ -100,6 +117,7 @@ hook.Add("EntityFireBullets", "tif_suppression", function(shooter, data)
 			end
 		end
 	end
+
 	Prof.End()
 end)
 
@@ -108,7 +126,10 @@ hook.Add("EntityTakeDamage", "tif_suppression", function(target, dmg)
 	if not dmg:IsDamageType(DMG_BLAST) then return end
 	local blastPos = dmg:GetDamagePosition()
 	local now = CurTime()
-	if now - lastBlast.time < 0.15 and lastBlast.pos:DistToSqr(blastPos) < 64 * 64 then return end
+	if now - lastBlast.time < 0.15 and lastBlast.pos:DistToSqr(blastPos) < 64 * 64 then
+		return
+	end
+
 	lastBlast.pos, lastBlast.time = blastPos, now
 	local soldiers = TIF.Soldiers
 	local attacker = dmg:GetAttacker()

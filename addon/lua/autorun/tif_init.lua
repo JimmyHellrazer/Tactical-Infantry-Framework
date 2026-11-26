@@ -129,19 +129,31 @@ local MANIFEST = {
 local function load_file(path)
 	local prefix = string.sub(string.match(path, "[^/]+$"), 1, 3)
 	if prefix == "sv_" then
-		if SERVER then include(path) end
+		if SERVER then
+			include(path)
+		end
 	elseif prefix == "cl_" then
-		if SERVER then AddCSLuaFile(path) else include(path) end
+		if SERVER then
+			AddCSLuaFile(path)
+		else
+			include(path)
+		end
 	else
-		if SERVER then AddCSLuaFile(path) end
+		if SERVER then
+			AddCSLuaFile(path)
+		end
 		include(path)
 	end
 end
 
-for _, rel in ipairs(MANIFEST) do load_file(TIF.Root .. rel) end
+for _, rel in ipairs(MANIFEST) do
+	load_file(TIF.Root .. rel)
+end
 
 if TIF.Dev then
-	if SERVER then AddCSLuaFile("tif_dev/sh_init.lua") end
+	if SERVER then
+		AddCSLuaFile("tif_dev/sh_init.lua")
+	end
 	include("tif_dev/sh_init.lua")
 end
 

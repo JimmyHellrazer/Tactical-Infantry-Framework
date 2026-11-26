@@ -30,11 +30,14 @@ local function quat_local(triggers, A, a, C, c)
 		local tr = triggers[i]
 		local q = tr.trigger
 		local d = math_abs(q[1] * x + q[2] * y + q[3] * z + q[4] * w)
-		if d > 1 then d = 1 end
+		if d > 1 then
+			d = 1
+		end
 		local wt = math_max(0, 1 - 2 * math_acos(d) * tr.tol)
 		weights[i] = wt
 		total = total + wt
 	end
+
 	local qx, qy, qz, qw, px, py, pz = 0, 0, 0, 0, 0, 0, 0
 	if total <= 0.001 then
 		local t = triggers[1]
@@ -47,14 +50,19 @@ local function quat_local(triggers, A, a, C, c)
 			if s > 0 then
 				local tr = triggers[i]
 				local q = tr.quat
-				if qx * q[1] + qy * q[2] + qz * q[3] + qw * q[4] < 0 then qx, qy, qz, qw = -qx, -qy, -qz, -qw end
+				if qx * q[1] + qy * q[2] + qz * q[3] + qw * q[4] < 0 then
+					qx, qy, qz, qw = -qx, -qy, -qz, -qw
+				end
 				qx, qy, qz, qw = qx + s * q[1], qy + s * q[2], qz + s * q[3], qw + s * q[4]
 				px, py, pz = px + s * tr.pos[1], py + s * tr.pos[2], pz + s * tr.pos[3]
 			end
 		end
 		local l = math_sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
-		if l > 1e-9 then qx, qy, qz, qw = qx / l, qy / l, qz / l, qw / l end
+		if l > 1e-9 then
+			qx, qy, qz, qw = qx / l, qy / l, qz / l, qw / l
+		end
 	end
+
 	C[c + 1], C[c + 2], C[c + 3], C[c + 4] = 1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy), px
 	C[c + 5], C[c + 6], C[c + 7], C[c + 8] = 2 * (qx * qy + qw * qz), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qw * qx), py
 	C[c + 9], C[c + 10], C[c + 11], C[c + 12] = 2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx * qx + qy * qy), pz
@@ -79,7 +87,11 @@ function PMS.Solve(ent, map, ik, origin)
 				end
 			elseif kind == ENGINE then
 				if rot[p] then
-					if K[p] == MERGE then mul_rot(E, po, OFF[p], T, 0) else copy(E, po, T, 0) end
+					if K[p] == MERGE then
+						mul_rot(E, po, OFF[p], T, 0)
+					else
+						copy(E, po, T, 0)
+					end
 					if inv(T, 0, T, 12) then
 						mul(T, 12, E, o, T, 24)
 						mul(W, po, T, 24, W, o)

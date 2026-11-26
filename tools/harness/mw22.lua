@@ -215,8 +215,9 @@ end
 -- 0.38.23: go clips aimed from where he stands, skipped into a wall; the team passes through itself; no flash after
 -- a clip breach
 check(src:find("yawFn = function(npc)", 1, true) and src:find("clip_path_clear(npc, cclip(npc, b.go), yaw, cq)", 1, true), "go clips: aimed from his spot, path checked")
-check(src:find("for _, m in ipairs(team) do team_ghost(m, true) end", 1, true) and src:find("team_ghost(m, false)", 1, true), "entry team passes through itself, restored on release")
-check(src:find("if not cq.wentIn then flash_in(sq, cq, team, now) end", 1, true) ~= nil, "no flash after a clip breach")
+local srcFlat = src:gsub("%s+", " ")
+check(srcFlat:find("for _, m in ipairs(team) do team_ghost(m, true) end", 1, true) and srcFlat:find("team_ghost(m, false)", 1, true), "entry team passes through itself, restored on release")
+check(srcFlat:find("if not cq.wentIn then flash_in(sq, cq, team, now) end", 1, true) ~= nil, "no flash after a clip breach")
 local brain = io.open(ROOT .. "tif/npc/sv_brain.lua"):read("*a")
 check(brain:find("local yaw = item.yawFn and item.yawFn(npc) or item.yaw", 1, true) and brain:find("if item.check and not item.check(npc", 1, true), "brain: queue uses yawFn / check")
 check(src:find('m:SetNW2Bool("tif_sledge", sledge)', 1, true) and src:find('m:SetNW2Bool("tif_sledge", false)', 1, true), "sledge shown stowed while he has a hammer breach, cleared on release")

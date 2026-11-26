@@ -49,7 +49,9 @@ function S.Find(npc, hint)
 
 			local p = base + d * 50
 			local g = trace(p + Vector(0, 0, 20), p - Vector(0, 0, 120), npc)
-			if not g.Hit then out[#out + 1] = { kind = "down", yaw = yaw } end
+			if not g.Hit then
+				out[#out + 1] = { kind = "down", yaw = yaw }
+			end
 		end
 	end
 
@@ -57,8 +59,11 @@ function S.Find(npc, hint)
 	if not up.Hit or up.HitSky then
 		local y = hint or npc:GetAngles().y
 		local tall = trace(base + Vector(0, 0, 220), base + Vector(0, 0, 220) + yaw_dir(y) * 500, npc)
-		if tall.Hit and not tall.HitSky then out[#out + 1] = { kind = "high", yaw = y } end
+		if tall.Hit and not tall.HitSky then
+			out[#out + 1] = { kind = "high", yaw = y }
+		end
 	end
+
 	local ok = {}
 	for _, f in ipairs(out) do if has(npc, f.kind) then ok[#ok + 1] = f end end
 	return ok
@@ -68,20 +73,26 @@ local function choose(npc, list, hint)
 	local total, w = 1, {}
 	for i, f in ipairs(list) do
 		local k = S.PREFER[f.kind] or 1
-		if hint then k = k * (1.5 - math.abs(math.AngleDifference(f.yaw, hint)) / 180) end
+		if hint then
+			k = k * (1.5 - math.abs(math.AngleDifference(f.yaw, hint)) / 180)
+		end
 		w[i] = k
 		total = total + k
 	end
+
 	local r = math.random() * total
 	for i, f in ipairs(list) do
 		r = r - w[i]
 		if r <= 0 then return f end
 	end
+
 	return { kind = "around", yaw = hint or npc:GetAngles().y }
 end
 
 function S.Look(npc, now, hint)
-	if not S.Use(npc) or npc.tifLook or npc.tifAct or npc.tifCov or npc.tifProne or npc.tifVeh then return false end
+	if not S.Use(npc) or npc.tifLook or npc.tifAct or npc.tifCov or npc.tifProne or npc.tifVeh then
+		return false
+	end
 	local f = choose(npc, S.Find(npc, hint), hint)
 	local d = Act.Play(npc, "mwl_" .. f.kind .. "_enter", { root = true, to = { pos = npc:GetPos(), yaw = f.yaw } })
 	if not d then return false end
@@ -93,7 +104,9 @@ end
 local function stop(npc)
 	npc.tifLook = nil
 	local a = npc.tifAct
-	if a and a.name and string.sub(a.name, 1, 4) == "mwl_" then Act.Clear(npc) end
+	if a and a.name and string.sub(a.name, 1, 4) == "mwl_" then
+		Act.Clear(npc)
+	end
 end
 S.Stop = stop
 
@@ -106,6 +119,7 @@ function S.Busy(npc, now)
 		stop(npc)
 		return false
 	end
+
 	TIF.Move.Stop(npc)
 	if l.phase == "enter" and now >= l.untilT then
 		Act.Loop(npc, "mwl_" .. l.kind .. "_loop")
@@ -117,5 +131,6 @@ function S.Busy(npc, now)
 		npc.tifLook = nil
 		return false
 	end
+
 	return true
 end

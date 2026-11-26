@@ -20,12 +20,19 @@ Civ.HL2 = {
 }
 
 function Civ.AddModels(list)
-	for _, m in ipairs(list) do table.insert(Civ.MODELS, m) end
+	for _, m in ipairs(list) do
+		table.insert(Civ.MODELS, m)
+	end
 end
 
 local czech = {}
-for _, n in ipairs({ "01", "02", "03", "04", "05", "06", "07", "08", "09" }) do czech[#czech + 1] = "models/drem/cch/male_" .. n .. ".mdl" end
-for _, n in ipairs({ "01", "02", "03", "04", "06", "07" }) do czech[#czech + 1] = "models/drem/cch/female_" .. n .. ".mdl" end
+for _, n in ipairs({ "01", "02", "03", "04", "05", "06", "07", "08", "09" }) do
+	czech[#czech + 1] = "models/drem/cch/male_" .. n .. ".mdl"
+end
+
+for _, n in ipairs({ "01", "02", "03", "04", "06", "07" }) do
+	czech[#czech + 1] = "models/drem/cch/female_" .. n .. ".mdl"
+end
 
 local usable
 function Civ.PickModel()
@@ -37,6 +44,7 @@ function Civ.PickModel()
 			for _, m in ipairs(Civ.HL2) do if util.IsValidModel(m) then usable[#usable + 1] = m end end
 		end
 	end
+
 	return usable[math.random(math.max(1, #usable))] or "models/humans/group01/male_01.mdl"
 end
 
@@ -75,6 +83,7 @@ function Civ.RandomPoint(center, radius)
 		local p = snap(center + Vector(math.cos(a) * d, math.sin(a) * d, 0))
 		if p then return p end
 	end
+
 	return nil
 end
 
@@ -92,7 +101,10 @@ function Civ.HideSpot(civ, danger)
 	local pos = civ:GetPos()
 	local away = pos - danger
 	away.z = 0
-	if away:LengthSqr() < 1 then away = Vector(1, 0, 0) end
+	if away:LengthSqr() < 1 then
+		away = Vector(1, 0, 0)
+	end
+
 	away:Normalize()
 	local best, bs
 	for i = 1, 8 do
@@ -102,8 +114,12 @@ function Civ.HideSpot(civ, danger)
 		local p = snap(pos + dir * math.Rand(500, 1200))
 		if p then
 			local score = math.random()
-			if hit(danger + Vector(0, 0, 50), p + Vector(0, 0, 40)).Hit then score = score + 2 end
-			if indoors(p) then score = score + 1.5 end
+			if hit(danger + Vector(0, 0, 50), p + Vector(0, 0, 40)).Hit then
+				score = score + 2
+			end
+			if indoors(p) then
+				score = score + 1.5
+			end
 
 			local wall, yaw
 			local toD = (danger - p)
@@ -120,9 +136,12 @@ function Civ.HideSpot(civ, danger)
 					break
 				end
 			end
-			if not bs or score > bs then best, bs = { pos = p, yaw = yaw or toD:Angle().y, wall = wall }, score end
+			if not bs or score > bs then
+				best, bs = { pos = p, yaw = yaw or toD:Angle().y, wall = wall }, score
+			end
 		end
 	end
+
 	return best
 end
 
@@ -130,7 +149,10 @@ function Civ.LeavePoint(civ, danger)
 	local pos = civ:GetPos()
 	local away = pos - danger
 	away.z = 0
-	if away:LengthSqr() < 1 then away = VectorRand() away.z = 0 end
+	if away:LengthSqr() < 1 then
+		away = VectorRand() away.z = 0
+	end
+
 	away:Normalize()
 	for _, k in ipairs({ 1, 0.7, 0.45 }) do
 		for _ = 1, 3 do
@@ -141,17 +163,24 @@ function Civ.LeavePoint(civ, danger)
 			if p and p:DistToSqr(pos) > 600 * 600 then return p end
 		end
 	end
+
 	return nil
 end
 
 function Civ.Helper(civ)
 	local pos = civ:GetPos()
 	for _, ply in ipairs(player.GetHumans()) do
-		if ply:Alive() and ply:GetPos():DistToSqr(pos) < 300 * 300 then return ply end
+		if ply:Alive() and ply:GetPos():DistToSqr(pos) < 300 * 300 then
+			return ply
+		end
 	end
+
 	for _, s in ipairs(TIF.Soldiers or {}) do
-		if IsValid(s) and not s.tifDead and s:GetPos():DistToSqr(pos) < 260 * 260 then return s end
+		if IsValid(s) and not s.tifDead and s:GetPos():DistToSqr(pos) < 260 * 260 then
+			return s
+		end
 	end
+
 	return nil
 end
 
@@ -160,7 +189,9 @@ function Civ.Scare(pos, radius, amount)
 	for c in pairs(list) do
 		if IsValid(c) then
 			local d2 = c:GetPos():DistToSqr(pos)
-			if d2 < r2 then c:Scare(pos, (amount or 0.6) * (1 - math.sqrt(d2) / radius * 0.6)) end
+			if d2 < r2 then
+				c:Scare(pos, (amount or 0.6) * (1 - math.sqrt(d2) / radius * 0.6))
+			end
 		end
 	end
 end
@@ -177,7 +208,9 @@ hook.Add("EntityFireBullets", "tif_civilians", function(ent, data)
 
 	if data.Dir then
 		local t = util.TraceLine({ start = src, endpos = src + data.Dir * 4000, mask = MASK_SHOT, filter = ent })
-		if t.HitPos then Civ.Scare(t.HitPos, 1000, 0.8) end
+		if t.HitPos then
+			Civ.Scare(t.HitPos, 1000, 0.8)
+		end
 	end
 end)
 
@@ -189,15 +222,21 @@ end)
 local function seen(p, players)
 	local near = false
 	for _, ply in ipairs(players) do
-		if ply:GetPos():DistToSqr(p) < Civ.FAR_GONE * Civ.FAR_GONE then near = true end
+		if ply:GetPos():DistToSqr(p) < Civ.FAR_GONE * Civ.FAR_GONE then
+			near = true
+		end
 	end
+
 	if not near then return false end
 	for _, ply in ipairs(players) do
 		local eye = ply:EyePos()
 		if eye:DistToSqr(p) < Civ.GONE_DIST * Civ.GONE_DIST then return true end
 		local dir = (p - eye):GetNormalized()
-		if dir:Dot(ply:GetAimVector()) > 0.4 and not hit(eye, p + Vector(0, 0, 50)).Hit then return true end
+		if dir:Dot(ply:GetAimVector()) > 0.4 and not hit(eye, p + Vector(0, 0, 50)).Hit then
+			return true
+		end
 	end
+
 	return false
 end
 

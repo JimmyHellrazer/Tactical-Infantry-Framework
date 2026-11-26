@@ -14,7 +14,10 @@ end
 function Ride.SetFor(typeId, mode, want)
 	local sets = Ride.Sets(typeId)
 	if not sets then return nil end
-	if want and sets[want] and sets[want].kind == mode then return sets[want], want end
+	if want and sets[want] and sets[want].kind == mode then
+		return sets[want], want
+	end
+
 	local ids = {}
 	for id, s in pairs(sets) do if s.kind == mode then ids[#ids + 1] = id end end
 	if #ids == 0 then return nil end
@@ -27,7 +30,10 @@ local function pick_exit(npc, man, want)
 	local ex = man.exits
 	if want and ex[want] then return want end
 	local keys = {}
-	for k in pairs(ex) do keys[#keys + 1] = k end
+	for k in pairs(ex) do
+		keys[#keys + 1] = k
+	end
+
 	if #keys == 1 then return keys[1] end
 	local AW = TIF.AWARE
 	local hot = (AW ~= nil and npc.tifAware ~= nil and (npc.tifAware == AW.ENGAGED or npc.tifAware == AW.ALERTED))
@@ -40,13 +46,16 @@ local function pick_exit(npc, man, want)
 		if ex.patrol and r < 0.6 then return "patrol" end
 		if ex.run then return "run" end
 	end
+
 	table.sort(keys)
 	return keys[math.random(#keys)]
 end
 
 local function ghost(npc, on)
 	if on then
-		if npc.tifOldCollision == nil then npc.tifOldCollision = npc:GetCollisionGroup() end
+		if npc.tifOldCollision == nil then
+			npc.tifOldCollision = npc:GetCollisionGroup()
+		end
 		npc:SetCollisionGroup(GHOST)
 	else
 		npc:SetCollisionGroup(npc.tifOldCollision or COLLISION_GROUP_NPC)
@@ -88,26 +97,37 @@ function Ride.Board(heli, soldiers, set, setId, style)
 			local lp, lyaw = seat_local(heli, man)
 			if lp then
 				TIF.Move.Stop(npc)
-				if TIF.CoverBehave and TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "boarding") end
+				if TIF.CoverBehave and TIF.CoverBehave.In(npc) then
+					TIF.CoverBehave.Leave(npc, "boarding")
+				end
 				npc.tifHeli = { heli = heli, man = man, set = set, setId = setId, style = style, state = "ride", lp = lp, lyaw = lyaw }
 				npc.tifVeh = heli
 				ghost(npc, true)
 
-				if npc.SetTransmitWithParent then npc:SetTransmitWithParent(true) end
+				if npc.SetTransmitWithParent then
+					npc:SetTransmitWithParent(true)
+				end
 				npc:SetNW2Bool("tif_noshadow", true)
 				npc:SetMoveType(MOVETYPE_NONE)
 				npc:SetParent(heli)
 				npc:SetLocalPos(lp)
 				npc:SetLocalAngles(Angle(0, lyaw, 0))
-				if npc.loco then npc.loco:SetVelocity(vector_origin) end
+				if npc.loco then
+					npc.loco:SetVelocity(vector_origin)
+				end
 				local idle = man.role .. "_idle"
-				if clip_ok(npc, idle) then Act.Loop(npc, idle) else Act.Clear(npc) end
+				if clip_ok(npc, idle) then
+					Act.Loop(npc, idle)
+				else
+					Act.Clear(npc)
+				end
 				npc.tifFire.want = false
 				table.insert(heli.tifRiders, npc)
 				n = n + 1
 			end
 		end
 	end
+
 	return n
 end
 
@@ -115,10 +135,17 @@ local function stand(npc, keep)
 	npc:SetMoveType(MOVETYPE_CUSTOM)
 	ghost(npc, false)
 	npc.tifVeh = nil
-	if not keep then npc.tifHeli = nil end
-	if npc.SetTransmitWithParent then npc:SetTransmitWithParent(false) end
+	if not keep then
+		npc.tifHeli = nil
+	end
+
+	if npc.SetTransmitWithParent then
+		npc:SetTransmitWithParent(false)
+	end
 	npc:SetNW2Bool("tif_noshadow", false)
-	if npc.loco and npc.loco.ClearStuck then npc.loco:ClearStuck() end
+	if npc.loco and npc.loco.ClearStuck then
+		npc.loco:ClearStuck()
+	end
 end
 
 local function ground_below(p)
@@ -134,6 +161,7 @@ local function dismount(npc, now)
 		stand(npc)
 		return
 	end
+
 	local suffix = pick_exit(npc, man, H.style)
 	local ex = man.exits[suffix]
 	H.ex = ex
@@ -159,10 +187,16 @@ local function dismount(npc, now)
 	Act.Play(npc, clip, { root = true, rootz = true, noTrace = true, to = { pos = g, yaw = yaw + r } })
 
 	local LEAD = 0.4
-	if npc.tifAct then npc.tifAct.t0 = now + LEAD end
+	if npc.tifAct then
+		npc.tifAct.t0 = now + LEAD
+	end
+
 	npc:SetNW2Float("tif_act_t", now + LEAD)
 	H.state, H.t0, H.dur, H.clip = "out", now + LEAD, c.dur, clip
-	if H.set.kind == "rope" then heli:SetRopes(true) end
+	if H.set.kind == "rope" then
+		heli:SetRopes(true)
+	end
+
 	npc.tifAction = "getting out of the helicopter"
 end
 
@@ -171,19 +205,30 @@ local function release(npc, now)
 	local heli, ex = H.heli, H.ex
 	local yaw = npc:GetAngles().y
 	local a = npc.tifAct
-	if a then yaw = a.startYaw end
+	if a then
+		yaw = a.startYaw
+	end
+
 	local v = Vector(ex.vel[1], ex.vel[2], 0)
 	v:Rotate(Angle(0, yaw, 0))
-	if a then Act.Clear(npc) end
+	if a then
+		Act.Clear(npc)
+	end
+
 	npc:SetPos(ground_below(npc:GetPos()) + Vector(0, 0, 2))
-	if IsValid(heli) then heli.tifOut = (heli.tifOut or 0) + 1 end
+	if IsValid(heli) then
+		heli.tifOut = (heli.tifOut or 0) + 1
+	end
+
 	hook.Run("TIF_HeliRiderOut", npc, heli)
 	if ex.crouch then
 
 		stand(npc, true)
 		local out = npc:GetPos() - (IsValid(heli) and heli:GetPos() or npc:GetPos())
 		out.z = 0
-		if out:LengthSqr() < 1 then out = npc:GetForward() end
+		if out:LengthSqr() < 1 then
+			out = npc:GetForward()
+		end
 		out:Normalize()
 		H.state, H.holdUntil, H.out = "hold", now + 10, out
 		H.face = npc:GetPos() + out * 600 + Vector(0, 0, 40)
@@ -193,14 +238,20 @@ local function release(npc, now)
 		return
 	end
 	stand(npc)
-	if npc.loco then npc.loco:SetVelocity(v) end
+	if npc.loco then
+		npc.loco:SetVelocity(v)
+	end
+
 	Ride.GoOn(npc, heli, v)
 end
 
 function Ride.GoOn(npc, heli, v)
 	local dir = v and v:Length() > 20 and v:GetNormalized() or (npc:GetPos() - (IsValid(heli) and heli:GetPos() or npc:GetPos()))
 	dir.z = 0
-	if dir:LengthSqr() < 0.01 then dir = npc:GetForward() end
+	if dir:LengthSqr() < 0.01 then
+		dir = npc:GetForward()
+	end
+
 	dir:Normalize()
 	local goal = TIF.Move.Snap(npc:GetPos() + dir * math.Rand(320, 460))
 	if goal then
@@ -223,8 +274,12 @@ function Ride.Think(npc, now)
 		end
 		npc.tifStance, npc.tifMode = 0, 0
 		npc.tifAction = "riding in the helicopter"
-		if npc:GetMoveType() ~= MOVETYPE_NONE then npc:SetMoveType(MOVETYPE_NONE) end
-		if npc:GetParent() ~= heli then npc:SetParent(heli) end
+		if npc:GetMoveType() ~= MOVETYPE_NONE then
+			npc:SetMoveType(MOVETYPE_NONE)
+		end
+		if npc:GetParent() ~= heli then
+			npc:SetParent(heli)
+		end
 		if npc:GetLocalPos():DistToSqr(H.lp) > 4 then
 			npc:SetLocalPos(H.lp)
 			npc:SetLocalAngles(Angle(0, H.lyaw, 0))
@@ -232,10 +287,13 @@ function Ride.Think(npc, now)
 		if heli.Arrived and heli:Arrived() and heli:GetDoorsOpen() then
 
 			H.goAt = H.goAt or now + math.Rand(0, 0.35)
-			if now >= H.goAt then dismount(npc, now) end
+			if now >= H.goAt then
+				dismount(npc, now)
+			end
 		end
 		return true
 	end
+
 	if H.state == "out" then
 		local u = (now - H.t0) / math.max(0.05, H.dur)
 		local relAt = (H.ex and H.ex.release) or 0.9
@@ -245,6 +303,7 @@ function Ride.Think(npc, now)
 		end
 		return true
 	end
+
 	if H.state == "hold" then
 
 		local ph = IsValid(heli) and heli.phase
@@ -261,6 +320,7 @@ function Ride.Think(npc, now)
 		npc.tifAction = "covering the LZ while the helicopter leaves"
 		return true
 	end
+
 	return false
 end
 
@@ -272,7 +332,9 @@ hook.Add("TIF_HeliDestroyed", "tif_air_riders", function(heli, attacker)
 			npc.tifHeli, npc.tifFace = nil, nil
 		elseif H and H.heli == heli then
 			npc:SetParent(nil)
-			if npc.tifAct then Act.Clear(npc) end
+			if npc.tifAct then
+				Act.Clear(npc)
+			end
 			stand(npc)
 			npc.tifNoDown = true
 			local d = DamageInfo()
@@ -293,16 +355,22 @@ timer.Create("tif_air_rides", 0.25, 0, function()
 			for _, npc in ipairs(heli.tifRiders) do
 
 				local H = IsValid(npc) and npc.tifHeli
-				if H and H.heli == heli and H.state ~= "hold" then left = left + 1 end
+				if H and H.heli == heli and H.state ~= "hold" then
+					left = left + 1
+				end
 			end
 
-			if left > 0 and CurTime() - (heli.phaseAt or 0) > 45 then left = 0 end
+			if left > 0 and CurTime() - (heli.phaseAt or 0) > 45 then
+				left = 0
+			end
 			if left == 0 then
 				heli.tifEmptyAt = heli.tifEmptyAt or CurTime()
 				if CurTime() - heli.tifEmptyAt > 1.2 then
 					heli.tifAutoLeave = nil
 					heli:Release()
-					if r and r.onEmpty then pcall(r.onEmpty, heli) end
+					if r and r.onEmpty then
+						pcall(r.onEmpty, heli)
+					end
 					hook.Run("TIF_HeliEmpty", heli)
 				end
 			end

@@ -24,10 +24,14 @@ function Watchdog.Check(now)
 				log_watch("held civilian with no live scene: ", entity_label(civ), " (state ", tostring(civ.state), "): let go")
 				civ.tifHeld = nil
 				civ.civOneShot = nil
-				if civ.SetState then civ:SetState("flee") end
+				if civ.SetState then
+					civ:SetState("flee")
+				end
 			elseif civ.state == "held" and not held then
 				log_watch("civilian in state held with no scene: ", entity_label(civ), ": let go")
-				if civ.SetState then civ:SetState("flee") end
+				if civ.SetState then
+					civ:SetState("flee")
+				end
 			end
 		end
 	end
@@ -64,7 +68,9 @@ function Watchdog.Check(now)
 			local act = soldier.tifAct
 			if act and act.trans and not act.loop and now - act.t0 > math.max(act.dur + 2, 6) then
 				log_watch("stalled transition clip on ", entity_label(soldier), " (", tostring(act.name), "): cleared")
-				if TIF.Action then TIF.Action.Clear(soldier, true) end
+				if TIF.Action then
+					TIF.Action.Clear(soldier, true)
+				end
 			end
 		end
 	end
@@ -109,7 +115,9 @@ end
 
 timer.Create("tif_watchdog", Watchdog.WATCH_EVERY, 0, function()
 	local ok, err = pcall(Watchdog.Check, CurTime())
-	if not ok and TIF.Event then TIF.Event("watch", "watchdog error: ", tostring(err)) end
+	if not ok and TIF.Event then
+		TIF.Event("watch", "watchdog error: ", tostring(err))
+	end
 end)
 
 local function describe_entity(ent, origin)
@@ -119,20 +127,29 @@ local function describe_entity(ent, origin)
 		parts[#parts + 1] = tostring(ent.GetTIFFaction and ent:GetTIFFaction() or "?")
 		parts[#parts + 1] = "\"" .. tostring(ent.tifAction or "-") .. "\""
 		parts[#parts + 1] = "act " .. (ent.tifAct and ent.tifAct.name or "-")
-		if ent.tifCQB then parts[#parts + 1] = "cqb " .. tostring(ent.tifCQB.label) end
+		if ent.tifCQB then
+			parts[#parts + 1] = "cqb " .. tostring(ent.tifCQB.label)
+		end
 		if ent.tifShield then
 			parts[#parts + 1] = "shield " .. tostring(ent.tifShield.varName) .. "/" .. tostring(ent.tifShield.phase)
 		end
-		if ent.tifMelee then parts[#parts + 1] = "melee " .. tostring(ent.tifMelee.fight or ent.tifMelee.phase) end
+		if ent.tifMelee then
+			parts[#parts + 1] = "melee " .. tostring(ent.tifMelee.fight or ent.tifMelee.phase)
+		end
 		if ent.tifMove and ent.tifMove.goal then
 			parts[#parts + 1] = string.format("moving (%.0f u to go)", ent.tifMove.goal:Distance(pos))
 		end
-		if ent.tifDead or ent.tifDying then parts[#parts + 1] = "dying" end
+		if ent.tifDead or ent.tifDying then
+			parts[#parts + 1] = "dying"
+		end
 	else
 		parts[#parts + 1] = "state " .. tostring(ent.state)
-		if ent.tifHeld then parts[#parts + 1] = "held" end
+		if ent.tifHeld then
+			parts[#parts + 1] = "held"
+		end
 		parts[#parts + 1] = "clip " .. tostring(ent.civRole)
 	end
+
 	return table.concat(parts, ", ")
 end
 
@@ -147,17 +164,30 @@ concommand.Add("tif_mark", function(ply, _, args)
 	local soldiers = TIF.Soldiers or {}
 	for i = 1, #soldiers do
 		local soldier = soldiers[i]
-		if IsValid(soldier) and soldier:GetPos():DistToSqr(origin) < radiusSqr then nearby[#nearby + 1] = soldier end
+		if IsValid(soldier) and soldier:GetPos():DistToSqr(origin) < radiusSqr then
+			nearby[#nearby + 1] = soldier
+		end
 	end
+
 	if TIF.Civ and TIF.Civ.List then
 		local civs = TIF.Civ.List()
 		for i = 1, #civs do
 			local civ = civs[i]
-			if civ:GetPos():DistToSqr(origin) < radiusSqr then nearby[#nearby + 1] = civ end
+			if civ:GetPos():DistToSqr(origin) < radiusSqr then
+				nearby[#nearby + 1] = civ
+			end
 		end
 	end
+
 	table.sort(nearby, function(a, b) return a:GetPos():DistToSqr(origin) < b:GetPos():DistToSqr(origin) end)
-	for i = 1, math.min(#nearby, 16) do TIF.Event("MARK", "  ", describe_entity(nearby[i], origin)) end
-	if TIF.LogFile then TIF.LogFile.Flush() end
-	if IsValid(ply) then ply:ChatPrint("[TIF] Marked in garrysmod/data/tif/log_sv.txt") end
+	for i = 1, math.min(#nearby, 16) do
+		TIF.Event("MARK", "  ", describe_entity(nearby[i], origin))
+	end
+
+	if TIF.LogFile then
+		TIF.LogFile.Flush()
+	end
+	if IsValid(ply) then
+		ply:ChatPrint("[TIF] Marked in garrysmod/data/tif/log_sv.txt")
+	end
 end, nil, "tif_mark [note]: mark this moment in TIF's log file, with what the soldiers and civilians around you are doing")

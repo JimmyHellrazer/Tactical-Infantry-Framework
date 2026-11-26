@@ -66,5 +66,5 @@ check(src:find("if st.flashAt and not st.offScreen", 1, true) ~= nil, "no stale 
 check(src:find('local LOD_PARTS = { "gun", "backGun", "launcherGun", "prop" }', 1, true) ~= nil, "the hand-placed models (gun, slung primary, launcher, prop) are known")
 local _, nHide = src:gsub("\n%s*hide_placed%(st%)", "")
 check(nHide == 2, "hidden on skipped frames and on the cheap compose (they'd hang where he left them): " .. nHide)
-check(src:find("if IsValid(st.gun) then st.gun:SetNoDraw(dormant or knocked) end", 1, true) ~= nil, "shown again (and placed) the frame he's back in view")
+check(src:gsub("%s+", " "):find("if IsValid(st.gun) then st.gun:SetNoDraw(dormant or knocked) end", 1, true) ~= nil, "shown again (and placed) the frame he's back in view")
 print(string.format("passed %d, failed %d", pass, fail))

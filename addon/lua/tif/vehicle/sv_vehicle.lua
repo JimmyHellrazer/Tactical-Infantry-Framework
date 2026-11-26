@@ -18,7 +18,9 @@ end
 
 local function log(npc, ...)
 	local sq = npc.tifSquad
-	if sq and TIF.Squad.Log then TIF.Squad.Log(sq, "[vehicle] #", npc:EntIndex(), " ", ...) end
+	if sq and TIF.Squad.Log then
+		TIF.Squad.Log(sq, "[vehicle] #", npc:EntIndex(), " ", ...)
+	end
 end
 
 local function norm(y) return math.NormalizeAngle(y) end
@@ -37,7 +39,10 @@ function V.SeatFree(veh, n, except)
 	local o = V.Occupant(veh, n)
 	if o and o ~= except then return false end
 	local claim = veh.tifClaims and veh.tifClaims[n]
-	if IsValid(claim) and claim ~= except and not claim.tifDead and claim.tifBoard then return false end
+	if IsValid(claim) and claim ~= except and not claim.tifDead and claim.tifBoard then
+		return false
+	end
+
 	local pod = veh.seats and veh.seats[n]
 	return IsValid(pod) and not IsValid(pod:GetDriver())
 end
@@ -46,8 +51,11 @@ function V.Occupants(veh)
 	local out = {}
 	for n = 1, V.SeatCount(veh) do
 		local o = V.Occupant(veh, n)
-		if o then out[#out + 1] = o end
+		if o then
+			out[#out + 1] = o
+		end
 	end
+
 	return out
 end
 
@@ -55,7 +63,9 @@ function V.Driver(veh) return V.Occupant(veh, 1) end
 
 local function ghost(npc, on)
 	if on then
-		if npc.tifOldCollision == nil then npc.tifOldCollision = npc:GetCollisionGroup() end
+		if npc.tifOldCollision == nil then
+			npc.tifOldCollision = npc:GetCollisionGroup()
+		end
 		npc:SetCollisionGroup(GHOST)
 	else
 		npc:SetCollisionGroup(npc.tifOldCollision or COLLISION_GROUP_NPC)
@@ -100,6 +110,7 @@ local function seat_pose(npc, veh, n)
 		local r = math.rad(lyaw)
 		lp = lp + Vector(math.cos(r) * fwd, math.sin(r) * fwd, -cvDrop:GetFloat())
 	end
+
 	return veh:LocalToWorld(lp), norm(veh:GetAngles().y + lyaw), p and p.clip, lp, lyaw
 end
 
@@ -118,6 +129,7 @@ function V.EntryPoint(npc, veh, n)
 		pos = veh.GetSeatExitPos and veh:GetSeatExitPos(n) or veh:GetPos()
 		yaw = (veh:GetPos() - pos):Angle().y
 	end
+
 	return ground(pos), yaw, e
 end
 
@@ -134,6 +146,7 @@ local function door_anim(veh, index, npc, clipName, from, to, rate)
 		G.SetDoor(veh, index, to)
 		return
 	end
+
 	local wa, wb = G.DoorWindow(clip)
 	V.DoorAnims[veh] = V.DoorAnims[veh] or {}
 	V.DoorAnims[veh][index] = { from = from, to = to, t0 = CurTime(), dur = clip.dur / (rate or 1), wa = wa or 0.15, wb = wb or 0.6 }
@@ -153,9 +166,13 @@ hook.Add("Tick", "tif_vehicle_doors", function()
 				veh.tifDoor = veh.tifDoor or {}
 				veh.tifDoor[index] = r
 				G.SetDoor(veh, index, r)
-				if u >= 1 then list[index] = nil end
+				if u >= 1 then
+					list[index] = nil
+				end
 			end
-			if next(list) == nil then V.DoorAnims[veh] = nil end
+			if next(list) == nil then
+				V.DoorAnims[veh] = nil
+			end
 		end
 	end
 end)
@@ -170,7 +187,10 @@ function V.Sit(npc, veh, n, settleClip)
 	npc.tifDBSet, npc.tifDriveBy = nil, nil
 	npc:SetNW2Float("tif_act_cycle", -1)
 	Move.Stop(npc)
-	if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "boarding") end
+	if TIF.CoverBehave.In(npc) then
+		TIF.CoverBehave.Leave(npc, "boarding")
+	end
+
 	local _, _, clip, lp, lyaw = seat_pose(npc, veh, n)
 	ghost(npc, true)
 	npc:SetMoveType(MOVETYPE_NONE)
@@ -188,10 +208,14 @@ function V.Sit(npc, veh, n, settleClip)
 	else
 		Act.Clear(npc)
 	end
+
 	npc:SetNW2Entity("tif_veh", veh)
 	npc:SetNW2Int("tif_seat", n)
 	local pod = veh.seats and veh.seats[n]
-	if IsValid(pod) then pod.tifNPC = npc end
+	if IsValid(pod) then
+		pod.tifNPC = npc
+	end
+
 	npc.tifFire.want = false
 end
 
@@ -200,8 +224,11 @@ local function unsit(npc, pos, yaw)
 	if IsValid(veh) and veh.tifSeats and veh.tifSeats[n] == npc then
 		veh.tifSeats[n] = nil
 		local pod = veh.seats and veh.seats[n]
-		if IsValid(pod) then pod.tifNPC = nil end
+		if IsValid(pod) then
+			pod.tifNPC = nil
+		end
 	end
+
 	npc.tifVeh, npc.tifSeatIdx, npc.tifSettleUntil = nil, nil, nil
 	npc.tifDriveBy, npc.tifDBSet = nil, nil
 	npc:SetNW2Float("tif_act_cycle", -1)
@@ -211,7 +238,9 @@ local function unsit(npc, pos, yaw)
 	npc:SetAngles(Angle(0, yaw, 0))
 	npc:SetNW2Entity("tif_veh", NULL)
 	npc:SetNW2Int("tif_seat", 0)
-	if npc.loco then npc.loco:SetVelocity(vector_origin) end
+	if npc.loco then
+		npc.loco:SetVelocity(vector_origin)
+	end
 end
 
 local function stand(npc)
@@ -233,10 +262,18 @@ end
 function V.CancelBoard(npc, why)
 	local b = npc.tifBoard
 	if not b then return end
-	if IsValid(b.veh) and b.veh.tifClaims and b.veh.tifClaims[b.n] == npc then b.veh.tifClaims[b.n] = nil end
+	if IsValid(b.veh) and b.veh.tifClaims and b.veh.tifClaims[b.n] == npc then
+		b.veh.tifClaims[b.n] = nil
+	end
+
 	npc.tifBoard = nil
 	npc.tifBoardFails = (npc.tifBoardFails or 0) + 1
-	if b.phase ~= "walk" then stand(npc) else ghost(npc, false) end
+	if b.phase ~= "walk" then
+		stand(npc)
+	else
+		ghost(npc, false)
+	end
+
 	log(npc, "boarding seat ", b.n, " failed: ", why or "?")
 end
 
@@ -248,6 +285,7 @@ local function door_busy(npc, veh, pos)
 			if using and using:DistToSqr(pos) < 70 * 70 then return true end
 		end
 	end
+
 	return false
 end
 
@@ -266,6 +304,7 @@ local function seen(pos)
 			end
 		end
 	end
+
 	return false
 end
 V.Seen = seen
@@ -292,9 +331,21 @@ end
 function V.BoardThink(npc, now)
 	local b = npc.tifBoard
 	local veh = b.veh
-	if not GL.IsUsable(veh) then V.CancelBoard(npc, "vehicle unusable") return false end
-	if veh:GetVelocity():Length() > 120 then V.CancelBoard(npc, "vehicle moving") return false end
-	if now - b.t0 > 30 then V.CancelBoard(npc, "took too long") return false end
+	if not GL.IsUsable(veh) then
+		V.CancelBoard(npc, "vehicle unusable")
+		return false
+	end
+
+	if veh:GetVelocity():Length() > 120 then
+		V.CancelBoard(npc, "vehicle moving")
+		return false
+	end
+
+	if now - b.t0 > 30 then
+		V.CancelBoard(npc, "took too long")
+		return false
+	end
+
 	npc.tifFire.want = false
 	npc.tifStance = 0
 
@@ -313,7 +364,9 @@ function V.BoardThink(npc, now)
 
 		if not b.via then
 			b.via = {}
-			for _, lp in ipairs(around(npc, veh, pos)) do b.via[#b.via + 1] = ground(veh:LocalToWorld(lp)) end
+			for _, lp in ipairs(around(npc, veh, pos)) do
+				b.via[#b.via + 1] = ground(veh:LocalToWorld(lp))
+			end
 		end
 		local via = b.via[1]
 		if via and npc:GetPos():DistToSqr(via) < 45 * 45 then
@@ -331,7 +384,9 @@ function V.BoardThink(npc, now)
 			if not seen(npc:GetPos()) then
 				log(npc, "seat ", b.n, ": stuck, stepped past")
 				npc:SetPos(target)
-				if via then table.remove(b.via, 1) via = b.via[1] end
+				if via then
+					table.remove(b.via, 1) via = b.via[1]
+				end
 			elseif via then
 				table.remove(b.via, 1)
 				via = b.via[1]
@@ -352,14 +407,23 @@ function V.BoardThink(npc, now)
 		if d2 < 150 * 150 and door_busy(npc, veh, pos) then
 			npc.tifAction = "waiting for the door"
 			local back = pos + (pos - veh:GetPos()):GetNormalized() * 90
-			if npc:GetPos():DistToSqr(back) > 30 * 30 then Move.SetGoal(npc, back, "walk", "board") else Move.Stop(npc) end
+			if npc:GetPos():DistToSqr(back) > 30 * 30 then
+				Move.SetGoal(npc, back, "walk", "board")
+			else
+				Move.Stop(npc)
+			end
 			return true
 		end
 		if d2 > 28 * 28 then
 			npc.tifAction = "to the door (seat " .. b.n .. ")"
-			if Move.SetGoal(npc, pos, d2 > 300 * 300 and "run" or "walk", "board") then return true end
+			if Move.SetGoal(npc, pos, d2 > 300 * 300 and "run" or "walk", "board") then
+				return true
+			end
 
-			if d2 > 140 * 140 then V.CancelBoard(npc, "can't reach the door") return false end
+			if d2 > 140 * 140 then
+				V.CancelBoard(npc, "can't reach the door")
+				return false
+			end
 		end
 
 		Move.Stop(npc)
@@ -386,7 +450,9 @@ function V.BoardThink(npc, now)
 			b.phase = "in"
 			local opts = { root = true, noTrace = true, lift = { npc:GetPos().z, seatPos.z } }
 
-			if e.rootz then opts = { root = true, rootz = true, noTrace = true, to = { pos = seatPos, yaw = seatYaw } } end
+			if e.rootz then
+				opts = { root = true, rootz = true, noTrace = true, to = { pos = seatPos, yaw = seatYaw } }
+			end
 			b.until_ = now + (Act.Play(npc, e.getIn, opts) or 0.5)
 			hook.Run("TIF_SeatClip", npc, veh, b.n, "in", e.getIn)
 			npc.tifAction = "getting in"
@@ -401,18 +467,24 @@ function V.BoardThink(npc, now)
 		local e = b.e
 		local close = e and e.door and e.closeIn or nil
 		V.Sit(npc, veh, b.n, close)
-		if e and e.door then door_anim(veh, e.index, npc, close, door_ratio(veh, e.index), 0) end
+		if e and e.door then
+			door_anim(veh, e.index, npc, close, door_ratio(veh, e.index), 0)
+		end
 		return true
 	end
+
 	return false
 end
 
 function V.Leave(npc, combat)
 	local veh, n = npc.tifVeh, npc.tifSeatIdx
 	if not IsValid(veh) then
-		if npc.tifVeh ~= nil then unsit(npc, npc:GetPos(), npc:GetAngles().y) stand(npc) end
+		if npc.tifVeh ~= nil then
+			unsit(npc, npc:GetPos(), npc:GetAngles().y) stand(npc)
+		end
 		return 0
 	end
+
 	local seatPos, seatYaw = seat_pose(npc, veh, n)
 	local pos, yaw, e = V.EntryPoint(npc, veh, n)
 	local moving = veh:GetVelocity():Length() > 150
@@ -446,6 +518,7 @@ function V.Leave(npc, combat)
 		npc.tifAction = "getting out"
 		return out
 	end
+
 	if not clip then
 		local p = TIF.FreeSpot(pos + Vector(0, 0, 4), npc)
 		unsit(npc, p, norm(yaw + 180))
@@ -453,12 +526,16 @@ function V.Leave(npc, combat)
 		V.GuardExit(npc, p)
 		return 0
 	end
+
 	local rate = combat and 1.35 or 1
 	unsit(npc, seatPos, seatYaw)
 	npc:SetMoveType(MOVETYPE_NONE)
 	ghost(npc, true)
 	local dur = Act.Play(npc, clip, { root = true, noTrace = true, lift = { seatPos.z, pos.z }, rate = rate }) or 0
-	if e.door then door_anim(veh, e.index, npc, clip, door_ratio(veh, e.index), 1, rate) end
+	if e.door then
+		door_anim(veh, e.index, npc, clip, door_ratio(veh, e.index), 1, rate)
+	end
+
 	local now = CurTime()
 	npc.tifLeaving = now + dur
 	npc.tifLeavingVeh, npc.tifLeavingAt, npc.tifLeavingEntry = veh, pos, e
@@ -482,6 +559,7 @@ function V.LeaveThink(npc, now)
 		npc.tifAction = "closing the door"
 		return true
 	end
+
 	npc.tifLeaving, npc.tifLeavingVeh, npc.tifLeavingAt, npc.tifLeavingEntry = nil, nil, nil, nil
 
 	local p = TIF.FreeSpot(ground(npc:GetPos()) + Vector(0, 0, 2), npc)
@@ -492,7 +570,9 @@ function V.LeaveThink(npc, now)
 end
 
 function V.GuardExit(npc, p)
-	if npc.loco and npc.loco.ClearStuck then npc.loco:ClearStuck() end
+	if npc.loco and npc.loco.ClearStuck then
+		npc.loco:ClearStuck()
+	end
 	npc.tifExitGuard = { pos = Vector(p), untilT = CurTime() + 3 }
 end
 
@@ -505,8 +585,12 @@ hook.Add("Tick", "tif_vehicle_exit_guard", function()
 				npc.tifExitGuard = nil
 			elseif npc:GetPos():DistToSqr(g.pos) > 250 * 250 then
 				npc:SetPos(g.pos)
-				if npc.loco then npc.loco:SetVelocity(vector_origin) end
-				if npc.loco and npc.loco.ClearStuck then npc.loco:ClearStuck() end
+				if npc.loco then
+					npc.loco:SetVelocity(vector_origin)
+				end
+				if npc.loco and npc.loco.ClearStuck then
+					npc.loco:ClearStuck()
+				end
 			else
 
 				g.pos = npc:GetPos()
@@ -521,7 +605,9 @@ local function end_driveby(npc)
 	if not npc.tifDriveBy then return end
 	npc.tifDriveBy = nil
 	npc:SetNW2Float("tif_act_cycle", -1)
-	if npc.tifSeatClip then Act.Loop(npc, npc.tifSeatClip) end
+	if npc.tifSeatClip then
+		Act.Loop(npc, npc.tifSeatClip)
+	end
 end
 
 function V.RideThink(npc, now)
@@ -531,6 +617,7 @@ function V.RideThink(npc, now)
 		stand(npc)
 		return false
 	end
+
 	npc.tifFace = nil
 	npc.tifStance = 0
 	npc.tifMode = 0
@@ -539,15 +626,21 @@ function V.RideThink(npc, now)
 		local ok, busy = pcall(veh.TIFRideThink, veh, npc, npc.tifSeatIdx, now)
 		if ok and busy then return true end
 	end
+
 	if driveby(npc, veh, now) then return true end
 	end_driveby(npc)
 	npc.tifFire.want = false
 	npc.tifAction = (npc.tifSeatIdx == 1 and "driving" or ("riding, seat " .. tostring(npc.tifSeatIdx)))
 	if npc.tifSettleUntil and now >= npc.tifSettleUntil then
 		npc.tifSettleUntil = nil
-		if npc.tifSeatClip then Act.Loop(npc, npc.tifSeatClip) end
+		if npc.tifSeatClip then
+			Act.Loop(npc, npc.tifSeatClip)
+		end
 	end
-	if npc:GetParent() ~= veh then V.Sit(npc, veh, npc.tifSeatIdx) end
+
+	if npc:GetParent() ~= veh then
+		V.Sit(npc, veh, npc.tifSeatIdx)
+	end
 
 	if npc.tifFitStamp ~= fit_stamp() then
 		local _, _, _, lp, lyaw = seat_pose(npc, veh, npc.tifSeatIdx)
@@ -557,12 +650,15 @@ function V.RideThink(npc, now)
 		npc.tifFitStamp = fit_stamp()
 	end
 
-	if npc:GetMoveType() ~= MOVETYPE_NONE then npc:SetMoveType(MOVETYPE_NONE) end
+	if npc:GetMoveType() ~= MOVETYPE_NONE then
+		npc:SetMoveType(MOVETYPE_NONE)
+	end
 	local lp = npc.tifSeatLP
 	if lp and npc:GetLocalPos():DistToSqr(lp) > 4 then
 		npc:SetLocalPos(lp)
 		npc:SetLocalAngles(Angle(0, npc.tifSeatLYaw or 0, 0))
 	end
+
 	return true
 end
 

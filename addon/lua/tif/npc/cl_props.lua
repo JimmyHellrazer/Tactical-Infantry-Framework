@@ -16,7 +16,10 @@ Props.Unturn = unturn
 local function ensure_prop_entity(state, model)
 	local prop = state.prop
 	if IsValid(prop) and prop:GetModel() == model then return prop end
-	if IsValid(prop) then prop:Remove() end
+	if IsValid(prop) then
+		prop:Remove()
+	end
+
 	prop = ClientsideModel(model, RENDERGROUP_OPAQUE)
 	if not IsValid(prop) then return nil end
 	prop:SetNoDraw(true)
@@ -25,7 +28,9 @@ local function ensure_prop_entity(state, model)
 end
 
 function Props.Remove(state)
-	if IsValid(state.prop) then state.prop:Remove() end
+	if IsValid(state.prop) then
+		state.prop:Remove()
+	end
 	state.prop, state.propFrom, state.propKey = nil, nil, nil
 end
 
@@ -35,12 +40,16 @@ local propBoneCache = {}
 local function bone_world_pose(ent, boneName)
 	local model = ent.GetModel and ent:GetModel() or ""
 	local cache = propBoneCache[model]
-	if not cache then cache = {} propBoneCache[model] = cache end
+	if not cache then
+		cache = {} propBoneCache[model] = cache
+	end
+
 	local bone = cache[boneName]
 	if bone == nil then
 		bone = ent:LookupBone(boneName) or false
 		cache[boneName] = bone
 	end
+
 	local mat = bone and CopyBone(ent, bone, BONE_MAT)
 	if not mat then return nil end
 	return mat:GetTranslation(), mat:GetAngles()
@@ -57,9 +66,12 @@ local function clip_pose(ent, def, cycle)
 	local frameA, frameB = frames[idx], frames[math.min(count, idx + 1)]
 	local frac = frameFloat - idx
 	if frameA[1] ~= frameB[1] then
-		if frac >= 0.5 then frameA = frameB end
+		if frac >= 0.5 then
+			frameA = frameB
+		end
 		frac = 0
 	end
+
 	local bonePos, boneAng = bone_world_pose(ent, def.bones[frameA[1]])
 	if not bonePos then return nil end
 	VEC_A.x, VEC_A.y, VEC_A.z = frameA[2], frameA[3], frameA[4]
@@ -89,9 +101,13 @@ function Props.Update(ent, state, now)
 	if activeClip and state.actU then
 		for clipName, clipDef in pairs(propClips) do
 			local resolved = TIF.GTG and TIF.GTG.Clip(clipName, state.hostId)
-			if resolved and resolved == activeClip then def, key = clipDef, "clip:" .. clipName break end
+			if resolved and resolved == activeClip then
+				def, key = clipDef, "clip:" .. clipName
+				break
+			end
 		end
 	end
+
 	if not def then
 		for flag, clipName in pairs(Props.CARRY) do
 			if ent:GetNW2Bool(flag, false) and propClips[clipName] then
@@ -101,15 +117,19 @@ function Props.Update(ent, state, now)
 	end
 
 	if not def or ent:IsDormant() or state.hideGun then
-		if IsValid(state.prop) then state.prop:SetNoDraw(true) end
+		if IsValid(state.prop) then
+			state.prop:SetNoDraw(true)
+		end
 		state.propKey = nil
 		return
 	end
+
 	if string.sub(key, 1, 5) == "clip:" then
 		pos, ang = clip_pose(ent, def, state.actU)
 	else
 		pos, ang = stow_pose(ent, def)
 	end
+
 	if not pos then return end
 	local prop = ensure_prop_entity(state, def.model)
 	if not prop then return end
@@ -122,6 +142,7 @@ function Props.Update(ent, state, now)
 		end
 		state.propKey = key
 	end
+
 	local blendFrom = state.propFrom
 	if blendFrom then
 		local frac = (now - blendFrom.t) / Props.BLEND
@@ -132,6 +153,7 @@ function Props.Update(ent, state, now)
 			pos, ang = LerpVector(frac, blendFrom.pos, pos), LerpAngle(frac, blendFrom.ang, ang)
 		end
 	end
+
 	state.propPos, state.propAng = pos, ang
 	prop:SetPos(pos)
 	prop:SetAngles(unturn(ang))

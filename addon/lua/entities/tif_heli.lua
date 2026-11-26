@@ -37,7 +37,9 @@ if CLIENT then
 		}
 		for _, b in ipairs(def.doors and def.doors.bones or {}) do
 			local id = self:LookupBone(b)
-			if id then table.insert(self.tifBones.doors, id) end
+			if id then
+				table.insert(self.tifBones.doors, id)
+			end
 		end
 		self.rotorBG = self:FindBodygroupByName("rotor")
 		self.engines = { self:LookupAttachment("tag_engine_left"), self:LookupAttachment("tag_engine_right") }
@@ -51,10 +53,14 @@ if CLIENT then
 		local crew = data and data.crew
 		if not crew or not util.IsValidModel(CREW_HOST) then return end
 		local list = {}
-		for _, m in ipairs(crew.pilots or {}) do list[#list + 1] = m end
+		for _, m in ipairs(crew.pilots or {}) do
+			list[#list + 1] = m
+		end
 		local set = data[self:GetNW2String("tif_crew_set", "")]
 		for _, i in ipairs(set and set.chiefs or {}) do
-			if crew.chiefs and crew.chiefs[i] then list[#list + 1] = crew.chiefs[i] end
+			if crew.chiefs and crew.chiefs[i] then
+				list[#list + 1] = crew.chiefs[i]
+			end
 		end
 		local fac = TIF.Factions and TIF.Factions[self:GetNW2String("tif_crew_fac", "usmc")]
 		local models = fac and fac.models or {}
@@ -105,8 +111,12 @@ if CLIENT then
 
 	function ENT:TIFRemoveCrew()
 		for _, c in ipairs(self.tifCrew or {}) do
-			if IsValid(c.vis) then c.vis:Remove() end
-			if IsValid(c.host) then c.host:Remove() end
+			if IsValid(c.vis) then
+				c.vis:Remove()
+			end
+			if IsValid(c.host) then
+				c.host:Remove()
+			end
 		end
 		self.tifCrew = nil
 	end
@@ -114,9 +124,13 @@ if CLIENT then
 	function ENT:Think()
 		local def = def_of(self)
 		if not def then return end
-		if not self.tifBones then self:TIFInitBones(def) end
+		if not self.tifBones then
+			self:TIFInitBones(def)
+		end
 
-		if not self.tifCrew and self:GetNW2String("tif_crew_fac", "") ~= "" then self:TIFMakeCrew(def) end
+		if not self.tifCrew and self:GetNW2String("tif_crew_fac", "") ~= "" then
+			self:TIFMakeCrew(def)
+		end
 		self:TIFCrewThink()
 		self:TIFRopesThink()
 		local dt = FrameTime()
@@ -125,13 +139,17 @@ if CLIENT then
 
 		self.rotA = (self.rotA + ROTOR_DPS * rpm * dt) % 360
 		self.tailA = (self.tailA + ROTOR_DPS * 4.6 * rpm * dt) % 360
-		if B.rotor then self:ManipulateBoneAngles(B.rotor, Angle(0, self.rotA, 0)) end
+		if B.rotor then
+			self:ManipulateBoneAngles(B.rotor, Angle(0, self.rotA, 0))
+		end
 		if B.tail then
 			self:ManipulateBoneAngles(B.tail, def.tailAxis == "roll" and Angle(0, 0, self.tailA) or Angle(self.tailA, 0, 0))
 		end
 		if self.rotorBG and self.rotorBG >= 0 then
 			local want = rpm > 0.55 and 1 or 0
-			if self:GetBodygroup(self.rotorBG) ~= want then self:SetBodygroup(self.rotorBG, want) end
+			if self:GetBodygroup(self.rotorBG) ~= want then
+				self:SetBodygroup(self.rotorBG, want)
+			end
 		end
 
 		local d = def.doors
@@ -139,12 +157,18 @@ if CLIENT then
 			local goal = self:GetDoorsOpen() and 1 or 0
 			self.doorT = math.Approach(self.doorT, goal, dt / math.max(0.1, d.time))
 			local s = self.doorT * self.doorT * (3 - 2 * self.doorT)
-			for _, b in ipairs(B.doors) do self:ManipulateBonePosition(b, d.travel * s) end
+			for _, b in ipairs(B.doors) do
+				self:ManipulateBonePosition(b, d.travel * s)
+			end
 		end
 		self:RotorSound(def, rpm)
-		if self.emitter then self.emitter:SetPos(self:GetPos()) end
+		if self.emitter then
+			self.emitter:SetPos(self:GetPos())
+		end
 		self:Wash(rpm)
-		if self:GetDying() then self:Smoke() end
+		if self:GetDying() then
+			self:Smoke()
+		end
 		self:SetNextClientThink(CurTime())
 		return true
 	end
@@ -249,7 +273,9 @@ if CLIENT then
 				p = Vector(G.x + r.dir.x * g, G.y + r.dir.y * g, G.z + 1)
 			end
 			local t = p - prev
-			if i == 1 or t:LengthSqr() < 0.01 then t = Vector(0, 0, -1) end
+			if i == 1 or t:LengthSqr() < 0.01 then
+				t = Vector(0, 0, -1)
+			end
 			m = Matrix()
 			m:SetAngles(t:Angle())
 			m:SetTranslation(p)
@@ -298,8 +324,12 @@ if CLIENT then
 				else
 
 					r.cut = r.cut or CurTime()
-					if r.A and r.G then r.A = Vector(r.A.x, r.A.y, math.max(r.G.z + 2, r.A.z - 600 * FrameTime() * 1.5)) end
-					if CurTime() - r.cut > 8 then r.ent:Remove() end
+					if r.A and r.G then
+						r.A = Vector(r.A.x, r.A.y, math.max(r.G.z + 2, r.A.z - 600 * FrameTime() * 1.5))
+					end
+					if CurTime() - r.cut > 8 then
+						r.ent:Remove()
+					end
 				end
 				if r.A and r.G then
 					local lo, hi = Vector(math.min(r.A.x, r.G.x) - 700, math.min(r.A.y, r.G.y) - 700, r.G.z - 20),
@@ -322,11 +352,16 @@ if CLIENT then
 	end
 
 	function ENT:OnRemove()
-		if self.loop then self.loop:Stop() end
-		if self.emitter then self.emitter:Finish() end
+		if self.loop then
+			self.loop:Stop()
+		end
+		if self.emitter then
+			self.emitter:Finish()
+		end
 		self:TIFRemoveCrew()
 		self:TIFRemoveRopes()
 	end
+
 	return
 end
 
@@ -338,13 +373,17 @@ function ENT:Initialize()
 		SafeRemoveEntityDelayed(self, 0)
 		return
 	end
+
 	self:SetModel(def.model)
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:MakePhysicsObjectAShadow(false, false)
 	local phys = self:GetPhysicsObject()
-	if IsValid(phys) then phys:SetMass(5000) end
+	if IsValid(phys) then
+		phys:SetMass(5000)
+	end
+
 	self:SetHealth(math.floor(def.health * (GetConVar("tif_heli_health_scale") and GetConVar("tif_heli_health_scale"):GetFloat() or 1)))
 	self:SetMaxHealth(self:Health())
 	self.def = def
@@ -366,7 +405,9 @@ function ENT:SetRoute(route)
 	self.route = route
 	self.phase = "inbound"
 	self.phaseAt = CurTime()
-	if route and route.doorsOpen then self:SetDoorsOpen(true) end
+	if route and route.doorsOpen then
+		self:SetDoorsOpen(true)
+	end
 end
 
 function ENT:Phase() return self.phase end
@@ -374,7 +415,9 @@ function ENT:Phase() return self.phase end
 function ENT:Arrived() return self.phase == "hold" end
 
 function ENT:Release()
-	if self.phase == "hold" or self.phase == "descend" or self.phase == "approach" then self:SetPhase("climb") end
+	if self.phase == "hold" or self.phase == "descend" or self.phase == "approach" then
+		self:SetPhase("climb")
+	end
 end
 
 function ENT:SetPhase(ph)
@@ -384,10 +427,14 @@ function ENT:SetPhase(ph)
 	local r = self.route
 	if ph == "hold" then
 		self.holdUntil = r and r.hold and CurTime() + r.hold or nil
-		if r and r.onArrive then pcall(r.onArrive, self) end
+		if r and r.onArrive then
+			pcall(r.onArrive, self)
+		end
 		hook.Run("TIF_HeliArrived", self)
 	elseif ph == "climb" then
-		if not (r and r.doorsOpen) then self:SetDoorsOpen(false) end
+		if not (r and r.doorsOpen) then
+			self:SetDoorsOpen(false)
+		end
 		self:SetRopes(false)
 		hook.Run("TIF_HeliLeaving", self)
 	end
@@ -402,7 +449,9 @@ local function clamp_len(v, max)
 end
 
 function ENT:GroundAhead(now)
-	if now < self.nextGround and self.groundAhead then return self.groundAhead end
+	if now < self.nextGround and self.groundAhead then
+		return self.groundAhead
+	end
 	self.nextGround = now + 0.25
 	local r = self.route
 	local top = (r and r.ceilZ or self.p.z + 4000) - 10
@@ -410,8 +459,11 @@ function ENT:GroundAhead(now)
 	for _, t in ipairs({ 0, 1.2, 2.5 }) do
 		local p = self.p + flat(self.v) * t
 		local tr = util.TraceLine({ start = Vector(p.x, p.y, top), endpos = Vector(p.x, p.y, top - 30000), mask = MASK_SOLID_BRUSHONLY })
-		if tr.Hit and not tr.StartSolid then best = math.max(best, tr.HitPos.z) end
+		if tr.Hit and not tr.StartSolid then
+			best = math.max(best, tr.HitPos.z)
+		end
 	end
+
 	self.groundAhead = best > -math.huge and best or nil
 	return self.groundAhead
 end
@@ -427,7 +479,10 @@ function ENT:CruiseZ(now)
 	local r = self.route
 	local z = r.cruiseZ
 	local g = self:GroundAhead(now)
-	if g then z = math.max(z, g + self.def.cruiseClearance * 0.6) end
+	if g then
+		z = math.max(z, g + self.def.cruiseClearance * 0.6)
+	end
+
 	return math.min(z, r.ceilZ - 120)
 end
 
@@ -448,7 +503,9 @@ function ENT:Fly(dt, now)
 
 			local speed = flat(self.v):Length()
 			if r.mode == "flyby" then
-				if dist < 300 then self:SetPhase("depart") end
+				if dist < 300 then
+					self:SetPhase("depart")
+				end
 			elseif dist < math.max(speed * speed / (2 * def.accel * 0.8) + 200, (r.glideD or 0) + 150) then
 				self:SetPhase("approach")
 			end
@@ -472,23 +529,33 @@ function ENT:Fly(dt, now)
 			local ff = -grad * flat(self.v):Length()
 			want.z = math.Clamp(ff + (zt - self.p.z) * 1.5, -def.sinkRate * 1.8, def.climbRate)
 			face = r.heading
-			if hdist < 1500 and not self:GetDoorsOpen() then self:SetDoorsOpen(true) end
+			if hdist < 1500 and not self:GetDoorsOpen() then
+				self:SetDoorsOpen(true)
+			end
 		else
 
 			local hz = math.max(r.hub.z + 250, math.min(self.p.z, self:CruiseZ(now)))
 			want, hdist = arrive(self, r.hub, def.approachSpeed + (def.cruiseSpeed - def.approachSpeed) * 0.5, def.accel * 0.7)
 			want.z = math.Clamp((hz - self.p.z) * 0.6, -def.sinkRate, def.climbRate)
-			if hdist < 900 then face = r.heading end
+			if hdist < 900 then
+				face = r.heading
+			end
 		end
-		if hdist < 40 and flat(self.v):Length() < 80 then self:SetPhase("descend") end
+		if hdist < 40 and flat(self.v):Length() < 80 then
+			self:SetPhase("descend")
+		end
 	elseif ph == "descend" then
 		want = flat(r.hub - self.p) * 1.5
 		local dz = r.hub.z - self.p.z
 		local sink = math.min(def.sinkRate, math.sqrt(2 * 120 * math.abs(dz)) + 15)
 		want.z = math.Clamp(dz * 1.2, -sink, sink)
 		face = r.heading
-		if dz > -500 and not self:GetDoorsOpen() then self:SetDoorsOpen(true) end
-		if math.abs(dz) < 6 and math.abs(self.v.z) < 25 then self:SetPhase("hold") end
+		if dz > -500 and not self:GetDoorsOpen() then
+			self:SetDoorsOpen(true)
+		end
+		if math.abs(dz) < 6 and math.abs(self.v.z) < 25 then
+			self:SetPhase("hold")
+		end
 	elseif ph == "hold" then
 		local target = r.hub
 		if r.mode == "rope" and not self.tifRiders then
@@ -498,14 +565,18 @@ function ENT:Fly(dt, now)
 		end
 		want = (target - self.p) * 2
 		face = r.heading
-		if self.holdUntil and now > self.holdUntil then self:SetPhase("climb") end
+		if self.holdUntil and now > self.holdUntil then
+			self:SetPhase("climb")
+		end
 	elseif ph == "climb" then
 		local up = self:CruiseZ(now)
 		local fwd = Angle(0, r.heading, 0):Forward()
 		local t = now - self.phaseAt
 		want = Vector(0, 0, def.climbRate) + fwd * math.min(def.cruiseSpeed * 0.4, t * 120)
 		face = r.heading
-		if self.p.z > math.min(up - 100, r.hub.z + 700) then self:SetPhase("depart") end
+		if self.p.z > math.min(up - 100, r.hub.z + 700) then
+			self:SetPhase("depart")
+		end
 	end
 
 	local dv = want - self.v
@@ -517,7 +588,10 @@ function ENT:Fly(dt, now)
 	self.a = LerpVector(math.min(1, dt * 4), self.a, acc)
 
 	local hv = flat(self.v)
-	if not face and hv:Length() > 250 then face = hv:Angle().y end
+	if not face and hv:Length() > 250 then
+		face = hv:Angle().y
+	end
+
 	if face then
 		local diff = math.AngleDifference(face, self.yaw)
 		self.yaw = self.yaw + math.Clamp(diff, -45 * dt, 45 * dt)
@@ -527,7 +601,10 @@ function ENT:Fly(dt, now)
 	local rgt = Angle(0, self.yaw, 0):Right()
 	local wantPitch = math.Clamp(self.a:Dot(f) * 0.03 + hv:Dot(f) * 0.005, -16, 14)
 	local wantRoll = math.Clamp(self.a:Dot(rgt) * 0.035, -22, 22)
-	if ph == "hold" and r and r.mode == "land" then wantPitch, wantRoll = 0, 0 end
+	if ph == "hold" and r and r.mode == "land" then
+		wantPitch, wantRoll = 0, 0
+	end
+
 	self.pitch = math.Approach(self.pitch, wantPitch, 20 * dt)
 	self.roll = math.Approach(self.roll, wantRoll, 25 * dt)
 end
@@ -541,8 +618,11 @@ function ENT:Think()
 		self:Fly(dt, now)
 		if not IsValid(self) then return end
 		local phys = self:GetPhysicsObject()
-		if IsValid(phys) then phys:UpdateShadow(self.p, Angle(self.pitch, self.yaw, self.roll), dt) end
+		if IsValid(phys) then
+			phys:UpdateShadow(self.p, Angle(self.pitch, self.yaw, self.roll), dt)
+		end
 	end
+
 	self:NextThink(now + HELI_THINK)
 	return true
 end
@@ -550,7 +630,10 @@ end
 function ENT:OnTakeDamage(dmg)
 	if self.crashing or self.exploded then return end
 	local n = dmg:GetDamage()
-	if dmg:IsExplosionDamage() then n = n * 1.5 end
+	if dmg:IsExplosionDamage() then
+		n = n * 1.5
+	end
+
 	self:SetHealth(self:Health() - n)
 	local e = EffectData()
 	e:SetOrigin(dmg:GetDamagePosition())
@@ -558,7 +641,9 @@ function ENT:OnTakeDamage(dmg)
 	e:SetMagnitude(1)
 	e:SetScale(1)
 	util.Effect("MetalSpark", e)
-	if self:Health() <= 0 then self:Crash(dmg:GetAttacker()) end
+	if self:Health() <= 0 then
+		self:Crash(dmg:GetAttacker())
+	end
 end
 
 function ENT:Crash(attacker)
@@ -569,7 +654,10 @@ function ENT:Crash(attacker)
 	self.crashAt = CurTime()
 	hook.Run("TIF_HeliDestroyed", self, attacker)
 	local r = self.route
-	if r and r.onDestroyed then pcall(r.onDestroyed, self, attacker) end
+	if r and r.onDestroyed then
+		pcall(r.onDestroyed, self, attacker)
+	end
+
 	local v = self.v
 	self:PhysicsInit(SOLID_VPHYSICS)
 	local phys = self:GetPhysicsObject()
@@ -580,6 +668,7 @@ function ENT:Crash(attacker)
 		phys:SetVelocity(v)
 		phys:AddAngleVelocity(Vector(math.Rand(-10, 10), math.Rand(-10, 10), math.Rand(90, 140) * (math.random() < 0.5 and -1 or 1)))
 	end
+
 	self:EmitSound("ambient/explosions/explode_7.wav", 120)
 end
 
@@ -593,7 +682,10 @@ function ENT:CrashThink(now, dt)
 		phys:AddAngleVelocity(Vector(0, 0, (av.z >= 0 and 1 or -1) * 60 * dt))
 		phys:ApplyForceCenter(Vector(0, 0, phys:GetMass() * 260 * dt))
 	end
-	if t > 14 then self:Explode() end
+
+	if t > 14 then
+		self:Explode()
+	end
 end
 
 function ENT:PhysicsCollide(data)
@@ -628,15 +720,22 @@ function ENT:Explode()
 			w:SetAngles(Angle(0, self:GetAngles().y, 0))
 			w:Spawn()
 			local wp = w:GetPhysicsObject()
-			if IsValid(wp) then wp:EnableMotion(false) end
+			if IsValid(wp) then
+				wp:EnableMotion(false)
+			end
 			w:Ignite(40, 0)
 			local tm = cvWreck:GetFloat()
-			if tm > 0 then SafeRemoveEntityDelayed(w, tm) end
+			if tm > 0 then
+				SafeRemoveEntityDelayed(w, tm)
+			end
 		end
 	end
+
 	self:Remove()
 end
 
 function ENT:OnRemove()
-	if TIF.Air and TIF.Air.Forget then TIF.Air.Forget(self) end
+	if TIF.Air and TIF.Air.Forget then
+		TIF.Air.Forget(self)
+	end
 end

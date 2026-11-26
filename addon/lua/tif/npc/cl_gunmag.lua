@@ -17,11 +17,15 @@ local function get_clip_events(clip)
 	for _, tag in ipairs(clip.tags or {}) do
 		local eventName = tag[1] == "MoveEvent" and istable(tag[4]) and tag[4].MoveEvent
 		if eventName == "drop_clip" then dropTime = dropTime or tag[2]
-		elseif eventName == "attach_clip_left" then attachTime = attachTime or tag[2]
-		elseif eventName == "detach_clip_left" then detachTime = detachTime or tag[2]
-		elseif isstring(eventName) and string.find(eventName, "_lm_reload_npc_out", 1, true) then attachTime = attachTime or tag[2]
+		elseif eventName == "attach_clip_left" then
+			attachTime = attachTime or tag[2]
+		elseif eventName == "detach_clip_left" then
+			detachTime = detachTime or tag[2]
+		elseif isstring(eventName) and string.find(eventName, "_lm_reload_npc_out", 1, true) then
+			attachTime = attachTime or tag[2]
 		elseif isstring(eventName) and string.find(eventName, "_lm_reload_npc_in", 1, true) then detachTime = detachTime or tag[2] end
 	end
+
 	cached = (attachTime and detachTime and detachTime > attachTime) and { drop = dropTime, att = attachTime, det = detachTime } or false
 	clipEventCache[clip] = cached
 	return cached or nil
@@ -36,6 +40,7 @@ local function get_mag_bones(gun)
 		bones = magBone and { mag = magBone, root = gun:LookupBone(ROOT_BONE) or 0 } or false
 		magBoneCache[model] = bones
 	end
+
 	return bones or nil
 end
 
@@ -86,6 +91,7 @@ local function on_build_drop(ent)
 		rootMat:Scale(TINY_SCALE)
 		ent:SetBoneMatrix(bones.root, rootMat)
 	end
+
 	DROP_MAT:Identity()
 	DROP_MAT:SetTranslation(drop.pos)
 	DROP_MAT:SetAngles(drop.ang)
@@ -100,8 +106,11 @@ local function spawn_drop(gun, bones)
 	if pos:DistToSqr(EyePos()) > DROP_RANGE * DROP_RANGE then return end
 	if #droppedMags >= MAX_DROPS then
 		local oldest = table.remove(droppedMags, 1)
-		if IsValid(oldest.ent) then oldest.ent:Remove() end
+		if IsValid(oldest.ent) then
+			oldest.ent:Remove()
+		end
 	end
+
 	local ent = ClientsideModel(gun:GetModel(), RENDERGROUP_OPAQUE)
 	if not IsValid(ent) then return end
 	ent:SetPos(pos)
@@ -125,7 +134,9 @@ local function step_drops(dt, now)
 		local ent = droppedMags[i].ent
 		local drop = IsValid(ent) and ent.tifDrop
 		if not drop or now - drop.t > DROP_LIFE then
-			if IsValid(ent) then ent:Remove() end
+			if IsValid(ent) then
+				ent:Remove()
+			end
 			table.remove(droppedMags, i)
 		elseif not drop.landed then
 			drop.vel.z = drop.vel.z - 600 * dt
@@ -149,7 +160,9 @@ local function step_drops(dt, now)
 end
 
 hook.Add("Think", "tif_gunmag_drops", function()
-	if #droppedMags > 0 then step_drops(FrameTime(), CurTime()) end
+	if #droppedMags > 0 then
+		step_drops(FrameTime(), CurTime())
+	end
 end)
 
 function GunMag.Update(ent, state)
@@ -161,6 +174,7 @@ function GunMag.Update(ent, state)
 		gun.tifMagHooked = true
 		gun:AddCallback("BuildBonePositions", on_build_gun)
 	end
+
 	local clip, cycle = state.magClip, state.magU
 	local events = clip and cycle and get_clip_events(clip)
 	local mode
@@ -177,6 +191,7 @@ function GunMag.Update(ent, state)
 			spawn_drop(gun, bones)
 		end
 	end
+
 	if mode == "hand" then
 		local model = ent:GetModel()
 		local handBone = leftHandCache[model]
@@ -191,6 +206,7 @@ function GunMag.Update(ent, state)
 			mode = nil
 		end
 	end
+
 	if mode ~= gun.tifMagMode then
 		gun.tifMagMode = mode
 		gun:InvalidateBoneCache()
@@ -200,7 +216,10 @@ end
 function GunMag.Clear()
 	for i = 1, #droppedMags do
 		local ent = droppedMags[i].ent
-		if IsValid(ent) then ent:Remove() end
+		if IsValid(ent) then
+			ent:Remove()
+		end
 	end
+
 	droppedMags = {}
 end

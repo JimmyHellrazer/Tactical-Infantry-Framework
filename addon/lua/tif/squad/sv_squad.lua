@@ -39,7 +39,9 @@ end
 
 function SQ.Log(sq, ...)
 	local cv = GetConVar("tif_debug")
-	if cv and cv:GetBool() then TIF.Log("[squad ", sq.id, " ", sq.faction, "] ", table.concat({ ... }, "")) end
+	if cv and cv:GetBool() then
+		TIF.Log("[squad ", sq.id, " ", sq.faction, "] ", table.concat({ ... }, ""))
+	end
 end
 
 function SQ.Of(npc)
@@ -49,8 +51,11 @@ end
 function SQ.Members(sq)
 	local out = {}
 	for _, m in ipairs(sq.members) do
-		if IsValid(m) and not m.tifDead then out[#out + 1] = m end
+		if IsValid(m) and not m.tifDead then
+			out[#out + 1] = m
+		end
 	end
+
 	return out
 end
 
@@ -61,14 +66,20 @@ function SQ.Create(faction, members, leader)
 	}
 	SQ.NextId = SQ.NextId + 1
 	SQ.List[sq.id] = sq
-	for _, m in ipairs(members or {}) do SQ.Add(sq, m) end
+	for _, m in ipairs(members or {}) do
+		SQ.Add(sq, m)
+	end
+
 	SQ.SetLeader(sq, leader or sq.members[1])
 	return sq
 end
 
 function SQ.Add(sq, npc)
 	if not IsValid(npc) or npc.tifSquad == sq then return end
-	if npc.tifSquad then SQ.Remove(npc) end
+	if npc.tifSquad then
+		SQ.Remove(npc)
+	end
+
 	if #sq.members >= SQ.MAX_SIZE then return end
 	table.insert(sq.members, npc)
 	npc.tifSquad = sq
@@ -80,8 +91,11 @@ local function best_leader(sq)
 	local best, bestScore
 	for _, m in ipairs(SQ.Members(sq)) do
 		local s = m:Health() + (m.tifArchId == "leader" and 1000 or 0)
-		if not bestScore or s > bestScore then best, bestScore = m, s end
+		if not bestScore or s > bestScore then
+			best, bestScore = m, s
+		end
 	end
+
 	return best
 end
 
@@ -92,17 +106,26 @@ publish = function(sq)
 	for i = 1, #members do
 		local m = members[i]
 		if IsValid(m) then
-			if m:GetNW2Entity("tif_sqlead", NULL) ~= lead then m:SetNW2Entity("tif_sqlead", lead) end
-			if m:GetNW2String("tif_order", "") ~= orderStr then m:SetNW2String("tif_order", orderStr) end
+			if m:GetNW2Entity("tif_sqlead", NULL) ~= lead then
+				m:SetNW2Entity("tif_sqlead", lead)
+			end
+			if m:GetNW2String("tif_order", "") ~= orderStr then
+				m:SetNW2String("tif_order", orderStr)
+			end
 		end
 	end
 end
 SQ.Publish = publish
 
 function SQ.SetLeader(sq, leader)
-	if IsValid(sq.leader) and sq.leader.TIFSoldier then sq.leader:SetNW2Bool("tif_leader", false) end
+	if IsValid(sq.leader) and sq.leader.TIFSoldier then
+		sq.leader:SetNW2Bool("tif_leader", false)
+	end
 	sq.leader = leader
-	if IsValid(leader) and leader.TIFSoldier then leader:SetNW2Bool("tif_leader", true) end
+	if IsValid(leader) and leader.TIFSoldier then
+		leader:SetNW2Bool("tif_leader", true)
+	end
+
 	publish(sq)
 end
 
@@ -112,6 +135,7 @@ local function drop_squad(sq, why)
 		TIF.Event("cqb", "squad ", sq.id, " ", sq.faction or "", ": clear ended, squad ", why, " (", tostring(cq.phase),
 			" at door ", cq.door and tostring(cq.door.id) or "-", ", ", table.Count(cq.cleared or {}), " room(s) cleared)")
 	end
+
 	SQ.List[sq.id] = nil
 end
 
@@ -121,16 +145,24 @@ function SQ.Remove(npc)
 	table.RemoveByValue(sq.members, npc)
 	npc.tifSquad = nil
 	npc.tifRole, npc.tifCoverCenter = nil, nil
-	if IsValid(npc) then npc:SetNW2Int("tif_squad", 0) end
+	if IsValid(npc) then
+		npc:SetNW2Int("tif_squad", 0)
+	end
+
 	if sq.leader == npc then
 		local nl = best_leader(sq)
 		if IsValid(nl) then
-			if sq.order.kind == "advance" then sq.order = { kind = "hold", pos = nl:GetPos(), time = CurTime() } end
+			if sq.order.kind == "advance" then
+				sq.order = { kind = "hold", pos = nl:GetPos(), time = CurTime() }
+			end
 			TIF.Say(nl, "backup", 0.6)
 		end
 		SQ.SetLeader(sq, nl)
 	end
-	if #SQ.Members(sq) == 0 then drop_squad(sq, "empty (last man removed)") end
+
+	if #SQ.Members(sq) == 0 then
+		drop_squad(sq, "empty (last man removed)")
+	end
 end
 
 function SQ.SetOrder(sq, kind, pos, yaw, opts)
@@ -138,11 +170,15 @@ function SQ.SetOrder(sq, kind, pos, yaw, opts)
 	publish(sq)
 
 	local m = SQ.Members(sq)
-	if #m > 0 then TIF.Say(m[math.random(#m)], "affirmative", 0.8) end
+	if #m > 0 then
+		TIF.Say(m[math.random(#m)], "affirmative", 0.8)
+	end
+
 	for _, mem in ipairs(m) do
 		mem.tifPost = nil
 		mem.tifSearch = nil
 	end
+
 	SQ.Signal(sq, kind)
 end
 
@@ -153,8 +189,14 @@ function SQ.Signal(sq, kind)
 	if not is_valid_leader(L) or not L.TIFSoldier or not L.loco or L.tifAct or L.tifCov or L.tifProne or L.tifVeh or L.tifDowned or L.tifReact then
 		return
 	end
-	if not (L.tifHomeHost and TIF.GTG.IsVB(L.tifHomeHost)) or math.random() > SQ.SIGNAL_CHANCE then return end
-	if L.loco:GetVelocity():Length2DSqr() > 20 * 20 or L.tifAware == TIF.AWARE.ENGAGED then return end
+
+	if not (L.tifHomeHost and TIF.GTG.IsVB(L.tifHomeHost)) or math.random() > SQ.SIGNAL_CHANCE then
+		return
+	end
+	if L.loco:GetVelocity():Length2DSqr() > 20 * 20 or L.tifAware == TIF.AWARE.ENGAGED then
+		return
+	end
+
 	local name
 	if kind == "hold" then
 		name = "mwgs_stop"
@@ -162,7 +204,9 @@ function SQ.Signal(sq, kind)
 
 		local c, n = Vector(), 0
 		for _, mem in ipairs(SQ.Members(sq)) do
-			if mem ~= L then c:Add(mem:GetPos()) n = n + 1 end
+			if mem ~= L then
+				c:Add(mem:GetPos()) n = n + 1
+			end
 		end
 		if n == 0 then return end
 		c:Div(n)
@@ -170,9 +214,14 @@ function SQ.Signal(sq, kind)
 		local dir = math.abs(a) <= 45 and "8" or (math.abs(a) >= 135 and (a > 0 and "2l" or "2r") or (a > 0 and "4" or "6"))
 		local st = L:GetTIFStance() == TIF.Anim.STANCE_CROUCH and "crouch" or "stand"
 		name = "mwgs_come_" .. st .. "_" .. dir
-		if st == "crouch" and dir == "2r" then name = "mwgs_come_crouch_2l" end
+		if st == "crouch" and dir == "2r" then
+			name = "mwgs_come_crouch_2l"
+		end
 	end
-	if name and TIF.GTG.Clip(name, L.tifHomeHost) then TIF.Action.Play(L, name, { root = true, clear = true }) end
+
+	if name and TIF.GTG.Clip(name, L.tifHomeHost) then
+		TIF.Action.Play(L, name, { root = true, clear = true })
+	end
 end
 
 function SQ.Leash(npc)
@@ -186,6 +235,7 @@ function SQ.Leash(npc)
 	if (o.kind == "follow" or o.kind == "regroup") and is_valid_leader(sq.leader) and sq.leader ~= npc then
 		return sq.leader:GetPos(), SQ.FOLLOW_LEASH
 	end
+
 	return nil
 end
 
@@ -203,6 +253,7 @@ function SQ.Slot(npc)
 	else
 		return nil
 	end
+
 	local index = 0
 	for _, m in ipairs(sq.members) do
 		if m ~= sq.leader and IsValid(m) and not m.tifDead then
@@ -210,6 +261,7 @@ function SQ.Slot(npc)
 			if m == npc then break end
 		end
 	end
+
 	local spacing = o.kind == "regroup" and 60 or 95
 	local formation = o.kind == "hold" and "line" or sq.formation
 	local off = slot_offset(formation, index, spacing)
@@ -226,24 +278,32 @@ local function patrol_lead(npc, sq, o, now)
 		local best, bestD
 		for i, p in ipairs(pts) do
 			local d = p:DistToSqr(npc:GetPos())
-			if not bestD or d < bestD then best, bestD = i, d end
+			if not bestD or d < bestD then
+				best, bestD = i, d
+			end
 		end
 		o.i = best
 	end
+
 	local p = pts[o.i]
 	if not p then
 		o.i = 1
 		p = pts[1]
 		if not p then return false end
 	end
+
 	if npc:GetPos():DistToSqr(p) < 90 * 90 then
 		o.waitUntil = o.waitUntil or now + math.Rand(2, 5)
 		Move.Stop(npc)
 		npc.tifAction = "patrol: pause"
-		if not o.lookYaw then o.lookYaw = npc:GetAngles().y + math.Rand(-70, 70) end
+		if not o.lookYaw then
+			o.lookYaw = npc:GetAngles().y + math.Rand(-70, 70)
+		end
 		local r = math.rad(o.lookYaw)
 		npc.tifFace = npc:GetPos() + Vector(math.cos(r), math.sin(r), 0) * 300 + Vector(0, 0, 60)
-		if now > o.waitUntil then o.i, o.waitUntil, o.lookYaw = o.i % #pts + 1, nil, nil end
+		if now > o.waitUntil then
+			o.i, o.waitUntil, o.lookYaw = o.i % #pts + 1, nil, nil
+		end
 	else
 		npc.tifAction = "patrol " .. o.i .. "/" .. #pts
 		npc.tifFace = nil
@@ -251,6 +311,7 @@ local function patrol_lead(npc, sq, o, now)
 			o.i = o.i % #pts + 1
 		end
 	end
+
 	return true
 end
 
@@ -265,6 +326,7 @@ function SQ.AdvancePace(sq, npc, o, now)
 		o.slowed = true
 		return "tactical"
 	end
+
 	return "run"
 end
 
@@ -295,6 +357,7 @@ function SQ.Duty(npc, now)
 		end
 		return false
 	end
+
 	local slot, yaw = SQ.Slot(npc)
 	if not slot then return false end
 	local d2 = npc:GetPos():DistToSqr(slot)
@@ -315,8 +378,11 @@ function SQ.Duty(npc, now)
 		npc.tifFormationLook = npc.tifFormationLook or math.Rand(-35, 35)
 		local r = math.rad((yaw or 0) + npc.tifFormationLook)
 		npc.tifFace = npc:GetPos() + Vector(math.cos(r), math.sin(r), 0) * 300 + Vector(0, 0, 60)
-		if o.kind == "regroup" and now - o.time > 4 then SQ.SetOrder(sq, "follow") end
+		if o.kind == "regroup" and now - o.time > 4 then
+			SQ.SetOrder(sq, "follow")
+		end
 	end
+
 	return true
 end
 
@@ -349,7 +415,9 @@ function SQ.Sync(npc, now)
 				c.baseUnc = 48
 				c.lostAt = c.lostAt or now
 				c.source = "squad"
-				if not npc.tifStim or now - npc.tifStim.time > 2 then TIF.Perception.Stimulus(npc, c.pos, "squad", now) end
+				if not npc.tifStim or now - npc.tifStim.time > 2 then
+					TIF.Perception.Stimulus(npc, c.pos, "squad", now)
+				end
 			end
 		end
 	end
@@ -362,11 +430,18 @@ function SQ.AutoJoin(npc)
 		if sq.faction == npc:GetTIFFaction() and #SQ.Members(sq) < SQ.MAX_SIZE and not (IsValid(sq.leader) and sq.leader:IsPlayer()) then
 			for _, m in ipairs(SQ.Members(sq)) do
 				local d = m:GetPos():DistToSqr(npc:GetPos())
-				if d < 700 * 700 and (not bestD or d < bestD) then best, bestD = sq, d end
+				if d < 700 * 700 and (not bestD or d < bestD) then
+					best, bestD = sq, d
+				end
 			end
 		end
 	end
-	if best then SQ.Add(best, npc) else SQ.Create(npc:GetTIFFaction(), { npc }) end
+
+	if best then
+		SQ.Add(best, npc)
+	else
+		SQ.Create(npc:GetTIFFaction(), { npc })
+	end
 end
 
 function SQ.ForPlayer(ply)
@@ -384,7 +459,9 @@ timer.Create("tif_squad_gc", 1, 0, function()
 		local members = sq.members
 		for i = #members, 1, -1 do
 			local m = members[i]
-			if not IsValid(m) or m.tifDead then table.remove(members, i) end
+			if not IsValid(m) or m.tifDead then
+				table.remove(members, i)
+			end
 		end
 		if #members == 0 and not (IsValid(sq.leader) and sq.leader:IsPlayer()) then
 			drop_squad(sq, "empty (all dead or removed)")

@@ -14,10 +14,15 @@ local HOST = "models/tif_mw/mw_male.mdl"
 local function apply_look(e, seed)
 	if not IsValid(e) or not seed or seed <= 0 then return end
 	local skins = e:SkinCount() or 1
-	if skins > 1 then e:SetSkin(seed % skins) end
+	if skins > 1 then
+		e:SetSkin(seed % skins)
+	end
+
 	for i = 0, (e:GetNumBodyGroups() or 1) - 1 do
 		local n = e:GetBodygroupCount(i) or 1
-		if n > 1 then e:SetBodygroup(i, math.floor(seed / (i + 1) * 7919) % n) end
+		if n > 1 then
+			e:SetBodygroup(i, math.floor(seed / (i + 1) * 7919) % n)
+		end
 	end
 end
 
@@ -38,7 +43,9 @@ if CLIENT then
 			end
 			return f
 		end
-		if IsValid(f) then f:Remove() end
+		if IsValid(f) then
+			f:Remove()
+		end
 		f = ClientsideModel(vis, RENDERGROUP_OPAQUE)
 		if not IsValid(f) then return nil end
 		f:SetParent(self)
@@ -62,8 +69,11 @@ if CLIENT then
 	end
 
 	function ENT:OnRemove()
-		if IsValid(self.civFollower) then self.civFollower:Remove() end
+		if IsValid(self.civFollower) then
+			self.civFollower:Remove()
+		end
 	end
+
 	return
 end
 
@@ -82,6 +92,7 @@ function ENT:Initialize()
 		self:SetModel(util.IsValidModel(vis) and vis or "models/humans/group01/male_01.mdl")
 		apply_look(self, self.civSeed)
 	end
+
 	self.civVis = vis
 
 	self:SetHealth(1)
@@ -98,12 +109,16 @@ function ENT:Initialize()
 	self.fear = 0
 
 	self.var = math.random(1, 99)
-	if Civ then Civ.Register(self) end
+	if Civ then
+		Civ.Register(self)
+	end
 end
 
 function ENT:OnRemove()
 	local Civ = C()
-	if Civ then Civ.Unregister(self) end
+	if Civ then
+		Civ.Unregister(self)
+	end
 end
 
 function ENT:KeyValue(k, v)
@@ -118,7 +133,9 @@ function ENT:Think()
 		local Civ = C()
 		for _ = 2, n do
 			local p = Civ and Civ.RandomPoint(self:GetPos(), 350)
-			if p then Civ.Spawn(p, { home = self:GetPos(), radius = 900 }) end
+			if p then
+				Civ.Spawn(p, { home = self:GetPos(), radius = 900 })
+			end
 		end
 	end
 end
@@ -130,6 +147,7 @@ function ENT:Variant(prefix, max)
 		local n = (self.var + i) % max + 1
 		if clip(prefix .. n) then return prefix .. n end
 	end
+
 	return nil
 end
 
@@ -142,6 +160,7 @@ function ENT:Play(role, rate)
 		self:ResetSequence(seq)
 		self:SetCycle(0)
 	end
+
 	self.civRole = role
 	self:SetPlaybackRate(rate or 1)
 	return c.dur / (rate or 1)
@@ -159,6 +178,7 @@ function ENT:FromPool(pool)
 		local r = pool[(self.var + i) % #pool + 1]
 		if clip(r) then return r end
 	end
+
 	return nil
 end
 
@@ -166,16 +186,30 @@ local WALKS = { "civ_walk", "civ_walk_1", "civ_walk_2", "civ_walk_3", "civ_walk_
 
 function ENT:MoveClip(kind)
 	if kind == "wounded" then return "civ_wounded_run" end
-	if kind == "duck" then return clip("civ_duck_run") and "civ_duck_run" or self:MoveClip("panic_run") end
-	if kind == "panic_run" then return self:Variant("civ_prun_", 9) or "civ_run_1" end
-	if kind == "panic_jog" then return self:Variant("civ_pjog_", 9) or "civ_jog" end
-	if kind == "panic_walk" then return self:Variant("civ_pwalk_", 6) or "civ_walk" end
+	if kind == "duck" then
+		return clip("civ_duck_run") and "civ_duck_run" or self:MoveClip("panic_run")
+	end
+
+	if kind == "panic_run" then
+		return self:Variant("civ_prun_", 9) or "civ_run_1"
+	end
+	if kind == "panic_jog" then
+		return self:Variant("civ_pjog_", 9) or "civ_jog"
+	end
+
+	if kind == "panic_walk" then
+		return self:Variant("civ_pwalk_", 6) or "civ_walk"
+	end
 	if kind == "jog" then return "civ_jog" end
-	if kind == "run" then return (self.var % 2 == 0) and "civ_run_2" or "civ_run_1" end
+	if kind == "run" then
+		return (self.var % 2 == 0) and "civ_run_2" or "civ_run_1"
+	end
+
 	if (self.fear or 0) > 0.05 then
 		local w = self:Variant("civ_wwalk_", 4)
 		if w then return w end
 	end
+
 	return self:FromPool(WALKS) or "civ_walk"
 end
 
@@ -185,6 +219,7 @@ function ENT:FleeKind(default)
 		and d:DistToSqr(self:GetPos()) < 700 * 700 then
 		return "duck"
 	end
+
 	return default
 end
 
@@ -217,7 +252,12 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 	local c = clip(role)
 	local speed = (c and c.speed and c.speed > 20) and c.speed or (kind == "walk" and 70 or 220)
 	self.loco:SetDesiredSpeed(speed)
-	if self.mw then self:Play(role) else self:ActFallback(FALLBACK_ACT[kind] or ACT_RUN) end
+	if self.mw then
+		self:Play(role)
+	else
+		self:ActFallback(FALLBACK_ACT[kind] or ACT_RUN)
+	end
+
 	local st = self.state
 	local deadline = CurTime() + (timeout or 40)
 
@@ -241,7 +281,9 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 			if Crowd and Crowd.Steer then
 				local fwd = self.loco:GetVelocity()
 				fwd.z = 0
-				if fwd:LengthSqr() < 100 then fwd = pos - self:GetPos() fwd.z = 0 end
+				if fwd:LengthSqr() < 100 then
+					fwd = pos - self:GetPos() fwd.z = 0
+				end
 				if fwd:LengthSqr() > 1 then
 					fwd:Normalize()
 					want, steer = Crowd.Steer(self, fwd, speed, pos, now)
@@ -249,21 +291,32 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 			end
 			self.loco:SetDesiredSpeed(want)
 			path:Update(self)
-			if steer then self.loco:Approach(steer, Crowd.WEIGHT) end
+			if steer then
+				self.loco:Approach(steer, Crowd.WEIGHT)
+			end
 			if Crowd and Crowd.On() and now - watch.t >= self.STUCK_T then
 				local moved = (self:GetPos() - watch.pos):Length2D()
 				local expect = want * (now - watch.t)
 				watch = { t = now, pos = self:GetPos() }
 				if want >= 30 and moved < math.max(6, expect * 0.25) then
 					stuckN = stuckN + 1
-					if stuckN >= self.STUCK_MAX then self:HandleStuck() return "stuck" end
+					if stuckN >= self.STUCK_MAX then
+						self:HandleStuck()
+						return "stuck"
+					end
 					local f = self.loco:GetVelocity()
 					f.z = 0
-					if f:LengthSqr() < 1 then f = pos - self:GetPos() f.z = 0 end
-					if f:LengthSqr() < 1 then f = self:GetForward() end
+					if f:LengthSqr() < 1 then
+						f = pos - self:GetPos() f.z = 0
+					end
+					if f:LengthSqr() < 1 then
+						f = self:GetForward()
+					end
 					f:Normalize()
 					local p = Crowd.SidePoint(self, f, 44)
-					if p then side = { pos = p, untilT = now + self.CIV_SIDE_T } end
+					if p then
+						side = { pos = p, untilT = now + self.CIV_SIDE_T }
+					end
 				else
 					stuckN = 0
 				end
@@ -275,6 +328,7 @@ function ENT:GoTo(pos, kind, keepState, timeout)
 		end
 		coroutine.yield()
 	end
+
 	return "ok"
 end
 
@@ -284,16 +338,25 @@ function ENT:Wait(t, keepState)
 	local st = self.state
 	local untilT = CurTime() + t
 	while CurTime() < untilT do
-		if (self.state ~= st and not keepState) or self.gone or self.tifHeld then return false end
-		if st == "wander" or st == "talk" then self:Dodge() end
+		if (self.state ~= st and not keepState) or self.gone or self.tifHeld then
+			return false
+		end
+		if st == "wander" or st == "talk" then
+			self:Dodge()
+		end
 		coroutine.yield()
 	end
+
 	return true
 end
 
 local function numpad(rel)
 	local a = math.abs(rel)
-	if a < 22.5 then return "8" elseif a > 157.5 then return "2" end
+	if a < 22.5 then
+		return "8" elseif a > 157.5 then
+		return "2"
+	end
+
 	local left = rel > 0
 	if a < 67.5 then return left and "7" or "9" end
 	if a < 112.5 then return left and "4" or "6" end
@@ -334,7 +397,10 @@ function ENT:OneShot(role, keepState)
 	self.loco:SetDesiredSpeed(0)
 	local done = true
 	while CurTime() - t0 < d do
-		if (self.state ~= st and not keepState) or self.gone or self.tifHeld then done = false break end
+		if (self.state ~= st and not keepState) or self.gone or self.tifHeld then
+			done = false
+			break
+		end
 		local u = math.Clamp((CurTime() - t0) / d, 0, 1)
 		local x, y, r = TIF.Action.RootAt(c, u)
 		if math.abs(x) + math.abs(y) > 0.5 or math.abs(r) > 0.5 then
@@ -344,8 +410,13 @@ function ENT:OneShot(role, keepState)
 				local t = util.TraceHull({ start = cur + UP, endpos = np + UP, mins = mins, maxs = maxs, mask = MASK_NPCSOLID, filter = self })
 				local g = not t.Hit and util.TraceLine({ start = np + UP, endpos = np - Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY })
 
-				if t.Hit and t.StartSolid then g = util.TraceLine({ start = np + UP, endpos = np - Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY }) end
-				if not (g and g.Hit) then done = false break end
+				if t.Hit and t.StartSolid then
+					g = util.TraceLine({ start = np + UP, endpos = np - Vector(0, 0, 40), mask = MASK_NPCSOLID_BRUSHONLY })
+				end
+				if not (g and g.Hit) then
+					done = false
+					break
+				end
 				self:SetPos(Vector(np.x, np.y, g.HitPos.z))
 			end
 			self:SetAngles(Angle(0, y0 + r, 0))
@@ -353,7 +424,9 @@ function ENT:OneShot(role, keepState)
 		coroutine.yield()
 	end
 
-	if not self.tifHeld then self.civOneShot = nil end
+	if not self.tifHeld then
+		self.civOneShot = nil
+	end
 	return done
 end
 
@@ -367,6 +440,7 @@ function ENT:Idle()
 	else
 		self:ActFallback(ACT_IDLE)
 	end
+
 	self.loco:SetDesiredSpeed(0)
 end
 
@@ -387,7 +461,9 @@ function ENT:Dodge()
 		local sp = v:Length()
 		if sp < 40 or v:Dot(off) / (sp * d) < 0.7 then return false end
 		local side = Vector(v.y, -v.x, 0)
-		if side:Dot(off) < 0 then side = side * -1 end
+		if side:Dot(off) < 0 then
+			side = side * -1
+		end
 		local n = numpad(math.AngleDifference(side:Angle().y, self:GetAngles().y))
 		n = (n == "7" or n == "9") and "8" or ((n == "1" or n == "3") and "2" or n)
 		local role = ((self.fear or 0) > 0.3 and clip("civ_pevade_" .. n)) and ("civ_pevade_" .. n) or ("civ_evade_" .. n)
@@ -398,16 +474,20 @@ function ENT:Dodge()
 		self.nextDodge = CurTime() + 2
 		if prev and not self.gone then
 			self:Play(prev)
-			if clip(prev) and clip(prev).loop then self:SetCycle(cyc) end
+			if clip(prev) and clip(prev).loop then
+				self:SetCycle(cyc)
+			end
 		end
 		return true
 	end
+
 	for _, ply in ipairs(player.GetHumans()) do
 		if ply:Alive() and try(ply) then return true end
 	end
 	for _, s in ipairs(TIF.Soldiers or {}) do
 		if IsValid(s) and not s.tifDead and try(s) then return true end
 	end
+
 	return false
 end
 
@@ -423,6 +503,7 @@ function ENT:React()
 		self:OneShot(startle, true)
 		return
 	end
+
 	local v = (self.var % 2) + 1
 	local sizes = f >= 0.85 and { "lg1", "md" .. v, "sm" .. v } or (f >= 0.5 and { "md" .. v, "sm" .. v } or { "sm" .. v })
 	for _, sz in ipairs(sizes) do
@@ -433,7 +514,10 @@ function ENT:React()
 			return
 		end
 	end
-	if self:RoomFor(clip(startle)) then self:OneShot(startle, true) end
+
+	if self:RoomFor(clip(startle)) then
+		self:OneShot(startle, true)
+	end
 end
 
 function ENT:FaceTo(pos)
@@ -462,15 +546,21 @@ function ENT:Scare(pos, amount)
 	if not self.decided and self.fear >= 0.2 then
 		self.decided = true
 		local share = (Civ and Civ.LEAVE_SHARE) or 0.8
-		if self.shelter or self.noLeave then share = 0 end
-		if math.random() < share then self.leaving = true end
+		if self.shelter or self.noLeave then
+			share = 0
+		end
+		if math.random() < share then
+			self.leaving = true
+		end
 	end
 
 	if self.state == "wander" or self.state == "talk" then
 		self.reactAt = pos
 	end
 	if self.leaving then
-		if self.state ~= "leave" then self:SetState("leave") end
+		if self.state ~= "leave" then
+			self:SetState("leave")
+		end
 	elseif self.state ~= "flee" and self.state ~= "hide" and self.state ~= "evacuate" then
 		self:SetState("flee")
 	elseif self.state == "hide" and pos:DistToSqr(self:GetPos()) < ((Civ and Civ.TOO_CLOSE) or 700) ^ 2
@@ -495,15 +585,19 @@ function ENT:ScaredPose()
 		local p = self:Variant("civ_prone_", 6)
 		if p then return p end
 	end
+
 	for i = 0, #SCARED - 1 do
 		local r = SCARED[(self.var + i) % #SCARED + 1]
 		local ch = string.match(r, "^chain_(%d)$")
 		if ch then
-			if clip("civ_tocower_" .. ch) and clip("civ_cowering_" .. ch) then return r end
+			if clip("civ_tocower_" .. ch) and clip("civ_cowering_" .. ch) then
+				return r
+			end
 		elseif clip(r) then
 			return r
 		end
 	end
+
 	return "civ_idle_1"
 end
 
@@ -522,9 +616,13 @@ function ENT:RunBehaviour()
 			coroutine.yield()
 		elseif st == "wander" then
 
-			if (self.fear or 0) > 0 and CurTime() - (self.scaredAt or 0) > 45 then self.fear = 0 end
+			if (self.fear or 0) > 0 and CurTime() - (self.scaredAt or 0) > 45 then
+				self.fear = 0
+			end
 			local p = Civ and Civ.RandomPoint(self.home, self.homeRadius)
-			if p and math.random() < 0.65 then self:GoTo(p, "walk") end
+			if p and math.random() < 0.65 then
+				self:GoTo(p, "walk")
+			end
 			self:Idle()
 
 			if self.mw and (self.fear or 0) <= 0.05 and math.random() < 0.35 and self:Wait(math.Rand(2, 5))
@@ -542,15 +640,21 @@ function ENT:RunBehaviour()
 			else
 				self:Idle()
 			end
-			if IsValid(self.partner) then self:FaceTo(self.partner:GetPos()) end
+			if IsValid(self.partner) then
+				self:FaceTo(self.partner:GetPos())
+			end
 			self:Wait(math.Rand(8, 18))
-			if self.state == "talk" then self:SetState("wander") end
+			if self.state == "talk" then
+				self:SetState("wander")
+			end
 		elseif st == "flee" then
 			self:React()
 
 			local spot = Civ and Civ.HideSpot(self, self.dangerPos or self:GetPos())
 			self.hideSpot = spot
-			if spot then self:GoTo(spot.pos, self:FleeKind(self.fear > 0.6 and "panic_run" or "panic_jog"), true, 25) end
+			if spot then
+				self:GoTo(spot.pos, self:FleeKind(self.fear > 0.6 and "panic_run" or "panic_jog"), true, 25)
+			end
 			self:SetState("hide")
 		elseif st == "hide" then
 			self:Hide(Civ)
@@ -560,12 +664,16 @@ function ENT:RunBehaviour()
 			local p = Civ and Civ.LeavePoint(self, self.dangerPos or self:GetPos())
 			if p then
 				local r = self:GoTo(p, "panic_run", true, 60)
-				if r ~= "ok" then self.leaveTries = (self.leaveTries or 0) + 1 end
+				if r ~= "ok" then
+					self.leaveTries = (self.leaveTries or 0) + 1
+				end
 			else
 				self.leaveTries = (self.leaveTries or 0) + 1
 			end
 
-			if (self.leaveTries or 0) >= 2 then self.leaving = false self:SetState("hide") end
+			if (self.leaveTries or 0) >= 2 then
+				self.leaving = false self:SetState("hide")
+			end
 			self:Idle()
 			self:Wait(0.5, true)
 		elseif st == "evacuate" then
@@ -585,7 +693,9 @@ function ENT:RunBehaviour()
 		elseif st == "held" then
 
 			self.loco:SetDesiredSpeed(0)
-			if not self.tifHeld then self:SetState("flee") end
+			if not self.tifHeld then
+				self:SetState("flee")
+			end
 		else
 			self:Wait(1)
 		end
@@ -618,12 +728,18 @@ function ENT:Hide(Civ)
 		if self.hideFor ~= spot or not self.hideRole then
 			self:Uncower()
 			self.hideFor = spot
-			if spot and spot.wall then self.hideRole = self:Variant("civ_wall_" .. spot.wall .. "_", 4) else self.hideRole = nil end
+			if spot and spot.wall then
+				self.hideRole = self:Variant("civ_wall_" .. spot.wall .. "_", 4)
+			else
+				self.hideRole = nil
+			end
 			self.hideRole = self.hideRole or self:ScaredPose()
 		end
 		role = self.hideRole
 		wall = spot and spot.wall and string.find(role, "^civ_wall_") ~= nil
-		if spot and spot.yaw then self:SetAngles(Angle(0, spot.yaw, 0)) end
+		if spot and spot.yaw then
+			self:SetAngles(Angle(0, spot.yaw, 0))
+		end
 		local ch = string.match(role, "^chain_(%d)$")
 		if ch then
 			if self.civChain ~= ch then
@@ -637,15 +753,21 @@ function ENT:Hide(Civ)
 	else
 		self:ActFallback(ACT_COWER or ACT_CROUCH)
 	end
+
 	self.loco:SetDesiredSpeed(0)
 	local function leaving()
 
 		self.hideRole, self.hideFor = nil, nil
-		if not self.gone then self:Uncower() end
+		if not self.gone then
+			self:Uncower()
+		end
 	end
+
 	local untilT = CurTime() + math.Rand(6, 12)
 	while CurTime() < untilT do
-		if self.state ~= "hide" or self.gone or self.tifHeld then return leaving() end
+		if self.state ~= "hide" or self.gone or self.tifHeld then
+			return leaving()
+		end
 		local h = self.mw and self.dangerPos and Civ and CurTime() - (self.scaredAt or 0) < 60 and Civ.Helper(self)
 		local prone = string.find(role or "", "^civ_prone_") ~= nil
 		if h and h ~= self.pointedFor and not prone then
@@ -679,7 +801,9 @@ function ENT:OnInjured(dmg)
 	local att = dmg:GetAttacker()
 	hook.Run("TIF_CivilianHurt", self, dmg, att)
 
-	if self:Health() - dmg:GetDamage() > 0 then self:Scare(dmg:GetDamagePosition(), 1) end
+	if self:Health() - dmg:GetDamage() > 0 then
+		self:Scare(dmg:GetDamagePosition(), 1)
+	end
 end
 
 function ENT:OnKilled(dmg)
@@ -697,7 +821,9 @@ function ENT:OnKilled(dmg)
 			rag:Activate()
 			rag:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 			local force = dmg:GetDamageForce()
-			if force:Length() > 6000 then force = force:GetNormalized() * 6000 end
+			if force:Length() > 6000 then
+				force = force:GetNormalized() * 6000
+			end
 			local hit = dmg:GetDamagePosition()
 			local nearest, nd
 			local bm = Matrix()
@@ -710,18 +836,27 @@ function ENT:OnKilled(dmg)
 					phys:SetAngles(m:GetAngles())
 					phys:SetVelocity(self.loco:GetVelocity())
 					local d = m:GetTranslation():DistToSqr(hit)
-					if not nd or d < nd then nearest, nd = phys, d end
+					if not nd or d < nd then
+						nearest, nd = phys, d
+					end
 				end
 			end
-			if nearest then nearest:ApplyForceCenter(force * 0.4) end
+			if nearest then
+				nearest:ApplyForceCenter(force * 0.4)
+			end
 
-			if TIF.Foley and TIF.Foley.CorpseSounds then TIF.Foley.CorpseSounds(rag) end
+			if TIF.Foley and TIF.Foley.CorpseSounds then
+				TIF.Foley.CorpseSounds(rag)
+			end
 			local t = GetConVar("tif_corpse_time")
-			if t and t:GetFloat() > 0 then SafeRemoveEntityDelayed(rag, t:GetFloat()) end
+			if t and t:GetFloat() > 0 then
+				SafeRemoveEntityDelayed(rag, t:GetFloat())
+			end
 		end
 		self:Remove()
 		return
 	end
+
 	self:BecomeRagdoll(dmg)
 end
 

@@ -36,12 +36,15 @@ local function recently_failed(m, pos, now)
 			return true
 		end
 	end
+
 	return false
 end
 
 local function mark_failed(m, pos, now)
 	m.failed[#m.failed + 1] = { pos = pos, time = now }
-	if #m.failed > 12 then table.remove(m.failed, 1) end
+	if #m.failed > 12 then
+		table.remove(m.failed, 1)
+	end
 end
 
 local LEASH_EXEMPT = { formation = true, hold = true, advance = true, post = true, patrol = true, cqb = true,
@@ -63,9 +66,12 @@ local function taken(npc, p)
 		local o = soldiers[i]
 		if IsValid(o) and o ~= npc and not o.tifDead and not o.tifVeh then
 			local g = o.tifMove and o.tifMove.goal
-			if (g and g:DistToSqr(p) < r2) or (not g and o:GetPos():DistToSqr(p) < r2) then return true end
+			if (g and g:DistToSqr(p) < r2) or (not g and o:GetPos():DistToSqr(p) < r2) then
+				return true
+			end
 		end
 	end
+
 	return false
 end
 M.Taken = taken
@@ -89,6 +95,7 @@ local function spread(npc, pos)
 			end
 		end
 	end
+
 	return pos
 end
 M.Spread = spread
@@ -107,20 +114,28 @@ function M.SetGoal(npc, pos, speed, tag, faceYaw)
 			pos = center + dir * radius * 0.9
 		end
 	end
+
 	if m.goal and (m.goal:DistToSqr(pos) < SAME_GOAL * SAME_GOAL
 		or (m.want and m.want:DistToSqr(pos) < SAME_GOAL * SAME_GOAL)) then
 		m.speed, m.tag = speed, tag
 		return true
 	end
+
 	local want = pos
-	if not M.SPREAD_EXEMPT[tag or ""] then pos = spread(npc, pos) end
+	if not M.SPREAD_EXEMPT[tag or ""] then
+		pos = spread(npc, pos)
+	end
+
 	local snapped = M.Snap(pos)
 	if not snapped or recently_failed(m, snapped, now) then return false end
 
 	if m.stopping then
 		m.stopping = nil
-		if npc.tifAct and npc.tifAct.trans then TIF.Action.Clear(npc) end
+		if npc.tifAct and npc.tifAct.trans then
+			TIF.Action.Clear(npc)
+		end
 	end
+
 	m.goal, m.speed, m.tag, m.needCompute, m.result, m.startedAt = snapped, speed, tag, true, nil, now
 	m.want, m.fresh, m.detour, m.watch, m.stuckN, m.passN = want, true, nil, nil, 0, 0
 
@@ -128,6 +143,7 @@ function M.SetGoal(npc, pos, speed, tag, faceYaw)
 		and TIF.Weapon.CoveringBurst then
 		TIF.Weapon.CoveringBurst(npc, now)
 	end
+
 	return true
 end
 
@@ -139,6 +155,7 @@ function M.CombatGait(npc, goal)
 		and (m.speed == "sprint" or m.speed == "tactical") then
 		return m.speed
 	end
+
 	local d = (goal or npc:GetPos()) - npc:GetPos()
 	d.z = 0
 	return d:LengthSqr() > M.SPRINT_DIST * M.SPRINT_DIST and "sprint" or "tactical"
@@ -147,10 +164,14 @@ end
 function M.Stop(npc)
 	local m = npc.tifMove
 
-	if m.goal and not m.stopping and TIF.TransMW then TIF.TransMW.StopHere(npc, m) end
+	if m.goal and not m.stopping and TIF.TransMW then
+		TIF.TransMW.StopHere(npc, m)
+	end
 	m.goal, m.needCompute, m.tag, m.stopping, m.fresh = nil, false, nil, nil, nil
 	m.want, m.detour, m.watch, m.sprintT = nil, nil, nil, nil
-	if npc.tifPath:IsValid() then npc.tifPath:Invalidate() end
+	if npc.tifPath:IsValid() then
+		npc.tifPath:Invalidate()
+	end
 end
 
 function M.Moving(npc)
@@ -162,9 +183,12 @@ function M.UpdateThreatAreas(npc)
 	for _, c in pairs(npc.tifK.contacts) do
 		if c.confirmed and #areas < 3 then
 			local a = navmesh.GetNearestNavArea(c.pos, false, 200, false, true)
-			if IsValid(a) then areas[#areas + 1] = a end
+			if IsValid(a) then
+				areas[#areas + 1] = a
+			end
 		end
 	end
+
 	npc.tifThreatAreas = areas
 
 	local lanes = {}
@@ -186,6 +210,7 @@ function M.UpdateThreatAreas(npc)
 			end
 		end
 	end
+
 	npc.tifFireLanes = lanes
 end
 
@@ -201,6 +226,7 @@ local function in_lane(lanes, p)
 			if lat < 40 + along * LANE_TAN then return true end
 		end
 	end
+
 	return false
 end
 
@@ -229,12 +255,18 @@ local function cost_fn(npc, now)
 		elseif dz < drop then
 			return -1
 		end
-		if area:HasAttributes(NAV_MESH_AVOID) then cost = cost + dist * 4 end
+		if area:HasAttributes(NAV_MESH_AVOID) then
+			cost = cost + dist * 4
+		end
 		if avPos and area:GetCenter():DistToSqr(avPos) < avR2 then
 			cost = cost + dist * 6
 		end
-		if area:HasAttributes(NAV_MESH_CROUCH) then cost = cost + dist * 0.5 end
-		if nLanes > 0 and in_lane(lanes, area:GetCenter()) then cost = cost + dist * 3 end
+		if area:HasAttributes(NAV_MESH_CROUCH) then
+			cost = cost + dist * 0.5
+		end
+		if nLanes > 0 and in_lane(lanes, area:GetCenter()) then
+			cost = cost + dist * 3
+		end
 		for i = 1, nThreats do
 			if threats[i]:IsPotentiallyVisible(area) then
 				cost = cost + dist * EXPOSURE_COST
@@ -254,7 +286,10 @@ M.SPRINT_RAMP = 1.5
 local RG_DIRS = { { "f", 0 }, { "l", 90 }, { "r", -90 }, { "bl", 135 }, { "br", -135 } }
 function M.RunGunDir(npc)
 	local host = npc.tifHomeHost
-	if not (host and TIF.GTG.IsVB(host) and TIF.GTG.Clip("mwrg_f", host)) then return "" end
+	if not (host and TIF.GTG.IsVB(host) and TIF.GTG.Clip("mwrg_f", host)) then
+		return ""
+	end
+
 	local cf = npc.tifCoverFire
 	local v = npc.loco:GetVelocity()
 	v.z = 0
@@ -263,8 +298,11 @@ function M.RunGunDir(npc)
 	local best, be = "", nil
 	for _, d in ipairs(RG_DIRS) do
 		local e = math.abs(math.AngleDifference(rel, d[2]))
-		if TIF.GTG.Clip("mwrg_" .. d[1], host) and (not be or e < be) then best, be = d[1], e end
+		if TIF.GTG.Clip("mwrg_" .. d[1], host) and (not be or e < be) then
+			best, be = d[1], e
+		end
 	end
+
 	return best
 end
 
@@ -276,10 +314,12 @@ function sprint_speed(npc, m, sp, now)
 		m.sprintT = nil
 		return full
 	end
+
 	if not m.sprintT then
 		m.sprintT = now
 		m.sprintFrom = math.min(full, math.max(npc.loco:GetVelocity():Length2D(), speed_of(npc, "tactical")))
 	end
+
 	local k = math.Clamp((now - m.sprintT) / M.SPRINT_RAMP, 0, 1)
 	k = k * k * (3 - 2 * k)
 	return Lerp(k, m.sprintFrom, full)
@@ -296,9 +336,12 @@ local function blocker(npc, fwd)
 		if o ~= npc and (o:IsNPC() or o:IsPlayer() or o:IsNextBot()) then
 			local to = o:GetPos() - me
 			to.z = 0
-			if to:Dot(fwd) > 0 and (not bd or to:LengthSqr() < bd) then best, bd = o, to:LengthSqr() end
+			if to:Dot(fwd) > 0 and (not bd or to:LengthSqr() < bd) then
+				best, bd = o, to:LengthSqr()
+			end
 		end
 	end
+
 	return best
 end
 
@@ -317,19 +360,27 @@ local function unstick(npc, m, now)
 	local me = npc:GetPos()
 	local fwd = npc.loco:GetVelocity()
 	fwd.z = 0
-	if fwd:LengthSqr() < 1 then fwd = (m.goal or me) - me fwd.z = 0 end
-	if fwd:LengthSqr() < 1 then fwd = npc:GetForward() end
+	if fwd:LengthSqr() < 1 then
+		fwd = (m.goal or me) - me fwd.z = 0
+	end
+
+	if fwd:LengthSqr() < 1 then
+		fwd = npc:GetForward()
+	end
 	fwd:Normalize()
 	local right = Vector(fwd.y, -fwd.x, 0)
 	local b = blocker(npc, fwd)
 	local C = TIF.Crowd
 	if tif_body(b) and C and C.GhostPair and (m.passN or 0) < M.PASS_MAX and C.GhostPair(npc, b, M.PASS_T, now) then
 		m.passN = (m.passN or 0) + 1
-		if C.MakeWay then C.MakeWay(b, npc, fwd, now) end
+		if C.MakeWay then
+			C.MakeWay(b, npc, fwd, now)
+		end
 		m.stuckN = math.max(0, (m.stuckN or 1) - 1)
 		m.watch = nil
 		return
 	end
+
 	local s1
 	if IsValid(b) then
 		local lat = (b:GetPos() - me):Dot(right)
@@ -337,6 +388,7 @@ local function unstick(npc, m, now)
 	else
 		s1 = math.random() < 0.5 and 1 or -1
 	end
+
 	local bestP, bestF
 	unstickHull.start, unstickHull.filter = me, npc
 	for k = 1, 2 do
@@ -344,13 +396,22 @@ local function unstick(npc, m, now)
 		local to = me + right * (sgn * 44) + fwd * 12
 		unstickHull.endpos = to
 		local tr = util.TraceHull(unstickHull)
-		if tr.Fraction > 0.9 then bestP = to break end
-		if not bestF or tr.Fraction > bestF then bestP, bestF = me + (to - me) * tr.Fraction, tr.Fraction end
+		if tr.Fraction > 0.9 then
+			bestP = to
+			break
+		end
+		if not bestF or tr.Fraction > bestF then
+			bestP, bestF = me + (to - me) * tr.Fraction, tr.Fraction
+		end
 	end
-	if bestF and bestF < 0.3 then bestP = me - fwd * M.BACKOFF end
+
+	if bestF and bestF < 0.3 then
+		bestP = me - fwd * M.BACKOFF
+	end
 	if not tif_body(b) then
 		m.avoid = { pos = IsValid(b) and b:GetPos() or (me + fwd * 40), untilT = now + M.AVOID_T }
 	end
+
 	m.detour = { pos = bestP, untilT = now + (bestF and bestF < 0.3 and 1.3 or 0.9) }
 end
 
@@ -362,6 +423,7 @@ function watch_stuck(npc, m, want, now)
 		m.watch = { t = now, last = now, pos = me }
 		return false
 	end
+
 	w.last = now
 	if now - w.t < M.STUCK_T then return false end
 	local moved = (me - w.pos):Length2D()
@@ -371,6 +433,7 @@ function watch_stuck(npc, m, want, now)
 		m.stuckN = 0
 		return false
 	end
+
 	m.stuckN = (m.stuckN or 0) + 1
 	if m.stuckN >= M.STUCK_MAX then
 		mark_failed(m, m.goal, now)
@@ -378,6 +441,7 @@ function watch_stuck(npc, m, want, now)
 		m.result = "stuck"
 		return true
 	end
+
 	unstick(npc, m, now)
 	return true
 end
@@ -387,7 +451,10 @@ local base_speed
 function speed_of(npc, mode)
 	local v = base_speed(npc, mode)
 	local w = npc.tifWade
-	if w and w > 0 and mode ~= "crawl" then v = math.min(v, M.WADE_CAP[w] or v) end
+	if w and w > 0 and mode ~= "crawl" then
+		v = math.min(v, M.WADE_CAP[w] or v)
+	end
+
 	return v
 end
 
@@ -396,7 +463,10 @@ function base_speed(npc, mode)
 	local mult = npc.tifArch.speeds
 	if mode == "walk" then return s.walk * (mult.walk or 1) end
 	if mode == "tactical" then return s.tactical * (mult.tactical or 1) end
-	if mode == "alert" then return (s.alert or s.tactical) * (mult.tactical or 1) end
+	if mode == "alert" then
+		return (s.alert or s.tactical) * (mult.tactical or 1)
+	end
+
 	if mode == "aimrun" then return s.aimrun end
 	if mode == "sprint" then return s.sprint * M.SPRINT_SCALE end
 	if mode == "crouch" then return s.crouch end
@@ -410,14 +480,19 @@ function M.Step(npc)
 	local m = npc.tifMove
 	local now = CurTime()
 
-	if npc.tifGlide and TIF.CQB and TIF.CQB.GlideStep and TIF.CQB.GlideStep(npc, now) then return end
+	if npc.tifGlide and TIF.CQB and TIF.CQB.GlideStep and TIF.CQB.GlideStep(npc, now) then
+		return
+	end
 
 	local pr = npc.tifProne
 	if pr and m.goal and m.speed ~= "crawl" then
 		local PB = TIF.ProneB
-		if PB and PB.IN and pr.phase == PB.IN then PB.GetUp(npc) end
+		if PB and PB.IN and pr.phase == PB.IN then
+			PB.GetUp(npc)
+		end
 		return
 	end
+
 	if m.goal and m.needCompute then
 		if Budget.Take("path", 1) then
 			Prof.Begin("path")
@@ -431,11 +506,14 @@ function M.Step(npc)
 		end
 		return
 	end
+
 	if not m.goal then return end
 	local path = npc.tifPath
 
 	if npc.tifBipod then
-		if TIF.BipodMW then TIF.BipodMW.Leave(npc, now) end
+		if TIF.BipodMW then
+			TIF.BipodMW.Leave(npc, now)
+		end
 		return
 	end
 
@@ -456,24 +534,33 @@ function M.Step(npc)
 		TIF.Action.Clear(npc)
 		m.needCompute = true
 	end
+
 	if npc.tifAct and npc.tifAct.trans and not Act_Done(npc, now) then
-		if not (m.fresh and string.sub(npc.tifAct.name, 1, 9) == "mwt_turn_") then return end
+		if not (m.fresh and string.sub(npc.tifAct.name, 1, 9) == "mwt_turn_") then
+			return
+		end
 		TIF.Action.Clear(npc)
 	end
+
 	local ex = npc.tifStartExit
 	if ex then
 		npc.tifStartExit = nil
-		if now >= ex.doneAt - 0.1 and now < ex.doneAt + 0.4 then npc.loco:SetVelocity(ex.vel) end
+		if now >= ex.doneAt - 0.1 and now < ex.doneAt + 0.4 then
+			npc.loco:SetVelocity(ex.vel)
+		end
 	end
+
 	if not path:IsValid() then
 		m.goal, m.result = nil, "arrived"
 		return
 	end
+
 	local T = TIF.TransMW
 	if m.fresh then
 		m.fresh = nil
 		if T and T.Start(npc, m) then return end
 	end
+
 	if T and T.Stop(npc, m) then
 		m.stopping = true
 		return
@@ -489,9 +576,14 @@ function M.Step(npc)
 	local rg = ""
 	if (sp == "sprint" or sp == "run") and TIF.Weapon.CoverFiring and TIF.Weapon.CoverFiring(npc, now) then
 		rg = M.RunGunDir(npc)
-		if rg == "" then sp = "tactical" end
+		if rg == "" then
+			sp = "tactical"
+		end
 	end
-	if npc:GetNW2String("tif_rungun", "") ~= rg then npc:SetNW2String("tif_rungun", rg) end
+
+	if npc:GetNW2String("tif_rungun", "") ~= rg then
+		npc:SetNW2String("tif_rungun", rg)
+	end
 	npc.tifRunGun = rg ~= "" or nil
 	npc.tifAimFree = npc.tifRunGun or (npc.tifAimFree and not npc.tifRunGunWas) or nil
 	npc.tifRunGunWas = npc.tifRunGun
@@ -521,20 +613,27 @@ function M.Step(npc)
 	if TIF.Crowd and TIF.Crowd.Steer then
 		local fwd = npc.loco:GetVelocity()
 		fwd.z = 0
-		if fwd:LengthSqr() < 100 then fwd = m.goal - npc:GetPos() fwd.z = 0 end
+		if fwd:LengthSqr() < 100 then
+			fwd = m.goal - npc:GetPos() fwd.z = 0
+		end
 		if fwd:LengthSqr() > 1 then
 			fwd:Normalize()
 			want, steer = TIF.Crowd.Steer(npc, fwd, want, m.goal, now)
 		end
 	end
+
 	npc.loco:SetDesiredSpeed(want)
 	path:Update(npc)
-	if steer then npc.loco:Approach(steer, TIF.Crowd.WEIGHT) end
+	if steer then
+		npc.loco:Approach(steer, TIF.Crowd.WEIGHT)
+	end
+
 	if npc:GetPos():DistToSqr(m.goal) < GOAL_TOLERANCE * GOAL_TOLERANCE * 1.5 then
 		M.Stop(npc)
 		m.result = "arrived"
 		return
 	end
+
 	if watch_stuck(npc, m, want, now) then return end
 	if npc.loco:IsStuck() then
 		npc.loco:ClearStuck()
@@ -567,20 +666,25 @@ function M.Face(npc, dt)
 		loco:SetMaxYawRate(0)
 		return
 	end
+
 	local face = npc.tifFace
 
 	local cf = npc.tifCoverFire
 
-	if cf and CurTime() < cf.untilT and cf.shots > 0 and not npc.tifRunGun then face = cf.aim end
+	if cf and CurTime() < cf.untilT and cf.shots > 0 and not npc.tifRunGun then
+		face = cf.aim
+	end
 
 	if face and npc.tifMode == TIF.Anim.MODE_RELAXED and not npc.tifAct and not npc.tifDowned
 		and loco:GetVelocity():Length2DSqr() > 30 * 30 then
 		face = nil
 	end
+
 	if not face then
 		loco:SetMaxYawRate(npc.tifArch.turnRate)
 		return
 	end
+
 	loco:SetMaxYawRate(0)
 	local to = face - npc:GetPos()
 	if to:Length2DSqr() < 1 then return end

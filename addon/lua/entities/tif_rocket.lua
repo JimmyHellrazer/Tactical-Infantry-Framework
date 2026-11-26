@@ -21,7 +21,9 @@ if SERVER then
 		self.tifMax = r.max or self.tifSpeed
 		self.tifGrav = (self.tifP.gravity or 0) * 600
 		self.tifDie = CurTime() + (self.tifP.life or 5)
-		if IsValid(owner) then self:SetOwner(owner) end
+		if IsValid(owner) then
+			self:SetOwner(owner)
+		end
 	end
 
 	function ENT:Initialize()
@@ -49,7 +51,10 @@ if SERVER then
 		local now = CurTime()
 		local dt = math.max(0, now - (self.tifLast or now))
 		self.tifLast = now
-		if now >= self.tifDie then self:Burst(self:GetPos()) return end
+		if now >= self.tifDie then
+			self:Burst(self:GetPos())
+			return
+		end
 
 		local v = self.tifVel or self:GetVelocity()
 		local len = v:Length()
@@ -82,7 +87,9 @@ if SERVER then
 
 	function ENT:Touch(ent)
 		if self.tifDone or ent == self:GetOwner() then return end
-		if ent:IsSolid() then self:Burst(self:GetPos()) end
+		if ent:IsSolid() then
+			self:Burst(self:GetPos())
+		end
 	end
 
 	function ENT:Burst(pos, normal)
@@ -152,6 +159,8 @@ else
 
 	function ENT:OnRemove(fullUpdate)
 		if fullUpdate then return end
-		if self.tifEmitter then self.tifEmitter:Finish() self.tifEmitter = nil end
+		if self.tifEmitter then
+			self.tifEmitter:Finish() self.tifEmitter = nil
+		end
 	end
 end

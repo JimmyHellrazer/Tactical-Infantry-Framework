@@ -12,7 +12,9 @@ D.HANDU = 0.8
 local cv = CreateConVar("tif_door_anims", "1", FCVAR_ARCHIVE, "Soldiers open doors in their way with MW19's door animations")
 
 local function closed_door(e)
-	if not (IsValid(e) and e:GetClass() == "prop_door_rotating") then return false end
+	if not (IsValid(e) and e:GetClass() == "prop_door_rotating") then
+		return false
+	end
 	local ok, st = pcall(e.GetInternalVariable, e, "m_eDoorState")
 	if ok and st ~= nil and st ~= 0 then return false end
 	local okL, locked = pcall(e.GetInternalVariable, e, "m_bLocked")
@@ -28,8 +30,11 @@ local function variants(host, side, kind)
 	for _, v in ipairs({ "a", "b", "c" }) do
 		local n = "mwdr_" .. side .. "_" .. kind .. "_" .. v
 		local c = TIF.GTG.Clip(n, host)
-		if c then out[#out + 1] = { name = n, clip = c } end
+		if c then
+			out[#out + 1] = { name = n, clip = c }
+		end
 	end
+
 	variantCache[key] = out
 	return out
 end
@@ -37,7 +42,9 @@ end
 D.TOUCH = 44
 
 function D.Check(npc, m, now)
-	if not cv:GetBool() or npc.tifCQB or npc.tifVeh or npc.tifDowned or npc.tifCov then return false end
+	if not cv:GetBool() or npc.tifCQB or npc.tifVeh or npc.tifDowned or npc.tifCov then
+		return false
+	end
 	if now < (npc.tifNextDoorCheck or 0) then return false end
 	local host = npc.tifHomeHost
 	local canClip = not npc.tifAct and not npc.tifProne and host and npc.tifHostId == host and TIF.GTG.IsVB(host)
@@ -56,18 +63,25 @@ function D.Check(npc, m, now)
 			local mid = e:WorldSpaceCenter()
 			local ahead = (mid - pos):Dot(dir)
 			local side = math.abs((mid - pos):Dot(Vector(-dir.y, dir.x, 0)))
-			if ahead > -6 and ahead < D.LOOK and side < 48 and (not bestD or ahead < bestD) then best, bestD = e, ahead end
+			if ahead > -6 and ahead < D.LOOK and side < 48 and (not bestD or ahead < bestD) then
+				best, bestD = e, ahead
+			end
 		end
 	end
+
 	if not best then return false end
 	local started, waiting = false, false
-	if canClip then started, waiting = D.PlayClip(npc, best, bestD, speed, dir, pos, now) end
+	if canClip then
+		started, waiting = D.PlayClip(npc, best, bestD, speed, dir, pos, now)
+	end
+
 	if started then return true end
 
 	if not waiting and bestD < D.TOUCH then
 		best:Fire("OpenAwayFrom", "!activator", 0, npc)
 		npc.tifNextDoorCheck = now + 0.6
 	end
+
 	return false
 end
 
@@ -81,17 +95,23 @@ function D.PlayClip(npc, best, bestD, speed, dir, pos, now)
 	for _, s in ipairs({ "l", "r" }) do
 		for _, e in ipairs(variants(host, s, kind)) do
 			local drift = e.clip.move[2] or 0
-			if (drift > 0) == hingeRight or math.abs(drift) < 4 then cands[#cands + 1] = e end
+			if (drift > 0) == hingeRight or math.abs(drift) < 4 then
+				cands[#cands + 1] = e
+			end
 		end
 	end
+
 	if #cands == 0 and kind ~= "tac" then
 		kind = "tac"
 		for _, s in ipairs({ "l", "r" }) do
 			for _, e in ipairs(variants(host, s, kind)) do
-				if ((e.clip.move[2] or 0) > 0) == hingeRight then cands[#cands + 1] = e end
+				if ((e.clip.move[2] or 0) > 0) == hingeRight then
+					cands[#cands + 1] = e
+				end
 			end
 		end
 	end
+
 	if #cands == 0 then return false end
 	local pick = cands[math.random(#cands)]
 	local u = D.CONTACT[kind] or 0.35

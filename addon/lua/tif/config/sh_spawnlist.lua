@@ -44,10 +44,14 @@ function TIF.RefreshSpawnList()
 		npcs[key] = { Name = e.Name, Class = "tif_civilian", Category = CIV, KeyValues = e.KeyValues }
 		now[key] = true
 	end
+
 	local changed = false
 	for key in pairs(added) do
-		if not now[key] then npcs[key] = nil changed = true end
+		if not now[key] then
+			npcs[key] = nil changed = true
+		end
 	end
+
 	for key in pairs(now) do if not added[key] then changed = true end end
 	added = now
 

@@ -26,15 +26,25 @@ local function check_dependencies(r)
 			r:Check(G.Resolve(req[1]) ~= nil, "Registry symbol " .. req[1])
 		end
 	end
+
 	r:Info("Bundled MW guns", tostring(table.Count(TIFG and TIFG.Weapons or {})))
 	local mwSound = sound.GetProperties("mw19.akilo47.fire") ~= nil
-	if mwSound then r:Pass("MW gun sounds") else r:Warn("MW gun sounds", "not registered: TIF packs them (config/sh_mwsounds.lua, sound/viper/); HL2 sounds are used instead") end
+	if mwSound then
+		r:Pass("MW gun sounds")
+	else
+		r:Warn("MW gun sounds", "not registered: TIF packs them (config/sh_mwsounds.lua, sound/viper/); HL2 sounds are used instead")
+	end
 
 	r:Check(TIF.Glide.Present(), "Glide vehicle base")
 	for _, class in ipairs({ "base_glide_car", "base_tif_mw_car" }) do
 		local stored = scripted_ents.GetStored(class)
-		if stored then r:Pass("Vehicle class " .. class) else r:Warn("Vehicle class " .. class, "not registered") end
+		if stored then
+			r:Pass("Vehicle class " .. class)
+		else
+			r:Warn("Vehicle class " .. class, "not registered")
+		end
 	end
+
 	local car = TIF.Mounted and TIF.Mounted.DefaultCar and TIF.Mounted.DefaultCar()
 	if car then r:Pass("Default vehicle " .. car) else r:Warn("Default vehicle", "none: install the TIF vehicle addon (MW cars) for convoys and vehicle patrols") end
 	r:Check(TIF.GTG.Character(TIF.GTG.MW_HOST) ~= nil, "MW19 animation host (mw_male)")
@@ -42,14 +52,18 @@ local function check_dependencies(r)
 	if TIF.DV.Present() then
 		local n = TIF.DV.WaypointCount()
 		if n > 0 then r:Pass("Decent Vehicle", n .. " waypoints on this map")
-		else r:Warn("Decent Vehicle", "installed, but no waypoints on this map: vehicle routes will use road detection") end
+		else
+			r:Warn("Decent Vehicle", "installed, but no waypoints on this map: vehicle routes will use road detection")
+		end
 	else
 		r:Warn("Decent Vehicle", "missing: vehicle routes will use road detection")
 	end
 
 	local areas = navmesh.GetNavAreaCount()
 	if areas > 0 then r:Pass("Navmesh", areas .. " areas")
-	else r:Fail("Navmesh", "none on this map: run nav_generate (NextBots can't path without it)") end
+	else
+		r:Fail("Navmesh", "none on this map: run nav_generate (NextBots can't path without it)")
+	end
 end
 
 local function check_clips(r)
@@ -61,8 +75,13 @@ local function check_clips(r)
 		r:Fail("Body " .. G.MW_HOST, "not registered (models/tif_mw, lua/tif/gta/characters)")
 		return
 	end
+
 	local ped = probe(hostModel)
-	if not ped then r:Fail("Probe entity") return end
+	if not ped then
+		r:Fail("Probe entity")
+		return
+	end
+
 	local count = ped:GetSequenceCount()
 	r:Info("Host model", hostModel .. " | " .. count .. " sequences | " .. ped:GetBoneCount() .. " bones")
 
@@ -77,18 +96,27 @@ local function check_clips(r)
 				local idx = ped:LookupSequence(c.seq)
 				if idx < 0 then bad[#bad + 1] = name
 				else
-					if idx > maxIndex then maxIndex = idx end
-					if idx > 4095 then over4095[#over4095 + 1] = name .. "#" .. idx end
+					if idx > maxIndex then
+						maxIndex = idx
+					end
+					if idx > 4095 then
+						over4095[#over4095 + 1] = name .. "#" .. idx
+					end
 				end
 			end
 		end
 		if #missing == 0 and #bad == 0 then
 			r:Pass("Clips: " .. group, #names .. " found")
 		else
-			if #missing > 0 then r:Fail("Clips: " .. group, "not in the clip table: " .. table.concat(missing, ", ")) end
-			if #bad > 0 then r:Fail("Clips: " .. group, "sequence not on model: " .. table.concat(bad, ", ")) end
+			if #missing > 0 then
+				r:Fail("Clips: " .. group, "not in the clip table: " .. table.concat(missing, ", "))
+			end
+			if #bad > 0 then
+				r:Fail("Clips: " .. group, "sequence not on model: " .. table.concat(bad, ", "))
+			end
 		end
 	end
+
 	r:Info("Highest required sequence index", tostring(maxIndex))
 	if #over4095 > 0 then
 		r:Warn("Required sequences above index 4095", #over4095 .. ": " .. table.concat(over4095, ", ")
@@ -108,9 +136,17 @@ local function check_weapons(r)
 	local noModel = {}
 	for _, class in ipairs(classes) do
 		local s = G.Stored(class)
-		if not (s and s.WorldModel and util.IsValidModel(s.WorldModel)) then noModel[#noModel + 1] = class end
+		if not (s and s.WorldModel and util.IsValidModel(s.WorldModel)) then
+			noModel[#noModel + 1] = class
+		end
 	end
-	if #noModel == 0 then r:Pass("Every MW gun has its model") else r:Warn("Guns without a model", table.concat(noModel, ", ")) end
+
+	if #noModel == 0 then
+		r:Pass("Every MW gun has its model")
+	else
+		r:Warn("Guns without a model", table.concat(noModel, ", "))
+	end
+
 	for _, f in SortedPairs(TIF.Factions) do
 		for _, class in ipairs(f.weapons or {}) do
 
@@ -143,13 +179,19 @@ local function check_models(r)
 				if e then
 					local missing = {}
 					for _, s in ipairs(TIF.Prone.SEQUENCES) do
-						if e:LookupSequence(s) < 0 then missing[#missing + 1] = s end
+						if e:LookupSequence(s) < 0 then
+							missing[#missing + 1] = s
+						end
 					end
 					if #missing == 0 then r:Pass(label .. ": prone sequences")
-					else r:Warn(label .. ": prone sequences", "missing " .. table.concat(missing, ", ")) end
+					else
+						r:Warn(label .. ": prone sequences", "missing " .. table.concat(missing, ", "))
+					end
 					local groups = {}
 					for _, bg in ipairs(e:GetBodyGroups() or {}) do
-						if bg.num > 1 then groups[#groups + 1] = bg.name .. "(" .. bg.num .. ")" end
+						if bg.num > 1 then
+							groups[#groups + 1] = bg.name .. "(" .. bg.num .. ")"
+						end
 					end
 					r:Info(label .. ": skins " .. e:SkinCount(), "bodygroups " .. (#groups > 0 and table.concat(groups, ", ") or "none"))
 					e:Remove()
@@ -164,7 +206,9 @@ local function check_voices(r)
 	local V = TIF.Voice
 	for _, f in SortedPairs(TIF.Factions) do
 		local packs = V.FactionPacks(f)
-		if #packs == 0 then r:Fail(f.id .. " voice " .. tostring(f.voice), "unknown pack") end
+		if #packs == 0 then
+			r:Fail(f.id .. " voice " .. tostring(f.voice), "unknown pack")
+		end
 		for _, pack in ipairs(packs) do
 			local set = V.Build(pack)
 			local total, events = 0, {}
@@ -178,7 +222,9 @@ local function check_voices(r)
 				r:Pass(f.id .. " voice " .. pack, total .. " lines: " .. table.concat(events, ", "))
 				local missing = {}
 				for _, ev in ipairs(V.CORE_EVENTS) do
-					if not set.events[ev] then missing[#missing + 1] = ev end
+					if not set.events[ev] then
+						missing[#missing + 1] = ev
+					end
 				end
 				if #missing > 0 then r:Warn(f.id .. " voice " .. pack, "no lines for " .. table.concat(missing, ", ")) end
 			end
@@ -191,8 +237,11 @@ function TIF.SelfTest()
 	local steps = { check_dependencies, check_clips, check_weapons, check_models, check_voices }
 	for _, step in ipairs(steps) do
 		local ok, err = pcall(step, r)
-		if not ok then r:Fail("Self-test step crashed", tostring(err)) end
+		if not ok then
+			r:Fail("Self-test step crashed", tostring(err))
+		end
 	end
+
 	r:Save()
 	return r
 end

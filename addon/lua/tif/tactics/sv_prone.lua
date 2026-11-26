@@ -26,6 +26,7 @@ local function durs(model)
 		end
 		e:Remove()
 	end
+
 	durations[model] = d
 	return d
 end
@@ -81,10 +82,13 @@ local function dive(npc)
 			local cl = TIF.GTG.Clip(name, id)
 			if cl then
 				local e = math.abs(math.AngleDifference(yaw + (cl.move[3] or 0), want)) + math.random() * 10
-				if not be or e < be then best, be, bc = name, e, cl end
+				if not be or e < be then
+					best, be, bc = name, e, cl
+				end
 			end
 		end
 	end
+
 	if not best then return nil end
 
 	local dist = math.sqrt(bc.move[1] ^ 2 + bc.move[2] ^ 2)
@@ -105,7 +109,9 @@ function P.GoDown(npc, reason)
 	TIF.Move.Stop(npc)
 	local diveD = mw_durs(npc) and v0:Length2D() >= P.DIVE_SPEED and dive(npc)
 	if diveD then
-		if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "diving prone") end
+		if TIF.CoverBehave.In(npc) then
+			TIF.CoverBehave.Leave(npc, "diving prone")
+		end
 		npc.tifProne = { phase = P.DOWN, t0 = now, phaseEnd = now + diveD, since = now, reason = reason, dive = true }
 		npc.tifStance = 2
 		npc:SetTIFStance(2)
@@ -113,11 +119,16 @@ function P.GoDown(npc, reason)
 		net_phase(npc, P.DOWN, now)
 		return true
 	end
+
 	TIF.Move.Stop(npc)
 	TIF.Action.Clear(npc)
-	if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "going prone") end
+	if TIF.CoverBehave.In(npc) then
+		TIF.CoverBehave.Leave(npc, "going prone")
+	end
 
-	if mw_durs(npc) and npc.tifHostId ~= npc.tifHomeHost and npc.TIFSetHost then npc:TIFSetHost(npc.tifHomeHost) end
+	if mw_durs(npc) and npc.tifHostId ~= npc.tifHomeHost and npc.TIFSetHost then
+		npc:TIFSetHost(npc.tifHomeHost)
+	end
 	local d = durations_of(npc)
 	npc.tifProne = { phase = P.DOWN, t0 = now, phaseEnd = now + d.down, since = now, reason = reason }
 	npc.tifStance = 2
@@ -142,7 +153,9 @@ function P.Update(npc, now)
 	if p.phase == P.DOWN and now >= p.phaseEnd then
 		p.phase = P.IN
 
-		if p.dive and npc.tifAct and string.sub(npc.tifAct.name, 1, 9) == "mwp_dive_" then TIF.Action.Clear(npc) end
+		if p.dive and npc.tifAct and string.sub(npc.tifAct.name, 1, 9) == "mwp_dive_" then
+			TIF.Action.Clear(npc)
+		end
 		net_phase(npc, P.IN, now)
 	elseif p.phase == P.UP and now >= p.phaseEnd then
 		npc.tifProne = nil
@@ -153,5 +166,6 @@ function P.Update(npc, now)
 		npc.tifLastProneAt = now
 		return false
 	end
+
 	return p.phase ~= P.IN
 end

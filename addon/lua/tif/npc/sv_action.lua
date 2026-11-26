@@ -37,13 +37,19 @@ function Action.Play(npc, name, opts)
 	local clip = GTG.Clip(name, host_of(npc))
 	if not clip and npc.tifHomeHost and npc.tifHomeHost ~= host_of(npc) then
 		clip = GTG.Clip(name, npc.tifHomeHost)
-		if clip and npc.TIFSetHost then npc:TIFSetHost(npc.tifHomeHost) end
+		if clip and npc.TIFSetHost then
+			npc:TIFSetHost(npc.tifHomeHost)
+		end
 	end
+
 	if not clip then
 		TIF.Warn("Action clip missing: ", tostring(name))
 		return nil
 	end
-	if opts and opts.base and not GTG.Clip(opts.base, host_of(npc)) then opts.base = nil end
+
+	if opts and opts.base and not GTG.Clip(opts.base, host_of(npc)) then
+		opts.base = nil
+	end
 	opts = opts or {}
 	local now = CurTime()
 	local rate = opts.rate or 1
@@ -81,6 +87,7 @@ function Action.Play(npc, name, opts)
 		end
 		act.to = nil
 	end
+
 	npc:SetNW2String("tif_act", name)
 	npc:SetNW2Float("tif_act_t", now)
 	local sendRate = opts.reverse and -rate or rate
@@ -88,11 +95,13 @@ function Action.Play(npc, name, opts)
 		npc.tifActRateSent = sendRate
 		npc:SetNW2Float("tif_act_rate", sendRate)
 	end
+
 	local baseClip = opts.base or ""
 	if npc.tifActBaseSent ~= baseClip then
 		npc.tifActBaseSent = baseClip
 		npc:SetNW2String("tif_act_base", baseClip)
 	end
+
 	return act.dur
 end
 
@@ -142,13 +151,17 @@ function Action.Tick(npc, now)
 	local act = npc.tifAct
 	if not act or act.loop or act.finished then return end
 	local progress = math.Clamp((now - act.t0) / math.max(0.01, act.dur), 0, 1)
-	if progress >= 1 then act.finished = true end
+	if progress >= 1 then
+		act.finished = true
+	end
+
 	local curPos = npc:GetPos()
 	local targetZ = act.lift and Lerp(smoothstep(progress), act.lift[1], act.lift[2]) or curPos.z
 	local warpFrac = act.warp and smoothstep(math.min(1, progress / math.max(0.01, act.warpU or 1))) or 0
 	if act.rootz then
 		targetZ = act.startPos.z + Action.ZAt(act.clip, progress) + ((act.warp and act.warp.dz) or 0) * warpFrac
 	end
+
 	if act.to then
 		local blend = smoothstep(progress)
 		local pos = LerpVector(blend, act.startPos, act.to.pos)
@@ -184,7 +197,9 @@ function Action.Tick(npc, now)
 					if slideX * slideX + slideY * slideY > 0.01 then
 						hullTrace2.start, hullTrace2.endpos, hullTrace2.filter = hitPos, Vector(hitPos.x + slideX, hitPos.y + slideY, hitPos.z), npc
 						local slideTr = util.TraceHull(hullTrace2)
-						if not slideTr.StartSolid then hitPos = slideTr.HitPos end
+						if not slideTr.StartSolid then
+							hitPos = slideTr.HitPos
+						end
 					end
 				end
 			end
@@ -193,6 +208,11 @@ function Action.Tick(npc, now)
 		SCRATCH_ANG.y = act.startYaw + rootYaw
 		npc:SetAngles(SCRATCH_ANG)
 	end
-	if act.finished and act.autoClear and npc.tifAct == act then Action.Clear(npc) end
-	if act.stopU and progress >= act.stopU and npc.tifAct == act then Action.Clear(npc) end
+
+	if act.finished and act.autoClear and npc.tifAct == act then
+		Action.Clear(npc)
+	end
+	if act.stopU and progress >= act.stopU and npc.tifAct == act then
+		Action.Clear(npc)
+	end
 end

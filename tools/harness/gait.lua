@@ -59,6 +59,6 @@ for _, f in ipairs({ "tif/npc/sv_brain.lua", "tif/tactics/sv_cover_mw.lua", "tif
 	check(not read(f):find('"aimrun"', 1, true), f .. ": no aimrun")
 end
 -- (0.35.0: run and gun with the MW clips during a covering burst, else the aimed walk; only while CoverFiring)
-check(mv:find('TIF.Weapon.CoverFiring(npc, now) then', 1, true) ~= nil and mv:find('if rg == "" then sp = "tactical" end', 1, true) ~= nil, "covering burst: run and gun, else the aimed walk")
+check(mv:find('TIF.Weapon.CoverFiring(npc, now) then', 1, true) ~= nil and mv:gsub("%s+", " "):find('if rg == "" then sp = "tactical" end', 1, true) ~= nil, "covering burst: run and gun, else the aimed walk")
 check(br:find('mv.speed == "sprint" and not coverFire', 1, true) ~= nil, "sprint never shoots")
 print(string.format("passed %d, failed %d", pass, fail))

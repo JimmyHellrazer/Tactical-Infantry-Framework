@@ -221,7 +221,7 @@ do
 	check(not al1.tifMelee, "scanner: allies: no")
 	check(not cv1.tifMelee, "scanner: one in cover: no")
 	local ssrc = io.open(ROOT .. "entities/tif_soldier.lua"):read("*a")
-	check(ssrc:find("if TIF.HitsMW and not self.tifNoDeathClip and self:Health() > 0 then pcall(TIF.HitsMW.Pain", 1, true) ~= nil,
+	check(ssrc:gsub("%s+", " "):find("if TIF.HitsMW and not self.tifNoDeathClip and self:Health() > 0 then pcall(TIF.HitsMW.Pain", 1, true) ~= nil,
 		"no pain stagger on a killing hit / a clip death (the corpse is posed from the fight clip, not an A-pose stagger)")
 end
 print(string.format("passed %d, failed %d", pass, fail))

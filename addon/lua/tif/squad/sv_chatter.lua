@@ -28,6 +28,7 @@ function C.ContactEvent(e)
 		if arch and arch.id == "marksman" then return "contact_sniper" end
 		return "contact"
 	end
+
 	if e.IsPlayer and e:IsPlayer() and e.GetActiveWeapon then
 		local wep = e:GetActiveWeapon()
 		local cls = IsValid(wep) and string.lower(wep:GetClass()) or ""
@@ -41,6 +42,7 @@ function C.ContactEvent(e)
 			return "contact_mg"
 		end
 	end
+
 	return "contact"
 end
 
@@ -51,33 +53,45 @@ end
 
 local function pick(weights)
 	local sum = 0
-	for _, w in pairs(weights) do sum = sum + w end
+	for _, w in pairs(weights) do
+		sum = sum + w
+	end
+
 	if sum <= 0 then return nil end
 	local r = math.random() * sum
 	for ev, w in pairs(weights) do
 		r = r - w
 		if r <= 0 then return ev end
 	end
+
 	return nil
 end
 
 function C.EventFor(m, now)
 	local w = {}
-	for k, v in pairs(C.WEIGHTS) do w[k] = v end
+	for k, v in pairs(C.WEIGHTS) do
+		w[k] = v
+	end
+
 	local supp = m.tifSupp or 0
 	if supp > 0.5 then
 		w.cover_me, w.swear, w.suppressing = 3, 2.5, 1
 	end
-	if now - (m.GetTIFShotTime and m:GetTIFShotTime() or 0) < 2 then w.suppressing = w.suppressing + 2 end
+
+	if now - (m.GetTIFShotTime and m:GetTIFShotTime() or 0) < 2 then
+		w.suppressing = w.suppressing + 2
+	end
 	local mv = m.tifMove
 	if mv and mv.goal then
 		w.moving, w.advance = 2.5, (mv.tag == "advance" or m.tifRole == "maneuver") and 2 or 0
 	end
+
 	local ev = pick(w)
 	if ev == "contact" then
 		local c = m.tifPrimaryC
 		ev = C.ContactEvent(c and c.ent or m.tifPrimary)
 	end
+
 	return ev
 end
 
@@ -89,27 +103,39 @@ function C.Tick(sq, now)
 	elseif sq.tifSpawnSaid ~= true and now >= sq.tifSpawnSaid then
 		sq.tifSpawnSaid = true
 		local m = members[math.random(#members)]
-		if can_talk(m) and m.tifAware ~= TIF.AWARE.ENGAGED then TIF.Say(m, "spawn", C.SPAWN_CHANCE) end
+		if can_talk(m) and m.tifAware ~= TIF.AWARE.ENGAGED then
+			TIF.Say(m, "spawn", C.SPAWN_CHANCE)
+		end
 	end
+
 	local engaged = {}
 	for _, m in ipairs(members) do
-		if can_talk(m) and m.tifAware == TIF.AWARE.ENGAGED then engaged[#engaged + 1] = m end
+		if can_talk(m) and m.tifAware == TIF.AWARE.ENGAGED then
+			engaged[#engaged + 1] = m
+		end
 	end
+
 	if #engaged == 0 then
 		sq.tifChatNext = nil
 		return
 	end
+
 	if not sq.tifChatNext then
 		sq.tifChatNext = now + math.Rand(C.GAP[1], C.GAP[2]) * 0.5
 		return
 	end
+
 	if now < sq.tifChatNext then return end
 	if now - (sq.tifSaidAt or 0) < C.QUIET_AFTER then
 		sq.tifChatNext = now + C.QUIET_AFTER
 		return
 	end
+
 	local m = engaged[math.random(#engaged)]
 	local ev = C.EventFor(m, now)
-	if ev then TIF.Say(m, ev, 1) end
+	if ev then
+		TIF.Say(m, ev, 1)
+	end
+
 	sq.tifChatNext = now + math.Rand(C.GAP[1], C.GAP[2])
 end

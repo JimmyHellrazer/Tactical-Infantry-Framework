@@ -23,7 +23,9 @@ local RESERVE_MIX = { "leader", "rifleman", "assault", "rifleman", "support", "r
 
 function B.Log(base, ...)
 	local cv = GetConVar("tif_debug")
-	if cv and cv:GetBool() then TIF.Log("[base ", base.name, "] ", table.concat({ ... }, "")) end
+	if cv and cv:GetBool() then
+		TIF.Log("[base ", base.name, "] ", table.concat({ ... }, ""))
+	end
 end
 
 local function spawn_one(faction, arch, pos, yaw)
@@ -32,8 +34,11 @@ local function spawn_one(faction, arch, pos, yaw)
 	local ent = ents.Create("tif_soldier_" .. faction)
 	if not IsValid(ent) then
 		ent = ents.Create("tif_soldier")
-		if IsValid(ent) then ent.tifSpawnFaction = faction end
+		if IsValid(ent) then
+			ent.tifSpawnFaction = faction
+		end
 	end
+
 	if not IsValid(ent) then return nil end
 	ent.tifArchId = TIF.Archetypes[arch or ""] and arch or "rifleman"
 	ent.tifNoAutoSquad = true
@@ -53,8 +58,11 @@ end
 local function squads(base)
 	local out = {}
 	for _, sq in pairs(base.squads) do
-		if SQ.List[sq.id] then out[#out + 1] = sq end
+		if SQ.List[sq.id] then
+			out[#out + 1] = sq
+		end
 	end
+
 	return out
 end
 B.Squads = squads
@@ -66,17 +74,29 @@ local function planned(def)
 	local n = 0
 	for _, p in ipairs(def.posts or {}) do
 		local j = p.job or "post"
-		if j == "post" or j == "reserve" then n = n + 1 end
+		if j == "post" or j == "reserve" then
+			n = n + 1
+		end
 	end
+
 	for _, r in ipairs(def.routes or {}) do
-		if r.pts and #r.pts >= 2 then n = n + math.max(1, r.size or 3) end
+		if r.pts and #r.pts >= 2 then
+			n = n + math.max(1, r.size or 3)
+		end
 	end
+
 	for _, vp in ipairs(def.vpatrols or {}) do
-		if vp.pts and #vp.pts >= 2 then n = n + math.Clamp(vp.size or 4, 1, 8) end
+		if vp.pts and #vp.pts >= 2 then
+			n = n + math.Clamp(vp.size or 4, 1, 8)
+		end
 	end
+
 	for _, cd in ipairs(def.convoys or {}) do
-		if cd.pts and #cd.pts >= 2 then n = n + math.Clamp(cd.count or 2, 1, 6) * math.Clamp(cd.size or 4, 1, 8) end
+		if cd.pts and #cd.pts >= 2 then
+			n = n + math.Clamp(cd.count or 2, 1, 6) * math.Clamp(cd.size or 4, 1, 8)
+		end
 	end
+
 	return n
 end
 
@@ -101,6 +121,7 @@ function B.Garrison(def)
 	elseif coroutine.status(co) ~= "dead" then
 		B.Building[base] = co
 	end
+
 	return base
 end
 
@@ -112,7 +133,10 @@ hook.Add("Tick", "tif_base_build", function()
 		base.pending = 0
 		TIF.Error("Base '", base.name, "' garrison: ", tostring(err))
 	end
-	if not ok or coroutine.status(co) == "dead" then B.Building[base] = nil end
+
+	if not ok or coroutine.status(co) == "dead" then
+		B.Building[base] = nil
+	end
 end)
 
 build = function(base, def)
@@ -142,6 +166,7 @@ build = function(base, def)
 			end
 		end
 	end
+
 	if #guards > 0 then
 		local sq = SQ.Create(f, guards)
 		sq.static = true
@@ -160,6 +185,7 @@ build = function(base, def)
 			end
 		end
 	end
+
 	if #reserve > 0 then
 		local leader = reserve[1]
 		for _, e in ipairs(reserve) do if e.tifArchId == "leader" then leader = e break end end
@@ -182,7 +208,9 @@ build = function(base, def)
 			if #list > 0 then
 				local sq = SQ.Create(f, list, list[1])
 				local route = {}
-				for i, p in ipairs(r.pts) do route[i] = TIF.Move.Snap(p) or p end
+				for i, p in ipairs(r.pts) do
+					route[i] = TIF.Move.Snap(p) or p
+				end
 				SQ.SetOrder(sq, "patrol")
 				sq.order.route = route
 				sq.formation = #list > 2 and "file" or "column"
@@ -215,7 +243,9 @@ build = function(base, def)
 					base.vehicles = base.vehicles or {}
 					base.vehicles[#base.vehicles + 1] = veh
 					local route = {}
-					for i, p in ipairs(vp.pts) do route[i] = TIF.Move.Snap(p) or p end
+					for i, p in ipairs(vp.pts) do
+						route[i] = TIF.Move.Snap(p) or p
+					end
 
 					timer.Simple(0.5, function()
 						if SQ.List[sq.id] and IsValid(veh) then
@@ -261,7 +291,9 @@ build = function(base, def)
 				end
 			end
 			local route = {}
-			for i, p in ipairs(cd.pts) do route[i] = TIF.Move.Snap(p) or p end
+			for i, p in ipairs(cd.pts) do
+				route[i] = TIF.Move.Snap(p) or p
+			end
 			timer.Simple(0.6, function()
 				local list = {}
 				for _, pr in ipairs(pairs_) do
@@ -271,7 +303,9 @@ build = function(base, def)
 					end
 				end
 				local cv = TIF.Convoy.Create(list)
-				if cv then TIF.Convoy.Patrol(cv, route) end
+				if cv then
+					TIF.Convoy.Patrol(cv, route)
+				end
 			end)
 		end
 	end
@@ -314,8 +348,11 @@ end
 local function newest(base)
 	local best
 	for ent, k in pairs(base.knowledge) do
-		if not best or k.time > best.time then best = k end
+		if not best or k.time > best.time then
+			best = k
+		end
 	end
+
 	return best
 end
 
@@ -323,15 +360,23 @@ local function dispatch_reserve(base, now)
 	local sq = base.squads.reserve
 	if not sq or not sq.static or not SQ.List[sq.id] then return end
 	sq.static = false
-	for _, m in ipairs(SQ.Members(sq)) do m.tifLeash = nil end
+	for _, m in ipairs(SQ.Members(sq)) do
+		m.tifLeash = nil
+	end
+
 	B.Log(base, "reserve sent out (", #SQ.Members(sq), ")")
 	local m = SQ.Members(sq)[1]
-	if m then TIF.Say(m, "moving", 0.9) end
+	if m then
+		TIF.Say(m, "moving", 0.9)
+	end
 end
 
 local function raise_alarm(base, now)
 	set_level(base, B.ALARM, now, "contact")
-	if IsValid(base.alarmBy) then TIF.Say(base.alarmBy, "backup", 1) end
+	if IsValid(base.alarmBy) then
+		TIF.Say(base.alarmBy, "backup", 1)
+	end
+
 	share(base, now)
 	dispatch_reserve(base, now)
 end
@@ -345,6 +390,7 @@ function B.Adopt(base, sq, job)
 			n = n + 1
 		end
 	end
+
 	base.adopted = (base.adopted or 0) + 1
 	base.squads["adopted" .. base.adopted] = sq
 	share(base, CurTime())
@@ -359,9 +405,12 @@ local function watched(pos)
 			local eye = ply:EyePos()
 			if eye:DistToSqr(pos) < 1500 * 1500 then return true end
 			tr.start, tr.endpos = eye, pos + Vector(0, 0, 60)
-			if not util.TraceLine(tr).Hit and eye:DistToSqr(pos) < 3000 * 3000 then return true end
+			if not util.TraceLine(tr).Hit and eye:DistToSqr(pos) < 3000 * 3000 then
+				return true
+			end
 		end
 	end
+
 	return false
 end
 
@@ -374,22 +423,34 @@ local function maybe_reinforce(base, now)
 			base.reinforceAt = now + math.Rand(B.REINFORCE_DELAY[1], B.REINFORCE_DELAY[2])
 			B.Log(base, "reinforcements requested")
 			local m = base.members[1]
-			if IsValid(m) then TIF.Say(m, "backup", 0.8) end
+			if IsValid(m) then
+				TIF.Say(m, "backup", 0.8)
+			end
 		end
 		return
 	end
+
 	if now < base.reinforceAt then return end
 	if watched(r.pos) then
 		base.reinforceAt = now + 3
 		return
 	end
+
 	local size = math.Clamp(r.size or 6, 2, 8)
 	local mix = {}
-	for i = 1, size do mix[i] = REINFORCE_MIX[i] end
+	for i = 1, size do
+		mix[i] = REINFORCE_MIX[i]
+	end
+
 	local out = TIF.SpawnSoldiers(nil, base.faction, size, nil, r.pos, base.center, { archetypes = mix, radius = 200 })
 	base.reinforced = true
-	for _, npc in ipairs(out) do set_job(base, npc, "reinforcement") end
-	if out[1] and out[1].tifSquad then base.squads.reinforce = out[1].tifSquad end
+	for _, npc in ipairs(out) do
+		set_job(base, npc, "reinforcement")
+	end
+
+	if out[1] and out[1].tifSquad then
+		base.squads.reinforce = out[1].tifSquad
+	end
 	share(base, now)
 	B.Log(base, "reinforcements arrived (", #out, ")")
 end
@@ -398,12 +459,18 @@ local function sweep(base, now)
 	local k = newest(base)
 	if not k then return end
 	local sq = base.squads.reserve
-	if not sq or not SQ.List[sq.id] or #SQ.Members(sq) == 0 then sq = base.squads.reinforce end
+	if not sq or not SQ.List[sq.id] or #SQ.Members(sq) == 0 then
+		sq = base.squads.reinforce
+	end
+
 	if not sq or not SQ.List[sq.id] then return end
 	local dir = k.vel and k.vel:Length2D() > 30 and Vector(k.vel.x, k.vel.y, 0):GetNormalized() or nil
 	for _, m in ipairs(SQ.Members(sq)) do
-		if m.tifAware ~= AW.ENGAGED then TIF.Brain.StartSearch(m, k.pos, dir, now) end
+		if m.tifAware ~= AW.ENGAGED then
+			TIF.Brain.StartSearch(m, k.pos, dir, now)
+		end
 	end
+
 	B.Log(base, "sweep of the last known position by squad ", sq.id)
 end
 
@@ -412,15 +479,23 @@ local function stand_down(base, now)
 	if sq and SQ.List[sq.id] then
 		sq.static = true
 		for _, m in ipairs(SQ.Members(sq)) do
-			if m.tifGuardPost then m.tifLeash = { pos = m.tifGuardPost.pos, radius = B.RESERVE_LEASH } end
+			if m.tifGuardPost then
+				m.tifLeash = { pos = m.tifGuardPost.pos, radius = B.RESERVE_LEASH }
+			end
 		end
 	end
+
 	for _, s in ipairs(squads(base)) do
-		if s.order.kind == "patrol" then s.order.i = nil end
+		if s.order.kind == "patrol" then
+			s.order.i = nil
+		end
 
 		local mt = s.mount
-		if mt and mt.phase == "dismounted" and mt.patrol and TIF.Mounted then TIF.Mounted.Remount(s) end
+		if mt and mt.phase == "dismounted" and mt.patrol and TIF.Mounted then
+			TIF.Mounted.Remount(s)
+		end
 	end
+
 	base.knowledge = {}
 	base.reinforced, base.reinforceAt = false, nil
 end
@@ -429,8 +504,11 @@ local function tick(base, now)
 
 	local alive = {}
 	for _, m in ipairs(base.members) do
-		if IsValid(m) and not m.tifDead then alive[#alive + 1] = m end
+		if IsValid(m) and not m.tifDead then
+			alive[#alive + 1] = m
+		end
 	end
+
 	local lost = #base.members - #alive
 	base.members = alive
 	if #alive == 0 then
@@ -438,12 +516,19 @@ local function tick(base, now)
 		B.List[base.id] = nil
 		return
 	end
+
 	local engaged, busy, suspicious
 	for _, m in ipairs(alive) do
 		local a = m.tifAware
-		if a == AW.ENGAGED then engaged = engaged or m end
-		if a == AW.ENGAGED or a == AW.ALERTED or a == AW.SEARCHING then busy = true end
-		if a == AW.SUSPICIOUS then suspicious = true end
+		if a == AW.ENGAGED then
+			engaged = engaged or m
+		end
+		if a == AW.ENGAGED or a == AW.ALERTED or a == AW.SEARCHING then
+			busy = true
+		end
+		if a == AW.SUSPICIOUS then
+			suspicious = true
+		end
 	end
 
 	for _, sq in ipairs(squads(base)) do
@@ -454,11 +539,16 @@ local function tick(base, now)
 			end
 		end
 	end
+
 	for ent in pairs(base.knowledge) do
-		if not TIF.IsLiveCombatant(ent) then base.knowledge[ent] = nil end
+		if not TIF.IsLiveCombatant(ent) then
+			base.knowledge[ent] = nil
+		end
 	end
 
-	if busy or suspicious then base.quietSince = now end
+	if busy or suspicious then
+		base.quietSince = now
+	end
 
 	if base.level < B.ALERT and (suspicious or busy or lost > 0) then
 		set_level(base, B.ALERT, now, lost > 0 and "lost a man" or (busy and "contact" or "suspicious"))
@@ -467,6 +557,7 @@ local function tick(base, now)
 		base.alarmAt = now + math.Rand(B.ALARM_DELAY[1], B.ALARM_DELAY[2])
 		base.alarmBy = engaged
 	end
+
 	if base.alarmAt and now >= base.alarmAt then
 		base.alarmAt = nil
 		raise_alarm(base, now)
@@ -475,7 +566,9 @@ local function tick(base, now)
 	if base.level == B.ALARM then
 		share(base, now)
 		maybe_reinforce(base, now)
-		if engaged then base.lastFight = now end
+		if engaged then
+			base.lastFight = now
+		end
 		local k = newest(base)
 		if now - (base.lastFight or base.levelSince) > B.ALARM_QUIET and (not k or now - k.time > B.ALARM_QUIET) then
 			set_level(base, B.ALERT, now, "contact lost")
@@ -487,7 +580,9 @@ local function tick(base, now)
 	end
 
 	if base.level >= B.ALERT then
-		for _, m in ipairs(alive) do m.tifHeightenedUntil = math.max(m.tifHeightenedUntil or 0, now + 10) end
+		for _, m in ipairs(alive) do
+			m.tifHeightenedUntil = math.max(m.tifHeightenedUntil or 0, now + 10)
+		end
 	end
 end
 
@@ -496,7 +591,9 @@ timer.Create("tif_base_tick", 0.5, 0, function()
 	local now = CurTime()
 	for _, base in pairs(B.List) do
 		local ok, err = pcall(tick, base, now)
-		if not ok then TIF.Error("Base tick error: ", tostring(err)) end
+		if not ok then
+			TIF.Error("Base tick error: ", tostring(err))
+		end
 	end
 end)
 
@@ -509,12 +606,18 @@ function B.Serialize(def)
 	for i, p in ipairs(def.posts or {}) do
 		out.posts[i] = { pos = vec_out(p.pos), yaw = math.Round(p.yaw or 0), job = p.job, arch = p.arch }
 	end
+
 	for i, r in ipairs(def.routes or {}) do
 		local pts = {}
-		for j, p in ipairs(r.pts) do pts[j] = vec_out(p) end
+		for j, p in ipairs(r.pts) do
+			pts[j] = vec_out(p)
+		end
 		out.routes[i] = { size = r.size, pts = pts }
 	end
-	if def.reinforce then out.reinforce = { pos = vec_out(def.reinforce.pos), size = def.reinforce.size } end
+
+	if def.reinforce then
+		out.reinforce = { pos = vec_out(def.reinforce.pos), size = def.reinforce.size }
+	end
 	return out
 end
 
@@ -523,12 +626,18 @@ function B.Deserialize(t)
 	for i, p in ipairs(t.posts or {}) do
 		def.posts[i] = { pos = vec_in(p.pos), yaw = p.yaw, job = p.job, arch = p.arch }
 	end
+
 	for i, r in ipairs(t.routes or {}) do
 		local pts = {}
-		for j, p in ipairs(r.pts) do pts[j] = vec_in(p) end
+		for j, p in ipairs(r.pts) do
+			pts[j] = vec_in(p)
+		end
 		def.routes[i] = { size = r.size, pts = pts }
 	end
-	if t.reinforce then def.reinforce = { pos = vec_in(t.reinforce.pos), size = t.reinforce.size } end
+
+	if t.reinforce then
+		def.reinforce = { pos = vec_in(t.reinforce.pos), size = t.reinforce.size }
+	end
 	return def
 end
 
@@ -552,7 +661,10 @@ function B.FindDef(name)
 		end
 		return B.Presets()[name]
 	end
-	for _, def in pairs(B.Presets()) do return def end
+
+	for _, def in pairs(B.Presets()) do
+		return def
+	end
 	return nil
 end
 
@@ -572,15 +684,21 @@ local function write_def(def, level, info)
 		net.WriteFloat(p.yaw or 0)
 		net.WriteBool(p.job == "reserve")
 	end
+
 	local routes = def.routes or {}
 	net.WriteUInt(math.min(#routes, 15), 4)
 	for i = 1, math.min(#routes, 15) do
 		local pts = routes[i].pts or {}
 		net.WriteUInt(math.min(#pts, 63), 6)
-		for j = 1, math.min(#pts, 63) do net.WriteVector(pts[j]) end
+		for j = 1, math.min(#pts, 63) do
+			net.WriteVector(pts[j])
+		end
 	end
+
 	net.WriteBool(def.reinforce ~= nil)
-	if def.reinforce then net.WriteVector(def.reinforce.pos) end
+	if def.reinforce then
+		net.WriteVector(def.reinforce.pos)
+	end
 end
 
 timer.Create("tif_debug_bases_send", 1, 0, function()
@@ -591,7 +709,10 @@ timer.Create("tif_debug_bases_send", 1, 0, function()
 	if #viewers == 0 then return end
 	local now = CurTime()
 	local list = {}
-	for _, base in pairs(B.List) do list[#list + 1] = base end
+	for _, base in pairs(B.List) do
+		list[#list + 1] = base
+	end
+
 	net.Start("tif_debug_bases")
 	net.WriteUInt(math.min(#list, 7) + (B.Draft and 1 or 0), 4)
 	for i = 1, math.min(#list, 7) do
@@ -602,11 +723,15 @@ timer.Create("tif_debug_bases_send", 1, 0, function()
 			base.reinforced and "  reinforced" or (base.reinforceAt and "  reinforcements called" or ""))
 		write_def(base.def, base.level, info)
 		net.WriteBool(k ~= nil)
-		if k then net.WriteVector(k.pos) end
+		if k then
+			net.WriteVector(k.pos)
+		end
 	end
+
 	if B.Draft then
 		write_def(B.Draft, -1, "draft (tif_base_save to keep)")
 		net.WriteBool(false)
 	end
+
 	net.Send(viewers)
 end)

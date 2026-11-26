@@ -15,7 +15,10 @@ local function centroid(sq)
 	local list = SQ.Members(sq)
 	if #list == 0 then return nil end
 	local c = Vector()
-	for _, m in ipairs(list) do c:Add(m:GetPos()) end
+	for _, m in ipairs(list) do
+		c:Add(m:GetPos())
+	end
+
 	return c / #list
 end
 
@@ -36,11 +39,17 @@ local function losing(sq, now)
 	local members = SQ.Members(sq)
 	if #members == 0 then return false end
 	if (sq.peakSize or #members) > #members then return true end
-	if TIF.Morale and TIF.Morale.Enabled() and TIF.Morale.SquadAverage(sq) < 0.5 then return true end
+	if TIF.Morale and TIF.Morale.Enabled() and TIF.Morale.SquadAverage(sq) < 0.5 then
+		return true
+	end
+
 	local enemies = 0
 	for ent, k in pairs(sq.knowledge) do
-		if now - k.time < 10 and TIF.IsLiveCombatant(ent) then enemies = enemies + 1 end
+		if now - k.time < 10 and TIF.IsLiveCombatant(ent) then
+			enemies = enemies + 1
+		end
 	end
+
 	return enemies > #members
 end
 
@@ -51,7 +60,9 @@ local function tick(now)
 	local list = {}
 	for _, sq in pairs(SQ.List) do
 		local c = centroid(sq)
-		if c then list[#list + 1] = { sq = sq, c = c } end
+		if c then
+			list[#list + 1] = { sq = sq, c = c }
+		end
 	end
 
 	for _, a in ipairs(list) do
@@ -77,21 +88,31 @@ local function tick(now)
 					and not (IsValid(sb.leader) and sb.leader:IsPlayer()) and not fighting(sb)
 					and not (TIF.Mounted and TIF.Mounted.Busy(sb)) then
 					local d = a.c:DistToSqr(b.c)
-					if d < r2 and (not bestD or d < bestD) then best, bestD = sb, d end
+					if d < r2 and (not bestD or d < bestD) then
+						best, bestD = sb, d
+					end
 				end
 			end
 			sa.nextBackup = now + RD.BACKUP_EVERY
 			local caller = IsValid(sa.leader) and sa.leader.TIFSoldier and sa.leader or SQ.Members(sa)[1]
-			if caller then TIF.Say(caller, "backup", 1) end
+			if caller then
+				TIF.Say(caller, "backup", 1)
+			end
 			if best then
 				for ent, k in pairs(sa.knowledge) do
-					if TIF.IsLiveCombatant(ent) then give(best, ent, k) end
+					if TIF.IsLiveCombatant(ent) then
+						give(best, ent, k)
+					end
 				end
 				best.backupFor = sa
 
-				if best.order.kind == "hold" then SQ.SetOrder(best, "free") end
+				if best.order.kind == "hold" then
+					SQ.SetOrder(best, "free")
+				end
 				local m = SQ.Members(best)[1]
-				if m then TIF.Say(m, "affirmative", 0.9) end
+				if m then
+					TIF.Say(m, "affirmative", 0.9)
+				end
 				SQ.Log(sa, "[radio] backup requested; squad ", best.id, " answering (", math.floor(math.sqrt(bestD)), "u away)")
 			else
 				SQ.Log(sa, "[radio] backup requested; nobody free in range")
@@ -102,16 +123,21 @@ local function tick(now)
 	local keep = {}
 	for _, p in ipairs(RD.Pending) do
 		if now >= p.at then
-			if SQ.List[p.sq.id] and TIF.IsLiveCombatant(p.ent) then give(p.sq, p.ent, p.k) end
+			if SQ.List[p.sq.id] and TIF.IsLiveCombatant(p.ent) then
+				give(p.sq, p.ent, p.k)
+			end
 		else
 			keep[#keep + 1] = p
 		end
 	end
+
 	RD.Pending = keep
 end
 
 timer.Create("tif_radio_tick", 1, 0, function()
 	if TIF.AIDisabled() then return end
 	local ok, err = pcall(tick, CurTime())
-	if not ok then TIF.Error("Radio error: ", tostring(err)) end
+	if not ok then
+		TIF.Error("Radio error: ", tostring(err))
+	end
 end)

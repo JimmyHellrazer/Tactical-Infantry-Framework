@@ -36,6 +36,7 @@ local function tag_u(c, name)
 		local a = t[4]
 		if istable(a) and a.MoveEvent == name then return t[2] end
 	end
+
 	return nil
 end
 
@@ -44,11 +45,18 @@ local function clip_info(host, name)
 	local key = host .. "/" .. name
 	if info[key] ~= nil then return info[key] or nil end
 	local c = TIF.GTG.Clip(name, host)
-	if not c then info[key] = false return nil end
+	if not c then
+		info[key] = false
+		return nil
+	end
+
 	local kind = string.match(name, "^mwtr_(%a+)")
 	local cu = tag_u(c, CONTACT[kind] or "warp_up_end") or 0.3
 	local hu
-	for _, n in ipairs(HANDBACK) do hu = hu or tag_u(c, n) end
+	for _, n in ipairs(HANDBACK) do
+		hu = hu or tag_u(c, n)
+	end
+
 	hu = hu or 0.9
 	local xc = Act.RootAt(c, cu)
 	local xh = Act.RootAt(c, hu)
@@ -105,12 +113,18 @@ function T.Probe(npc, dir)
 			return { kind = "drop", h = z0 - fz, edge = t - 6, land = fz }
 		end
 	end
+
 	return nil
 end
 
 function T.Check(npc, m, now)
-	if not T.Use(npc) or npc.tifAct or npc.tifVeh or npc.tifProne or npc.tifDowned or npc.tifCov then return false end
-	if m.tag == "crawl" or m.tag == "board" or npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then return false end
+	if not T.Use(npc) or npc.tifAct or npc.tifVeh or npc.tifProne or npc.tifDowned or npc.tifCov then
+		return false
+	end
+	if m.tag == "crawl" or m.tag == "board" or npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then
+		return false
+	end
+
 	if now < (npc.tifNextTrav or 0) then return false end
 	npc.tifNextTrav = now + T.CHECK_EVERY
 	local seg = npc.tifPath:GetCurrentGoal()
@@ -128,19 +142,25 @@ function T.Check(npc, m, now)
 		local vn = v:GetNormalized()
 		if vn:Dot(to) < 0.8 then return false end
 	end
+
 	local pr = T.Probe(npc, to)
 	if not pr then return false end
 
 	if pr.kind == "mantle" and dz < pr.h * 0.5 then return false end
 	if pr.kind == "drop" and dz > -pr.h * 0.5 then return false end
-	if (pr.kind == "vault" or pr.kind == "step") and len < pr.edge + 10 then return false end
+	if (pr.kind == "vault" or pr.kind == "step") and len < pr.edge + 10 then
+		return false
+	end
 
 	if pr.kind == "drop" and pr.h > 100 and len < 220 then return false end
 	local name = pr.kind == "step" and "mwtr_step" or pick(pr.kind, pr.h)
 
 	local spd = v:Length()
 	local gait = spd < T.WALK_SPEED and "walk" or (spd > T.FAST_SPEED and "fast" or nil)
-	if name and gait and clip_info(npc.tifHomeHost, name .. "_" .. gait) then name = name .. "_" .. gait end
+	if name and gait and clip_info(npc.tifHomeHost, name .. "_" .. gait) then
+		name = name .. "_" .. gait
+	end
+
 	local e = name and clip_info(npc.tifHomeHost, name)
 	if not e then return false end
 
@@ -162,7 +182,11 @@ function T.Busy(npc, now)
 	local t = npc.tifTrav
 	if not t then return false end
 	local a = npc.tifAct
-	if not a or a.name ~= t.name then npc.tifTrav = nil return false end
+	if not a or a.name ~= t.name then
+		npc.tifTrav = nil
+		return false
+	end
+
 	if now < t.untilT then return true end
 	npc.tifTrav = nil
 	Act.Clear(npc)

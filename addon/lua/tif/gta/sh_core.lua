@@ -27,6 +27,7 @@ function TIFG.QuatFromRows(m00, m01, m02, m10, m11, m12, m20, m21, m22)
 		local s = math_sqrt(1 + m11 - m00 - m22) * 2
 		return (m01 + m10) / s, s / 4, (m12 + m21) / s, (m02 - m20) / s
 	end
+
 	local s = math_sqrt(1 + m22 - m00 - m11) * 2
 	return (m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s
 end
@@ -44,6 +45,7 @@ function TIFG.Piecewise(pts, x)
 			return y0 + (pts[i + 1] - y0) * (x - x0) / math_max(1e-6, pts[i] - x0)
 		end
 	end
+
 	return pts[#pts]
 end
 
@@ -60,12 +62,15 @@ local function Rec(ply)
 		r = {}
 		Recs[ply] = r
 	end
+
 	return r
 end
 TIFG.Rec = Rec
 
 hook.Add("EntityRemoved", "tif_gta_assets_rec", function(ent, full_update)
-	if not full_update then Recs[ent] = nil end
+	if not full_update then
+		Recs[ent] = nil
+	end
 end)
 
 local sight_out = {}
@@ -88,6 +93,7 @@ function TIFG.BoneOf(ent, name, model)
 		ids = {}
 		bone_ids[model] = ids
 	end
+
 	local b = ids[name]
 	if b == nil then
 		b = ent:LookupBone(name)
@@ -97,6 +103,7 @@ function TIFG.BoneOf(ent, name, model)
 		end
 		ids[name] = b
 	end
+
 	return b or nil
 end
 
@@ -119,6 +126,7 @@ function TIFG.MuzzleAttachment(e)
 		end
 		e.gtg_muz_model, e.gtg_muz_att, e.gtg_muz_axis, e.gtg_muz_side = model, a, axis, side
 	end
+
 	return e.gtg_muz_att, e.gtg_muz_axis, e.gtg_muz_side
 end
 
@@ -186,16 +194,23 @@ local function resolve_tags(clip)
 	for i = 1, tags and #tags or 0 do
 		local t = tags[i]
 		local n = t[1]
-		if n == "MoveEvent" and istable(t[4]) and isstring(t[4].MoveEvent) then n = t[4].MoveEvent end
+		if n == "MoveEvent" and istable(t[4]) and isstring(t[4].MoveEvent) then
+			n = t[4].MoveEvent
+		end
 		n = string_lower(TIFG.TagNames[n] or n)
 		list[i] = n
-		if not first[n] then first[n] = t end
+		if not first[n] then
+			first[n] = t
+		end
 		local ev = istable(t[4]) and t[4].Event
 		if isstring(ev) then
 			ev = "event:" .. string_lower(TIFG.TagNames[ev] or ev)
-			if not first[ev] then first[ev] = t end
+			if not first[ev] then
+				first[ev] = t
+			end
 		end
 	end
+
 	clip.tag_first, clip.tag_names = first, list
 end
 
@@ -215,15 +230,19 @@ function TIFG.ClipInTag(clip, name, p)
 			if p >= t[2] and p <= t[3] then return true end
 		end
 	end
+
 	return false
 end
 
 local function dedupe_wrap(plants, frames)
 	if #plants >= 2 and plants[1] == 0 and frames - 1 - plants[#plants] < (plants[2] - plants[1]) * 0.5 then
 		local out = {}
-		for i = 2, #plants do out[i - 1] = plants[i] end
+		for i = 2, #plants do
+			out[i - 1] = plants[i]
+		end
 		return out
 	end
+
 	return plants
 end
 
@@ -235,9 +254,14 @@ local function heel_plants(clip)
 		local a = t[4]
 		if t[1] == "Foot" and istable(a) and a.Heel == true then
 			local f = math_floor(t[2] * (clip.frames - 1) + 0.5)
-			if a.Right == true then r[#r + 1] = f else l[#l + 1] = f end
+			if a.Right == true then
+				r[#r + 1] = f
+			else
+				l[#l + 1] = f
+			end
 		end
 	end
+
 	if #l == 0 or #r == 0 then return nil end
 	table.sort(l)
 	table.sort(r)
@@ -250,17 +274,26 @@ local function build_phase(clip)
 	local tl, tr = heel_plants(clip)
 	clip.plants_from = tl and "tags" or "detected"
 	local lp, rp = tl or clip.lplant or {}, tr or clip.rplant or {}
-	if clip.loop then lp, rp = dedupe_wrap(lp, clip.frames), dedupe_wrap(rp, clip.frames) end
+	if clip.loop then
+		lp, rp = dedupe_wrap(lp, clip.frames), dedupe_wrap(rp, clip.frames)
+	end
 
 	local events = {}
-	for _, f in ipairs(lp) do events[#events + 1] = { f, false } end
-	for _, f in ipairs(rp) do events[#events + 1] = { f, true } end
+	for _, f in ipairs(lp) do
+		events[#events + 1] = { f, false }
+	end
+
+	for _, f in ipairs(rp) do
+		events[#events + 1] = { f, true }
+	end
 	table.sort(events, by_frame)
 
 	local pts, phase = {}, nil
 	for i, e in ipairs(events) do
 		if not phase then phase = e[2] and 0.5 or 0
-		else phase = phase + (events[i - 1][2] ~= e[2] and 0.5 or 1) end
+		else
+			phase = phase + (events[i - 1][2] ~= e[2] and 0.5 or 1)
+		end
 		pts[i] = { e[1], phase }
 	end
 
@@ -278,6 +311,7 @@ local function build_phase(clip)
 		pts = wrapped
 		clip.stride_len = math_sqrt(clip.move[1] ^ 2 + clip.move[2] ^ 2) / strides
 	end
+
 	clip.phase_pts = pts
 	clip.phase_base = clip.strides and pts[#pts / 3 + 1][2] or (pts[1] and pts[1][2] or 0)
 	clip.stride_rate = clip.strides and clip.strides / math_max(0.01, clip.dur) or nil
@@ -297,13 +331,17 @@ function TIFG.ClipPhase(clip, frame)
 	for i = 2, n do
 		if frame <= pts[i][1] then return lerp_pts(pts[i - 1], pts[i], frame) end
 	end
+
 	local a, b = pts[n - 1], pts[n]
 	return b[2] + (frame - b[1]) * (b[2] - a[2]) / math_max(1, b[1] - a[1])
 end
 
 function TIFG.ClipFrameForPhase(clip, phase)
 	local pts, strides = clip.phase_pts, clip.strides
-	if not strides or not pts or #pts < 2 then return (phase % 1) * (clip.frames - 1) end
+	if not strides or not pts or #pts < 2 then
+		return (phase % 1) * (clip.frames - 1)
+	end
+
 	local base = clip.phase_base
 	local p = base + ((phase - base) % strides)
 	for i = 2, #pts do
@@ -312,6 +350,7 @@ function TIFG.ClipFrameForPhase(clip, phase)
 			return (a[1] + (b[1] - a[1]) * (p - a[2]) / math_max(1e-6, b[2] - a[2])) % (clip.frames - 1)
 		end
 	end
+
 	return 0
 end
 
@@ -321,6 +360,7 @@ local function path_speed(clip)
 		local dx, dy = c[i] - c[i - 3], c[i + 1] - c[i - 2]
 		len = len + math_sqrt(dx * dx + dy * dy)
 	end
+
 	return len / math_max(0.01, clip.dur)
 end
 
@@ -339,13 +379,17 @@ end
 
 local function build_list(key, clips)
 	local names = {}
-	for name in pairs(clips) do names[#names + 1] = name end
+	for name in pairs(clips) do
+		names[#names + 1] = name
+	end
+
 	table.sort(names)
 	local list = { names = names, index = {}, byindex = {}, idx = {} }
 	for i, n in ipairs(names) do
 		local c = clips[n]
 		list.index[n], list.byindex[i], list.idx[c] = i, c, i
 	end
+
 	if #names > TIFG.MaxClips then
 		ErrorNoHalt("[TIF/GTA] clip set " .. key .. " has " .. #names .. " clips; only " .. TIFG.MaxClips .. " can be networked\n")
 	end
@@ -357,9 +401,12 @@ local function build_set(key, packs)
 	for i = #packs, 1, -1 do
 		local clips = TIFG.Clips[packs[i]]
 		if clips and key ~= packs[i] then
-			for name, clip in pairs(clips) do merged[name] = clip end
+			for name, clip in pairs(clips) do
+				merged[name] = clip
+			end
 		end
 	end
+
 	TIFG.Clips[key], TIFG.ClipList[key] = merged, build_list(key, merged)
 end
 
@@ -377,10 +424,16 @@ function TIFG.MissingPacks(char)
 		local parts, meta = TIFG.ClipParts[p], TIFG.ClipMeta[p]
 		local whole = TIFG.Clips[p] ~= nil
 		for i = 1, parts and meta and meta.parts or 0 do
-			if not parts[i] then whole = false break end
+			if not parts[i] then
+				whole = false
+				break
+			end
 		end
-		if not whole then out[#out + 1] = p end
+		if not whole then
+			out[#out + 1] = p
+		end
 	end
+
 	return out
 end
 
@@ -388,11 +441,17 @@ local function merge_parts(pack, part, clips, meta)
 	local parts = TIFG.ClipParts[pack] or {}
 	TIFG.ClipParts[pack] = parts
 	parts[part] = clips
-	if part == 1 or not TIFG.ClipMeta[pack] then TIFG.ClipMeta[pack] = meta end
+	if part == 1 or not TIFG.ClipMeta[pack] then
+		TIFG.ClipMeta[pack] = meta
+	end
+
 	local merged = {}
 	for i = 1, tonumber(TIFG.ClipMeta[pack].parts) or table.maxn(parts) do
-		for name, clip in pairs(parts[i] or {}) do merged[name] = clip end
+		for name, clip in pairs(parts[i] or {}) do
+			merged[name] = clip
+		end
 	end
+
 	return merged
 end
 
@@ -401,7 +460,10 @@ function TIFG.RegisterClips(pack, clips, meta)
 		ErrorNoHalt("[TIF/GTA] RegisterClips: needs a pack name and a table of clips\n")
 		return
 	end
-	for name, clip in pairs(clips) do derive(clip, name, pack) end
+
+	for name, clip in pairs(clips) do
+		derive(clip, name, pack)
+	end
 	meta = istable(meta) and meta or nil
 	local part = meta and tonumber(meta.part)
 	if part then
@@ -410,19 +472,26 @@ function TIFG.RegisterClips(pack, clips, meta)
 		TIFG.ClipParts[pack] = nil
 		TIFG.ClipMeta[pack] = meta
 	end
+
 	TIFG.Clips[pack], TIFG.ClipList[pack] = clips, build_list(pack, clips)
 	for key, packs in pairs(TIFG.ClipSetPacks) do
 		for _, p in ipairs(packs) do
-			if p == pack then build_set(key, packs) break end
+			if p == pack then
+				build_set(key, packs)
+				break
+			end
 		end
 	end
+
 	return clips
 end
 
 for pack, clips in pairs(TIFG.Clips) do
 	if not TIFG.ClipSetPacks[pack] then
 		for name, clip in pairs(clips) do
-			if istable(clip) and clip.frames then derive(clip, name, pack) end
+			if istable(clip) and clip.frames then
+				derive(clip, name, pack)
+			end
 		end
 	end
 end
@@ -449,23 +518,34 @@ function TIFG.RegisterWeapon(swep, class)
 	class = isstring(swep.ClassNameOverride) and swep.ClassNameOverride or class
 	local kind = weapon_kind(swep, class)
 	if not kind then return end
-	if kind == "unarmed" then TIFG.Data.melee.unarmed[class] = true else TIFG.Data[kind].weapons[class] = def end
+	if kind == "unarmed" then
+		TIFG.Data.melee.unarmed[class] = true
+	else
+		TIFG.Data[kind].weapons[class] = def
+	end
+
 	local T = def.thrown
 	if istable(T) and T.ammo and T.max then
 		local cap, all = T.max, TIFG.Data[kind].weapons
 		for _, d in pairs(all) do
 			local t = istable(d.thrown) and d.thrown
-			if t and t.ammo == T.ammo and t.max and t.max > cap then cap = t.max end
+			if t and t.ammo == T.ammo and t.max and t.max > cap then
+				cap = t.max
+			end
 		end
 		for _, d in pairs(all) do
 			local t = istable(d.thrown) and d.thrown
-			if t and t.ammo == T.ammo then t.shared_max = cap end
+			if t and t.ammo == T.ammo then
+				t.shared_max = cap
+			end
 		end
 	end
+
 	if isstring(def.twin) then
 		TIFG.Data.twins = TIFG.Data.twins or {}
 		TIFG.Data.twins[def.twin] = class
 	end
+
 	if kind == "guns" and CLIENT then
 		CreateClientConVar(TIFG.TintConVar(class), "0", true, true, "GTA tint of " .. class .. " (0-7)")
 	end
@@ -506,6 +586,7 @@ function TIFG.RegisterCharacter(id, def)
 		ErrorNoHalt("[TIF/GTA] RegisterCharacter: the id must be a non-empty string\n")
 		return
 	end
+
 	if not istable(def) or not isstring(def.model) then
 		ErrorNoHalt("[TIF/GTA] RegisterCharacter(" .. id .. "): the definition needs a model path\n")
 		return
@@ -516,9 +597,14 @@ function TIFG.RegisterCharacter(id, def)
 	char.name = char.name or id
 	char.model = string_lower((string.gsub(char.model, "\\", "/")))
 	char.speeds = char.speeds or {}
-	for key, default in pairs(DEFAULT_SPEEDS) do char.speeds[key] = tonumber(char.speeds[key]) or default end
+	for key, default in pairs(DEFAULT_SPEEDS) do
+		char.speeds[key] = tonumber(char.speeds[key]) or default
+	end
+
 	char.sequences = char.sequences or {}
-	for key, default in pairs(DEFAULT_SEQUENCES) do char.sequences[key] = char.sequences[key] or default end
+	for key, default in pairs(DEFAULT_SEQUENCES) do
+		char.sequences[key] = char.sequences[key] or default
+	end
 
 	char.ownPack = char.ownPack or char.clips or id
 	char.libraries = istable(char.libraries) and char.libraries or {}
@@ -529,9 +615,14 @@ function TIFG.RegisterCharacter(id, def)
 		seen[lib] = true
 		char.packs[#char.packs + 1] = lib
 		local meta = TIFG.ClipMeta[lib]
-		for _, inc in ipairs(meta and istable(meta.includes) and meta.includes or {}) do add(inc) end
+		for _, inc in ipairs(meta and istable(meta.includes) and meta.includes or {}) do
+			add(inc)
+		end
 	end
-	for _, lib in ipairs(char.libraries) do add(lib) end
+
+	for _, lib in ipairs(char.libraries) do
+		add(lib)
+	end
 	char.clips = TIFG.ClipSet(char.packs)
 
 	char.playerModelKey = "gtg_" .. id
@@ -539,13 +630,18 @@ function TIFG.RegisterCharacter(id, def)
 
 	TIFG.Characters[id] = char
 	TIFG.ByModel[char.model] = id
-	for model in pairs(TIFG.Aliases[id] or {}) do TIFG.ByModel[model] = id end
+	for model in pairs(TIFG.Aliases[id] or {}) do
+		TIFG.ByModel[model] = id
+	end
+
 	TIFG.RegistryVersion = TIFG.RegistryVersion + 1
 	return char
 end
 
 function TIFG.AddCharacterModel(id, model)
-	if not TIFG.Characters[id] or not isstring(model) or model == "" then return false end
+	if not TIFG.Characters[id] or not isstring(model) or model == "" then
+		return false
+	end
 	model = string_lower((string.gsub(model, "\\", "/")))
 	TIFG.Aliases[id] = TIFG.Aliases[id] or {}
 	TIFG.Aliases[id][model] = true
@@ -553,6 +649,7 @@ function TIFG.AddCharacterModel(id, model)
 		TIFG.ByModel[model] = id
 		TIFG.RegistryVersion = TIFG.RegistryVersion + 1
 	end
+
 	return true
 end
 
@@ -560,7 +657,10 @@ local function by_name(a, b) return a.name < b.name end
 
 function TIFG.GetCharacterList()
 	local out = {}
-	for _, char in pairs(TIFG.Characters) do out[#out + 1] = char end
+	for _, char in pairs(TIFG.Characters) do
+		out[#out + 1] = char
+	end
+
 	table.sort(out, by_name)
 	return out
 end
@@ -569,7 +669,10 @@ local check_content
 function TIFG.GetCharacter(ply)
 	local r = Rec(ply)
 	local now = Frame()
-	if r.char_at == now and r.regver == TIFG.RegistryVersion then return r.char end
+	if r.char_at == now and r.regver == TIFG.RegistryVersion then
+		return r.char
+	end
+
 	r.char_at = now
 	local model = ply:GetModel()
 	if r.model ~= model or r.regver ~= TIFG.RegistryVersion then
@@ -577,12 +680,17 @@ function TIFG.GetCharacter(ply)
 		local id = model and TIFG.ByModel[string_lower(model)]
 		r.char = id and TIFG.Characters[id] or nil
 		r.seqs, r.tier = nil, nil
-		if check_content and r.char then check_content(r.char) end
+		if check_content and r.char then
+			check_content(r.char)
+		end
 	end
+
 	return r.char
 end
 
-for id, char in pairs(TIFG.Characters) do TIFG.RegisterCharacter(id, char) end
+for id, char in pairs(TIFG.Characters) do
+	TIFG.RegisterCharacter(id, char)
+end
 
 TIFG.Config = TIFG.Config or { enabled = 1, vehicles = 1, vehicle_doors = 1, vehicle_jacking = 1, vehicle_driveby = 1, loco = 1 }
 TIFG.Ragdoll = TIFG.Ragdoll or { Active = {}, Owner = {}, Push = function() end, Start = function() end, Stun = function() return false end }

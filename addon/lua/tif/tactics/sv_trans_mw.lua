@@ -37,6 +37,7 @@ function T.SettleU(c)
 		settleOf[c] = 1
 		return 1
 	end
+
 	local ex, ey, er = cv[(n - 1) * 3 + 1], cv[(n - 1) * 3 + 2], cv[(n - 1) * 3 + 3]
 	local k = n - 1
 	for i = n - 1, 0, -1 do
@@ -44,6 +45,7 @@ function T.SettleU(c)
 		if dx * dx + dy * dy > 4 or math.abs(cv[i * 3 + 3] - er) > 3 then break end
 		k = i
 	end
+
 	v = math.Clamp(k * 3 / (c.frames - 1), 0.05, 1)
 	settleOf[c] = v
 	return v
@@ -74,7 +76,9 @@ local function sets(host)
 			local dist = math.sqrt(x * x + y * y)
 			local dir = (dist > 1) and math.deg(math.atan2(y, x)) or (n and NUMPAD[n] or 0)
 
-			if n and NUMPAD[n] and dist < 45 and kind == "stop" and T.STRAFE_SETS[set] then dir = NUMPAD[n] end
+			if n and NUMPAD[n] and dist < 45 and kind == "stop" and T.STRAFE_SETS[set] then
+				dir = NUMPAD[n]
+			end
 			local e = { name = name, yaw = r, dur = c.dur, dist = dist, dir = dir, n = n }
 
 			if kind == "rev" then
@@ -83,13 +87,17 @@ local function sets(host)
 				e.handU = 0.7
 				for _, tg in ipairs(c.tags or {}) do
 					local ev = istable(tg[4]) and tg[4].MoveEvent
-					if ev == "code_move" then e.handU = tg[2] break end
+					if ev == "code_move" then
+						e.handU = tg[2]
+						break
+					end
 				end
 			end
 			s[kind][set] = s[kind][set] or {}
 			table.insert(s[kind][set], e)
 		end
 	end
+
 	cache[host] = s
 	return s
 end
@@ -116,6 +124,7 @@ local function lit(npc, set)
 		local s = sets(npc.tifHomeHost)
 		if s.turn[set .. "f"] or s.start[set .. "f"] then return set .. "f" end
 	end
+
 	return set
 end
 
@@ -123,9 +132,12 @@ local function move_set(npc, speed)
 	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then
 		if pistol(npc) or relaxed(npc) then return nil end
 		if speed == "tactical" or speed == "walk" then return "cwalk" end
-		if speed == "run" or speed == "aimrun" or speed == "sprint" then return "cfast" end
+		if speed == "run" or speed == "aimrun" or speed == "sprint" then
+			return "cfast"
+		end
 		return nil
 	end
+
 	if speed == "walk" and relaxed(npc) then return lit(npc, "calm") end
 	if speed == "alert" then return lit(npc, "alert") end
 
@@ -134,6 +146,7 @@ local function move_set(npc, speed)
 		if speed == "run" or speed == "aimrun" then return "pstljog" end
 		return nil
 	end
+
 	if speed == "tactical" then return "walk" end
 	if speed == "run" or speed == "aimrun" then return "jog" end
 	if speed == "sprint" then return "run" end
@@ -145,7 +158,10 @@ T.FIGHT_STOP = { run = "jog" }
 
 function T.FightStopSet(npc, set)
 	local alt = set and T.FIGHT_STOP[set]
-	if alt and npc.tifAware == TIF.AWARE.ENGAGED and sets(npc.tifHomeHost).stop[alt] then return alt end
+	if alt and npc.tifAware == TIF.AWARE.ENGAGED and sets(npc.tifHomeHost).stop[alt] then
+		return alt
+	end
+
 	return set
 end
 
@@ -159,11 +175,16 @@ function T.Turn(npc, want)
 	if math.abs(diff) < T.TURN_MIN then return false end
 	local set
 	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then set = "crouch"
-	elseif pistol(npc) then set = "pstl"
-	elseif relaxed(npc) then set = "calm"
+	elseif pistol(npc) then
+		set = "pstl"
+	elseif relaxed(npc) then
+		set = "calm"
 	elseif npc.tifAware ~= TIF.AWARE.ENGAGED and npc.tifHomeHost and TIF.GTG.Clip("mwt_turn_alert_4", npc.tifHomeHost)
 		and (npc.tifAware == TIF.AWARE.SUSPICIOUS or npc.tifAware == TIF.AWARE.SEARCHING) then set = "alert"
-	else set = "stand" end
+	else
+		set = "stand"
+	end
+
 	set = lit(npc, set)
 	local list = sets(npc.tifHomeHost).turn[set] or sets(npc.tifHomeHost).turn.stand
 	if not list then return false end
@@ -171,16 +192,25 @@ function T.Turn(npc, want)
 	for _, e in ipairs(list) do
 
 		local d = math.abs(math.AngleDifference(diff, e.yaw))
-		if math.abs(e.yaw) > 170 then d = math.min(d, math.abs(math.AngleDifference(diff, -e.yaw))) end
-		if not bd or d < bd then best, bd = e, d end
+		if math.abs(e.yaw) > 170 then
+			d = math.min(d, math.abs(math.AngleDifference(diff, -e.yaw)))
+		end
+		if not bd or d < bd then
+			best, bd = e, d
+		end
 	end
+
 	if not best or bd > T.TURN_RESIDUAL then return false end
 
 	if math.abs(best.yaw) > 170 then
 		for _, e in ipairs(list) do
-			if math.abs(e.yaw) > 170 and (e.yaw > 0) == (diff > 0) then best = e break end
+			if math.abs(e.yaw) > 170 and (e.yaw > 0) == (diff > 0) then
+				best = e
+				break
+			end
 		end
 	end
+
 	local rate = npc.tifAware == TIF.AWARE.ENGAGED and T.COMBAT_RATE or 1
 	local d = Act.Play(npc, best.name, { root = true, to = { pos = npc:GetPos(), yaw = want }, clear = true, rate = rate })
 	if not d then return false end
@@ -214,10 +244,13 @@ local function prone_start(npc)
 			local x, y = curve_end(c)
 			if x * x + y * y > 1 then
 				local d = math.abs(math.AngleDifference(dir, math.deg(math.atan2(y, x))))
-				if not bd or d < bd then best, bd = { name = name, dist = math.sqrt(x * x + y * y) }, d end
+				if not bd or d < bd then
+					best, bd = { name = name, dist = math.sqrt(x * x + y * y) }, d
+				end
 			end
 		end
 	end
+
 	if not best or bd > 35 or best.dist + 10 > len then return false end
 	local d = Act.Play(npc, best.name, { root = true, clear = true })
 	if not d then return false end
@@ -230,12 +263,16 @@ local function prone_stop(npc, m, here)
 	if not TIF.GTG.Clip(name, npc.tifHomeHost) then return nil end
 	if npc.loco:GetVelocity():Length2DSqr() < 10 * 10 then return nil end
 	if not here then
-		if not m.goal or npc:GetPos():DistToSqr(m.goal) > 30 * 30 then return nil end
+		if not m.goal or npc:GetPos():DistToSqr(m.goal) > 30 * 30 then
+			return nil
+		end
 	end
+
 	local opts = { root = true, clear = true }
 	if not here and m.goal then
 		opts.to = { pos = Vector(m.goal.x, m.goal.y, npc:GetPos().z), yaw = npc:GetAngles().y }
 	end
+
 	local d = Act.Play(npc, name, opts)
 	if not d then return nil end
 	mark(npc)
@@ -252,7 +289,10 @@ function T.ProneTurn(npc, want)
 	local c = TIF.GTG.Clip(name, npc.tifHomeHost)
 	if not c then return false end
 	local _, _, r = curve_end(c)
-	if math.abs(r) < 10 then r = diff > 0 and 90 or -90 end
+	if math.abs(r) < 10 then
+		r = diff > 0 and 90 or -90
+	end
+
 	local endYaw = math.abs(diff) <= T.PRONE_TURN_ONE and want or (cur + r)
 	local rate = npc.tifAware == TIF.AWARE.ENGAGED and T.COMBAT_RATE or 1
 	local d = Act.Play(npc, name, { root = true, to = { pos = npc:GetPos(), yaw = endYaw }, clear = true, rate = rate })
@@ -263,7 +303,10 @@ end
 
 function T.Start(npc, m)
 	if prone_ready(npc) then return prone_start(npc) end
-	if not T.Use(npc) or not free(npc) or not T.START_TAGS[m.tag or ""] then return false end
+	if not T.Use(npc) or not free(npc) or not T.START_TAGS[m.tag or ""] then
+		return false
+	end
+
 	if npc.loco:GetVelocity():Length2DSqr() > 15 * 15 then return false end
 	local set = move_set(npc, m.speed)
 	local list = set and sets(npc.tifHomeHost).start[set]
@@ -273,7 +316,9 @@ function T.Start(npc, m)
 	local best, bd
 	for _, e in ipairs(list) do
 		local d = math.abs(math.AngleDifference(dir, e.dir))
-		if not bd or d < bd then best, bd = e, d end
+		if not bd or d < bd then
+			best, bd = e, d
+		end
 	end
 
 	if not best or bd > 30 or best.dist + 20 > len then return false end
@@ -288,7 +333,9 @@ function T.Start(npc, m)
 end
 
 function T.ExitVel(c, yaw0, u)
-	if not c or not c.curve or #c.curve < 9 or not c.frames or c.frames < 4 then return nil end
+	if not c or not c.curve or #c.curve < 9 or not c.frames or c.frames < 4 then
+		return nil
+	end
 	local G = TIF.GTG
 	local f = math.max(3, math.floor(math.Clamp(u or 1, 0, 1) * (c.frames - 1)))
 	local dx = G.ClipCurve(c, f, 1) - G.ClipCurve(c, f - 3, 1)
@@ -309,6 +356,7 @@ function T.Stance(npc, from, to)
 	if npc.loco:GetVelocity():Length2DSqr() > 20 * 20 or (TIF.Move.Moving and TIF.Move.Moving(npc)) then
 		return false
 	end
+
 	local host = npc.tifHomeHost
 	local name
 	if from == TIF.Anim.STANCE_STAND and to == TIF.Anim.STANCE_CROUCH then
@@ -325,8 +373,12 @@ function T.Stance(npc, from, to)
 				local c = TIF.GTG.Clip("mwk_down_" .. n, host)
 				if c then
 					local e = math.abs(math.AngleDifference(want, (c.move and c.move[3]) or 0))
-					if n == "8" then e = e - T.STANCE_TURN_MIN end
-					if not be or e < be then best, be = "mwk_down_" .. n, e end
+					if n == "8" then
+						e = e - T.STANCE_TURN_MIN
+					end
+					if not be or e < be then
+						best, be = "mwk_down_" .. n, e
+					end
 				end
 			end
 			name = best
@@ -334,6 +386,7 @@ function T.Stance(npc, from, to)
 	elseif from == TIF.Anim.STANCE_CROUCH and to == TIF.Anim.STANCE_STAND then
 		name = TIF.GTG.Clip("mwk_up_8", host) and "mwk_up_8" or nil
 	end
+
 	if not name then return false end
 	local d = Act.Play(npc, name, { root = true, clear = true })
 	if not d then return false end
@@ -351,7 +404,10 @@ local function rev_set(npc, speed)
 	end
 	local cqb = npc:GetNW2Bool("tif_cqb", false)
 	if speed == "tactical" then return cqb and "cqbwalk" or "walk" end
-	if speed == "run" or speed == "aimrun" then return cqb and "cqbfast" or "jog" end
+	if speed == "run" or speed == "aimrun" then
+		return cqb and "cqbfast" or "jog"
+	end
+
 	return nil
 end
 T.RevSet = rev_set
@@ -369,18 +425,27 @@ function T.Reverse(npc, m, now)
 	if not seg then return false end
 	local to = seg.pos - npc:GetPos()
 	to.z = 0
-	if to:LengthSqr() < 40 * 40 or npc:GetPos():DistToSqr(m.goal) < 120 * 120 then return false end
+	if to:LengthSqr() < 40 * 40 or npc:GetPos():DistToSqr(m.goal) < 120 * 120 then
+		return false
+	end
+
 	local yaw = npc:GetAngles().y
 	local vrel = math.AngleDifference(v:Angle().y, yaw)
 	local drel = math.AngleDifference(to:Angle().y, yaw)
-	if math.abs(math.AngleDifference(drel, vrel)) < T.REV_MIN then return false end
+	if math.abs(math.AngleDifference(drel, vrel)) < T.REV_MIN then
+		return false
+	end
+
 	local best, bd
 	for _, e in ipairs(list) do
 		if e.from and e.to then
 			local d = math.abs(math.AngleDifference(vrel, e.from)) + math.abs(math.AngleDifference(drel, e.to))
-			if not bd or d < bd then best, bd = e, d end
+			if not bd or d < bd then
+				best, bd = e, d
+			end
 		end
 	end
+
 	if not best or bd > 80 then return false end
 	local d = Act.Play(npc, best.name, { root = true, clear = true })
 	if not d then return false end
@@ -395,32 +460,49 @@ local function pick_stop(npc, set, list, travel, faceYaw)
 	local turn = 0
 	local turns = set == "calm" or set == "alert" or set == "calmf" or set == "alertf" or set == "pstljog" or set == "pstlrun"
 		or set == "run"
-	if turns and faceYaw then turn = math.AngleDifference(faceYaw, yaw) end
+	if turns and faceYaw then
+		turn = math.AngleDifference(faceYaw, yaw)
+	end
+
 	local best, bd
 	for _, e in ipairs(list) do
 		local d = math.abs(math.AngleDifference(travel, e.dir)) + math.abs(math.AngleDifference(turn, e.yaw)) * 0.5
-		if not bd or d < bd then best, bd = e, d end
+		if not bd or d < bd then
+			best, bd = e, d
+		end
 	end
+
 	if not best or bd > 60 then return nil end
 
 	local name = best.name
 	if math.random() < 0.5 then
 		local other = string.gsub(name, "_([lr])_(%d)$", function(f, n) return "_" .. (f == "l" and "r" or "l") .. "_" .. n end)
-		if TIF.GTG.Clip(other, npc.tifHomeHost) then name = other end
+		if TIF.GTG.Clip(other, npc.tifHomeHost) then
+			name = other
+		end
 	end
+
 	local endYaw = yaw + best.yaw
-	if turns and faceYaw then endYaw = faceYaw end
+	if turns and faceYaw then
+		endYaw = faceYaw
+	end
+
 	return best, name, endYaw
 end
 
 function T.Stop(npc, m)
 	if prone_ready(npc) then return prone_stop(npc, m, false) end
-	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] or not m.goal then return nil end
+	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] or not m.goal then
+		return nil
+	end
+
 	local set = T.FightStopSet(npc, move_set(npc, m.speed))
 	local list = set and sets(npc.tifHomeHost).stop[set]
 	if not list then return nil end
 
-	if npc:GetPos():DistToSqr(m.goal) > T.STOP_WINDOW * T.STOP_WINDOW then return nil end
+	if npc:GetPos():DistToSqr(m.goal) > T.STOP_WINDOW * T.STOP_WINDOW then
+		return nil
+	end
 	local path = npc.tifPath
 	local last = path:LastSegment()
 	local cur = path:GetCurrentGoal()
@@ -432,7 +514,9 @@ function T.Stop(npc, m)
 	local best, name, endYaw = pick_stop(npc, set, list, math.AngleDifference(to:Angle().y, yaw), m.faceYaw)
 	if not best then return nil end
 
-	if dist > math.max(best.dist + T.STOP_SLACK, T.STOP_WINDOW) then return nil end
+	if dist > math.max(best.dist + T.STOP_SLACK, T.STOP_WINDOW) then
+		return nil
+	end
 	local d = Act.Play(npc, name, { root = true, to = { pos = Vector(m.goal.x, m.goal.y, npc:GetPos().z), yaw = endYaw }, clear = true })
 	if not d then return nil end
 	mark(npc)
@@ -442,7 +526,10 @@ end
 
 function T.StopHere(npc, m)
 	if prone_ready(npc) then return prone_stop(npc, m, true) ~= nil end
-	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] then return false end
+	if not T.Use(npc) or not free(npc) or not T.STOP_TAGS[m.tag or ""] then
+		return false
+	end
+
 	local v = npc.loco:GetVelocity()
 	if v:Length2DSqr() < 30 * 30 then return false end
 	local set = T.FightStopSet(npc, move_set(npc, m.speed))
@@ -458,6 +545,7 @@ function T.StopHere(npc, m)
 		local a = npc.tifAct
 		a.warp = { dx = 0, dy = 0, dyaw = math.AngleDifference(endYaw, yaw + best.yaw) }
 	end
+
 	mark(npc)
 	settle_stop(npc, name)
 	return true

@@ -28,9 +28,12 @@ local function watch_point(lkp, from)
 		if d > 350 and d < 750 and flat(p - lkp):Dot(back) > 0.2
 			and sees(p + Vector(0, 0, 60), lkp + Vector(0, 0, 40)) then
 			local score = from:DistToSqr(p)
-			if not bestD or score < bestD then best, bestD = p, score end
+			if not bestD or score < bestD then
+				best, bestD = p, score
+			end
 		end
 	end
+
 	return best
 end
 
@@ -40,14 +43,20 @@ function S.Plan(sq, searchers, lkp, dir, now)
 	if #searchers >= 3 and TIF.Building and TIF.CQB and not sq.cqb and TIF.Building.Indoor(lkp) then
 		if TIF.CQB.Start(sq, lkp, true) then
 			for _, m in ipairs(searchers) do
-				if m.tifSearch then m.tifSearch.assigned = true end
+				if m.tifSearch then
+					m.tifSearch.assigned = true
+				end
 			end
 			TIF.Squad.Log(sq, "search: enemy was indoors, clearing the building")
 			return
 		end
 	end
+
 	local centre = Vector()
-	for _, m in ipairs(searchers) do centre:Add(m:GetPos()) end
+	for _, m in ipairs(searchers) do
+		centre:Add(m:GetPos())
+	end
+
 	centre = centre / #searchers
 
 	local watcher, watchAt
@@ -55,10 +64,14 @@ function S.Plan(sq, searchers, lkp, dir, now)
 		local bestRank
 		for _, m in ipairs(searchers) do
 			local r = WATCH_PREF[m.tifArchId] or 9
-			if not bestRank or r < bestRank then watcher, bestRank = m, r end
+			if not bestRank or r < bestRank then
+				watcher, bestRank = m, r
+			end
 		end
 		watchAt = watch_point(lkp, centre)
-		if not watchAt then watcher = nil end
+		if not watchAt then
+			watcher = nil
+		end
 	end
 
 	local movers = {}
@@ -70,10 +83,13 @@ function S.Plan(sq, searchers, lkp, dir, now)
 		local d = p:Distance(lkp)
 		if d > 160 then
 			local score = math.random() * 0.6 + (d < 500 and 0.3 or 0)
-			if dir then score = score + flat(p - lkp):Dot(dir) * 1.2 end
+			if dir then
+				score = score + flat(p - lkp):Dot(dir) * 1.2
+			end
 			cands[#cands + 1] = { p = p, score = score }
 		end
 	end
+
 	table.sort(cands, function(a, b) return a.score > b.score end)
 
 	local picked = {}
@@ -81,17 +97,28 @@ function S.Plan(sq, searchers, lkp, dir, now)
 		if #picked >= #movers * S.POINTS_EACH then break end
 		local ok = true
 		for _, q in ipairs(picked) do
-			if q:DistToSqr(c.p) < 220 * 220 then ok = false break end
+			if q:DistToSqr(c.p) < 220 * 220 then
+				ok = false
+				break
+			end
 		end
-		if ok then picked[#picked + 1] = c.p end
+		if ok then
+			picked[#picked + 1] = c.p
+		end
 	end
 
 	local lists = {}
-	for i, m in ipairs(movers) do lists[i] = (i == 1) and { Vector(lkp) } or {} end
+	for i, m in ipairs(movers) do
+		lists[i] = (i == 1) and { Vector(lkp) } or {}
+	end
+
 	for i, p in ipairs(picked) do
 		local list = lists[(i - 1) % #movers + 1]
-		if list then list[#list + 1] = p end
+		if list then
+			list[#list + 1] = p
+		end
 	end
+
 	for i, m in ipairs(movers) do
 
 		local mp = m:GetPos()
@@ -100,13 +127,16 @@ function S.Plan(sq, searchers, lkp, dir, now)
 		m.tifSearch = { start = (m.tifSearch and m.tifSearch.start) or now, pos = Vector(lkp), dir = dir,
 			points = list, i = 1, assigned = true }
 	end
+
 	if watcher then
 		watcher.tifSearch = { start = (watcher.tifSearch and watcher.tifSearch.start) or now, pos = Vector(lkp),
 			dir = dir, points = {}, i = 1, assigned = true, watch = watchAt }
 	end
+
 	if TIF.Squad.Log then
 		TIF.Squad.Log(sq, "search: ", #movers, " searching ", #picked + 1, " points",
 			watcher and ", 1 on overwatch" or "", " round ", tostring(lkp))
 	end
+
 	TIF.Say(searchers[1], "moving", 0.4)
 end

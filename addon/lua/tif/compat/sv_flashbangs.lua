@@ -7,7 +7,10 @@ local cvFriendly = CreateConVar("tif_flash_friendly", "0.3", FCVAR_ARCHIVE,
 
 function TIF.FlashScale(thrower, ent)
 	if not (IsValid(thrower) and IsValid(ent)) then return 1 end
-	if thrower ~= ent and TIF.Relation(thrower, ent) ~= TIF.REL_ALLY then return 1 end
+	if thrower ~= ent and TIF.Relation(thrower, ent) ~= TIF.REL_ALLY then
+		return 1
+	end
+
 	return math.Clamp(cvFriendly:GetFloat(), 0, 1)
 end
 
@@ -45,12 +48,15 @@ function TIF.FlashAt(pos, radius, inflictor, thrower)
 				local k = (1 - d / r) * Lerp((facing + 1) / 2, TIF.FLASH.behind, 1)
 				local secs = Lerp(math.Clamp(k, 0, 1), TIF.FLASH.min, TIF.FLASH.max)
 
-				if d < r * 0.15 then secs = math.max(secs, TIF.FLASH.max * 0.8) end
+				if d < r * 0.15 then
+					secs = math.max(secs, TIF.FLASH.max * 0.8)
+				end
 				TIF.API.Stun(npc, secs * s)
 				n = n + 1
 			end
 		end
 	end
+
 	return n
 end
 

@@ -12,17 +12,23 @@ local function clean_list(t, check)
 	for _, v in ipairs(istable(t) and t or {}) do
 		if isstring(v) then
 			v = string.Trim(v)
-			if v ~= "" and (not check or check(v)) and not table.HasValue(out, v) then out[#out + 1] = v end
+			if v ~= "" and (not check or check(v)) and not table.HasValue(out, v) then
+				out[#out + 1] = v
+			end
 		end
 		if #out >= 24 then break end
 	end
+
 	return out
 end
 
 function FE.Sanitize(t)
 	if not istable(t) then return nil, "not a table" end
 	local id = isstring(t.id) and string.lower(t.id) or ""
-	if not string.match(id, "^[a-z][a-z0-9_]*$") or #id > 24 then return nil, "id must be a-z, 0-9, _ (up to 24)" end
+	if not string.match(id, "^[a-z][a-z0-9_]*$") or #id > 24 then
+		return nil, "id must be a-z, 0-9, _ (up to 24)"
+	end
+
 	local def = {
 		id = id,
 		name = isstring(t.name) and string.sub(t.name, 1, 48) or id,
@@ -43,7 +49,10 @@ function FE.Sanitize(t)
 
 	local packs = TIF.Voice and TIF.Voice.PACKS
 	def.voices = clean_list(istable(t.voices) and t.voices or { def.voice }, packs and function(p) return packs[p] ~= nil end or nil)
-	if #def.voices == 0 then def.voices = { "mercenary" } end
+	if #def.voices == 0 then
+		def.voices = { "mercenary" }
+	end
+
 	def.voice = def.voices[1]
 
 	if istable(t.variants) then
@@ -71,11 +80,16 @@ function FE.Sanitize(t)
 			if isstring(k) and istable(list) then
 				local vals = {}
 				for _, x in ipairs(list) do if isnumber(x) and x >= 0 and x < 64 then vals[#vals + 1] = math.floor(x) end end
-				if #vals > 0 then bg[string.lower(k)] = vals end
+				if #vals > 0 then
+					bg[string.lower(k)] = vals
+				end
 			end
 		end
-		if next(bg) then def.bodygroups = bg end
+		if next(bg) then
+			def.bodygroups = bg
+		end
 	end
+
 	if istable(t.bodyRules) then
 		local rules = {}
 		for _, r in ipairs(t.bodyRules) do
@@ -83,14 +97,21 @@ function FE.Sanitize(t)
 				rules[#rules + 1] = { string.lower(r[1]), string.lower(r[2]) }
 			end
 		end
-		if #rules > 0 then def.bodyRules = rules end
+		if #rules > 0 then
+			def.bodyRules = rules
+		end
 	end
-	if t.noBlank == true then def.noBlank = true end
+
+	if t.noBlank == true then
+		def.noBlank = true
+	end
 
 	if istable(t.modular) and istable(t.modular.slots) then
 		local mod = { main = isstring(t.modular.main) and t.modular.main or "body", slots = {}, combos = {}, chance = {},
 			retarget = t.modular.retarget == true }
-		if t.modular.skins == false then mod.skins = false end
+		if t.modular.skins == false then
+			mod.skins = false
+		end
 		for slot, list in pairs(t.modular.slots) do
 			if isstring(slot) and istable(list) then
 				mod.slots[slot] = clean_list(list, SERVER and util.IsValidModel or nil)
@@ -113,14 +134,21 @@ function FE.Sanitize(t)
 			end
 		end
 		for slot, p in pairs(istable(t.modular.chance) and t.modular.chance or {}) do
-			if isstring(slot) and isnumber(p) then mod.chance[slot] = math.Clamp(p, 0, 1) end
+			if isstring(slot) and isnumber(p) then
+				mod.chance[slot] = math.Clamp(p, 0, 1)
+			end
 		end
 		if mod.slots[mod.main] and #mod.slots[mod.main] > 0 then
 			def.modular = mod
-			if #def.models == 0 then def.models = table.Copy(mod.slots[mod.main]) end
-			if TIF.Modular and TIF.Modular.Prepare then TIF.Modular.Prepare(def) end
+			if #def.models == 0 then
+				def.models = table.Copy(mod.slots[mod.main])
+			end
+			if TIF.Modular and TIF.Modular.Prepare then
+				TIF.Modular.Prepare(def)
+			end
 		end
 	end
+
 	if #def.models == 0 then return nil, "at least one valid model is needed" end
 	local isGun = function(c) return TIF.GTG.WeaponDef(c) ~= nil end
 	for _, role in ipairs(FE.ROLES) do
@@ -132,6 +160,7 @@ function FE.Sanitize(t)
 			end
 		end
 	end
+
 	if not def.loadouts.default or not def.loadouts.default.primary then
 		return nil, "the default role needs at least one primary weapon"
 	end
@@ -139,9 +168,12 @@ function FE.Sanitize(t)
 	if istable(t.allies) then
 		for k, v in pairs(t.allies) do
 			local a = isstring(k) and k or v
-			if isstring(a) and a ~= id then def.allies[a] = true end
+			if isstring(a) and a ~= id then
+				def.allies[a] = true
+			end
 		end
 	end
+
 	return def
 end
 
@@ -155,14 +187,20 @@ if SERVER then
 	function FE.Register(def)
 		TIF.RegisterFaction(def.id, def)
 		def.custom = true
-		if TIF.RefreshSpawnList then TIF.RefreshSpawnList() end
+		if TIF.RefreshSpawnList then
+			TIF.RefreshSpawnList()
+		end
 	end
 
 	function FE.LoadAll()
 		file.CreateDir(FE.DIR)
 		for _, f in ipairs(file.Find(FE.DIR .. "/*.json", "DATA")) do
 			local def, err = FE.Sanitize(util.JSONToTable(file.Read(FE.DIR .. "/" .. f, "DATA") or "") or {})
-			if def then FE.Register(def) else TIF.Warn("Faction file ", f, ": ", err) end
+			if def then
+				FE.Register(def)
+			else
+				TIF.Warn("Faction file ", f, ": ", err)
+			end
 		end
 	end
 
@@ -184,7 +222,11 @@ if SERVER then
 		net.Start("tif_factions")
 		net.WriteUInt(#data, 20)
 		net.WriteData(data, #data)
-		if to then net.Send(to) else net.Broadcast() end
+		if to then
+			net.Send(to)
+		else
+			net.Broadcast()
+		end
 	end
 
 	local function admin(ply) return not IsValid(ply) or ply:IsSuperAdmin() or game.SinglePlayer() or ply:IsListenServerHost() end
@@ -196,14 +238,18 @@ if SERVER then
 		local raw = util.Decompress(net.ReadData(len)) or ""
 		local def, err = FE.Sanitize(util.JSONToTable(raw) or {})
 		if not def then
-			if IsValid(ply) then ply:ChatPrint("[TIF] Faction not saved: " .. err) end
+			if IsValid(ply) then
+				ply:ChatPrint("[TIF] Faction not saved: " .. err)
+			end
 			return
 		end
 		file.CreateDir(FE.DIR)
 		file.Write(path(def.id), util.TableToJSON(def, true))
 		FE.Register(def)
 		FE.Send()
-		if IsValid(ply) then ply:ChatPrint("[TIF] Faction '" .. def.id .. "' saved (" .. #def.models .. " model(s)). New soldiers use it.") end
+		if IsValid(ply) then
+			ply:ChatPrint("[TIF] Faction '" .. def.id .. "' saved (" .. #def.models .. " model(s)). New soldiers use it.")
+		end
 	end)
 
 	net.Receive("tif_faction_delete", function(_, ply)
@@ -213,19 +259,27 @@ if SERVER then
 		file.Delete(path(id))
 		if TIF.BuiltinFactions[id] then
 			TIF.Factions[id] = table.Copy(TIF.BuiltinFactions[id])
-			if IsValid(ply) then ply:ChatPrint("[TIF] '" .. id .. "' is back to its defaults") end
+			if IsValid(ply) then
+				ply:ChatPrint("[TIF] '" .. id .. "' is back to its defaults")
+			end
 		else
 			TIF.Factions[id] = nil
-			if IsValid(ply) then ply:ChatPrint("[TIF] Faction '" .. id .. "' deleted") end
+			if IsValid(ply) then
+				ply:ChatPrint("[TIF] Faction '" .. id .. "' deleted")
+			end
 		end
-		if TIF.RefreshSpawnList then TIF.RefreshSpawnList() end
+		if TIF.RefreshSpawnList then
+			TIF.RefreshSpawnList()
+		end
 		FE.Send()
 	end)
 
 	util.AddNetworkString("tif_ready")
 	local lastReady = {}
 	net.Receive("tif_ready", function(_, ply)
-		if not IsValid(ply) or (lastReady[ply] and CurTime() - lastReady[ply] < 4) then return end
+		if not IsValid(ply) or (lastReady[ply] and CurTime() - lastReady[ply] < 4) then
+			return
+		end
 		lastReady[ply] = CurTime()
 		FE.Send(ply)
 	end)
@@ -247,17 +301,25 @@ if CLIENT then
 
 		for id, def in pairs(t) do
 			TIF.Factions[id] = TIF.Factions[id] or {}
-			for k, v in pairs(def) do TIF.Factions[id][k] = v end
+			for k, v in pairs(def) do
+				TIF.Factions[id][k] = v
+			end
 		end
 		for id in pairs(TIF.Factions) do if not t[id] then TIF.Factions[id] = nil end end
-		if TIF.RefreshSpawnList then TIF.RefreshSpawnList() end
-		if IsValid(FE.Frame) and FE.Frame.Refresh then FE.Frame:Refresh() end
+		if TIF.RefreshSpawnList then
+			TIF.RefreshSpawnList()
+		end
+		if IsValid(FE.Frame) and FE.Frame.Refresh then
+			FE.Frame:Refresh()
+		end
 	end)
 
 	local function gtg_weapons()
 		local out = {}
 		for _, w in ipairs(weapons.GetList()) do
-			if istable(w.GTG) and w.ClassName then out[#out + 1] = w.ClassName end
+			if istable(w.GTG) and w.ClassName then
+				out[#out + 1] = w.ClassName
+			end
 		end
 		table.sort(out)
 		return out
@@ -268,7 +330,9 @@ if CLIENT then
 		for class, t in pairs(scripted_ents.GetList()) do
 			local tt = t.t or t
 			if tt.IsGlideVehicle or (isstring(tt.Base) and string.StartWith(tt.Base, "base_glide")) then
-				if not string.StartWith(class, "base_") then out[#out + 1] = class end
+				if not string.StartWith(class, "base_") then
+					out[#out + 1] = class
+				end
 			end
 		end
 		table.sort(out)
@@ -279,7 +343,9 @@ if CLIENT then
 		local out = {}
 		for part in string.gmatch(s or "", "[^,\n]+") do
 			part = string.Trim(part)
-			if part ~= "" then out[#out + 1] = part end
+			if part ~= "" then
+				out[#out + 1] = part
+			end
 		end
 		return out
 	end
@@ -301,13 +367,17 @@ if CLIENT then
 		add:Dock(RIGHT)
 		add:SetWide(170)
 		add:SetValue("+ add")
-		for _, c in ipairs(choices) do add:AddChoice(c) end
+		for _, c in ipairs(choices) do
+			add:AddChoice(c)
+		end
 		local txt = vgui.Create("DTextEntry", bottom)
 		txt:Dock(FILL)
 		txt:SetValue(table.concat(value or {}, ", "))
 		add.OnSelect = function(_, _, v)
 			local cur = split(txt:GetValue())
-			if not table.HasValue(cur, v) then cur[#cur + 1] = v end
+			if not table.HasValue(cur, v) then
+				cur[#cur + 1] = v
+			end
 			txt:SetValue(table.concat(cur, ", "))
 			add:SetValue("+ add")
 		end
@@ -315,7 +385,9 @@ if CLIENT then
 	end
 
 	function FE.Open()
-		if IsValid(FE.Frame) then FE.Frame:Remove() end
+		if IsValid(FE.Frame) then
+			FE.Frame:Remove()
+		end
 		local f = vgui.Create("DFrame")
 		FE.Frame = f
 		f:SetTitle("Tactical Infantry: factions")
@@ -344,13 +416,19 @@ if CLIENT then
 				return t
 			end
 			fields.id = text("Id (a-z, 0-9, _): soldiers are tif_soldier with this faction", def.id)
-			if def.id ~= "" then fields.id:SetEnabled(false) end
+			if def.id ~= "" then
+				fields.id:SetEnabled(false)
+			end
 			fields.name = text("Name", def.name)
 			local l = right:Add("DLabel") l:SetText("Side (for menus; who fights whom: allies below)") l:Dock(TOP) l:SetDark(true)
 			fields.side = right:Add("DComboBox") fields.side:Dock(TOP)
-			for _, s in ipairs({ "enemy", "ally", "neutral" }) do fields.side:AddChoice(s, nil, s == def.side) end
+			for _, s in ipairs({ "enemy", "ally", "neutral" }) do
+				fields.side:AddChoice(s, nil, s == def.side)
+			end
 			local packIds = {}
-			for k in SortedPairs((TIF.Voice and TIF.Voice.PACKS) or { mercenary = true }) do packIds[#packIds + 1] = k end
+			for k in SortedPairs((TIF.Voice and TIF.Voice.PACKS) or { mercenary = true }) do
+				packIds[#packIds + 1] = k
+			end
 			fields.voices = list_field(right, "Voice packs (several for variety: each soldier gets one of them)", packIds,
 				def.voices or { def.voice })
 			if def.variants then
@@ -385,9 +463,13 @@ if CLIENT then
 			end
 			fields.vehicles = list_field(right, "Vehicles (Glide; the campaign's convoys and backup use these)", cars, def.vehicles)
 			local allies = {}
-			for k in pairs(def.allies or {}) do allies[#allies + 1] = k end
+			for k in pairs(def.allies or {}) do
+				allies[#allies + 1] = k
+			end
 			local facIds = {}
-			for k in pairs(TIF.Factions) do facIds[#facIds + 1] = k end
+			for k in pairs(TIF.Factions) do
+				facIds[#facIds + 1] = k
+			end
 			table.sort(facIds)
 			fields.allies = list_field(right, "Allied factions", facIds, allies)
 

@@ -33,19 +33,26 @@ local function events_of(clip)
 		elseif t[1] == "MoveEvent" and istable(t[4]) then
 			local n = t[4].MoveEvent
 			if n == "mvmt_step_pre" then ev[#ev + 1] = { t[2], "gear", "pre" }
-			elseif n == "mvmt_step_post" then ev[#ev + 1] = { t[2], "gear", "post" }
-			elseif n == "land" then ev[#ev + 1] = { t[2], "land" }
-			elseif FALL[n] then ev[#ev + 1] = { t[2], "fall", FALL[n] }
+			elseif n == "mvmt_step_post" then
+				ev[#ev + 1] = { t[2], "gear", "post" }
+			elseif n == "land" then
+				ev[#ev + 1] = { t[2], "land" }
+			elseif FALL[n] then
+				ev[#ev + 1] = { t[2], "fall", FALL[n] }
 
-			elseif isstring(n) and string.sub(n, 1, 16) == "ps_hm_grnd_melee" then ev[#ev + 1] = { t[2], "scuffle" }
-			elseif n == "dropgun" or n == "gun_drop" then ev[#ev + 1] = { t[2], "gundrop" }
+			elseif isstring(n) and string.sub(n, 1, 16) == "ps_hm_grnd_melee" then
+				ev[#ev + 1] = { t[2], "scuffle" }
+			elseif n == "dropgun" or n == "gun_drop" then
+				ev[#ev + 1] = { t[2], "gundrop" }
 			elseif n == "melee_death" then ev[#ev + 1] = { t[2], "fall", "torso" } end
 		end
 	end
 
 	if not feet and (clip.speed or 0) > 1 and clip.frames and clip.frames > 1 then
 		for _, side in ipairs({ "l", "r" }) do
-			for _, fr in ipairs(clip[side .. "plant"] or {}) do ev[#ev + 1] = { fr / (clip.frames - 1), "step", side } end
+			for _, fr in ipairs(clip[side .. "plant"] or {}) do
+				ev[#ev + 1] = { fr / (clip.frames - 1), "step", side }
+			end
 		end
 	end
 
@@ -55,9 +62,12 @@ local function events_of(clip)
 		local n = #ev
 		for i = 1, n do
 			local e = ev[i]
-			if e[2] == "step" then ev[#ev + 1] = { math.min(1, e[1] + 0.01), "gear", "post" } end
+			if e[2] == "step" then
+				ev[#ev + 1] = { math.min(1, e[1] + 0.01), "gear", "post" }
+			end
 		end
 	end
+
 	table.sort(ev, function(a, b) return a[1] < b[1] end)
 	cache[clip] = ev
 	return ev
@@ -70,9 +80,12 @@ local function vest_of(ent, st)
 	if st.wkind == "lmg" or st.wkind == "rpg" then v = "vestheavy"
 	else
 		local s, h = tostring(ent.GetTIFFaction and ent:GetTIFFaction() or ""), 0
-		for i = 1, #s do h = (h * 31 + string.byte(s, i)) % 9973 end
+		for i = 1, #s do
+			h = (h * 31 + string.byte(s, i)) % 9973
+		end
 		v = VESTS[h % #VESTS + 1]
 	end
+
 	st.folVest = v
 	return v
 end
@@ -95,6 +108,7 @@ local function surface(ent, st, now)
 		st.folSurfT = now + C.SURF_EVERY
 		st.folSurf = F.SurfaceAt(ent:GetPos(), ent) or "concrete"
 	end
+
 	return st.folSurf
 end
 
@@ -121,7 +135,10 @@ local function play(ent, snd, lvl, vol, pitch)
 	vol = vol * cvVol:GetFloat()
 	if vol <= 0.01 then return end
 	local fn = FrameNumber()
-	if fn ~= frameNo then frameNo, played = fn, 0 end
+	if fn ~= frameNo then
+		frameNo, played = fn, 0
+	end
+
 	if played >= C.MAX_PER_FRAME then return end
 	local hd = C.HearDist(lvl) * math.sqrt(math.min(1, vol) + 0.25)
 	if ent:GetPos():DistToSqr(EyePos()) > hd * hd then return end
@@ -149,7 +166,9 @@ function C.Fire(ent, st, e, clip, now)
 		end
 	elseif kind == "land" then
 		play(ent, F.PickAny("land/" .. row[1], "land/concrete"), 75, 0.9)
-		if not st.civ then play(ent, F.Pick("rattle/land"), 68, 0.45) end
+		if not st.civ then
+			play(ent, F.Pick("rattle/land"), 68, 0.45)
+		end
 	elseif kind == "scuffle" then
 		play(ent, "physics/body/body_medium_impact_hard" .. math.random(1, 6) .. ".wav", 75, 0.75)
 		play(ent, F.Pick("accent"), 70, 0.6)
@@ -193,8 +212,13 @@ function C.Update(ent, st, now)
 			play(ent, F.PickAny("prone/" .. row[4], "prone/concrete"), 68, 0.7)
 		end
 	end
+
 	st.folStance, st.folProne, st.folAct = stance, prone, act
-	if not lp then st.folClip = nil return end
+	if not lp then
+		st.folClip = nil
+		return
+	end
+
 	C.Track(ent, st, now, lp.clip, lp.cycle or 0, near)
 end
 
@@ -220,6 +244,7 @@ function C.Track(ent, st, now, clip, cyc, near)
 			end
 		end
 	end
+
 	st.folClip, st.folCyc = clip, cyc
 end
 
@@ -232,9 +257,12 @@ local function clip_of_seq(name)
 		bySeq = {}
 		local all = TIFG and TIFG.Clips and TIFG.Clips.mw_male or {}
 		for _, c in pairs(all) do
-			if c.seq and not bySeq[string.lower(c.seq)] then bySeq[string.lower(c.seq)] = c end
+			if c.seq and not bySeq[string.lower(c.seq)] then
+				bySeq[string.lower(c.seq)] = c
+			end
 		end
 	end
+
 	return bySeq[string.lower(name or "")]
 end
 C.ClipOfSeq = clip_of_seq
@@ -246,13 +274,16 @@ hook.Add("Think", "tif_foley_civ", function()
 		civScanT = now + C.CIV_SCAN
 		civs = ents.FindByClass("tif_civilian")
 	end
+
 	local me = LocalPlayer()
 	if not IsValid(me) then return end
 	local mp = me:GetPos()
 	for _, ent in ipairs(civs) do
 		if IsValid(ent) and not ent:IsDormant() then
 			local st = civState[ent]
-			if not st then st = { civ = true, folVest = "cloth" } civState[ent] = st end
+			if not st then
+				st = { civ = true, folVest = "cloth" } civState[ent] = st
+			end
 			local near = ent:GetPos():DistToSqr(mp) < C.RANGE * C.RANGE
 			local seq = ent:GetSequence()
 			local c = seq and seq >= 0 and clip_of_seq(ent:GetSequenceName(seq))

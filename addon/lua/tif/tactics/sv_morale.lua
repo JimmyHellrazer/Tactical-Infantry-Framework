@@ -27,7 +27,9 @@ end
 
 local function log(npc, ...)
 	local sq = npc.tifSquad
-	if sq and TIF.Squad.Log then TIF.Squad.Log(sq, "[morale] #", npc:EntIndex(), " ", ...) end
+	if sq and TIF.Squad.Log then
+		TIF.Squad.Log(sq, "[morale] #", npc:EntIndex(), " ", ...)
+	end
 end
 
 local function set_state(npc, st, now)
@@ -36,8 +38,13 @@ local function set_state(npc, st, now)
 	npc.tifMoraleState = st
 	npc.tifMoraleSince = now
 	npc:SetNW2String("tif_morale", st)
-	if st ~= "broken" then npc.tifPanic = nil end
-	if st == "broken" then TIF.Say(npc, "retreat", 0.6) end
+	if st ~= "broken" then
+		npc.tifPanic = nil
+	end
+
+	if st == "broken" then
+		TIF.Say(npc, "retreat", 0.6)
+	end
 end
 
 function MO.Add(npc, amount)
@@ -96,10 +103,14 @@ local function drift(npc, now)
 	if sq and sq.knowledge then
 		local enemies = 0
 		for ent, k in pairs(sq.knowledge) do
-			if now - k.time < 10 and TIF.IsLiveCombatant(ent) then enemies = enemies + 1 end
+			if now - k.time < 10 and TIF.IsLiveCombatant(ent) then
+				enemies = enemies + 1
+			end
 		end
 		local mine = #TIF.Squad.Members(sq)
-		if enemies > mine * 1.5 then m = m - 0.012 end
+		if enemies > mine * 1.5 then
+			m = m - 0.012
+		end
 	end
 
 	local quiet = supp < 0.1 and now - (npc:GetTIFHitTime() or 0) > 5
@@ -109,8 +120,11 @@ local function drift(npc, now)
 		if sq and IsValid(sq.leader) and sq.leader ~= npc and sq.leader:GetPos():DistToSqr(npc:GetPos()) < 600 * 600 then
 			rate = 0.035
 		end
-		if m < base then m = math.min(base, m + rate) end
+		if m < base then
+			m = math.min(base, m + rate)
+		end
 	end
+
 	npc.tifMorale = math.Clamp(m, 0, 1)
 
 	local st = npc.tifMoraleState or "steady"
@@ -131,7 +145,9 @@ timer.Create("tif_morale_tick", 1, 0, function()
 	if not MO.Enabled() or TIF.AIDisabled() then return end
 	local now = CurTime()
 	for _, npc in ipairs(TIF.Soldiers) do
-		if IsValid(npc) and not npc.tifDead and npc.tifMorale and not npc.tifSurrendered then drift(npc, now) end
+		if IsValid(npc) and not npc.tifDead and npc.tifMorale and not npc.tifSurrendered then
+			drift(npc, now)
+		end
 	end
 end)
 
@@ -141,15 +157,20 @@ function MO.Kneel(npc, quick)
 		npc.tifKneelLoopAt = CurTime() + down * 0.97
 	else
 		npc.tifKneelLoopAt = nil
-		if Act.Clip(npc, "mwsu_idle") then Act.Loop(npc, "mwsu_idle") end
+		if Act.Clip(npc, "mwsu_idle") then
+			Act.Loop(npc, "mwsu_idle")
+		end
 	end
+
 	npc.tifHitboxPose = "crouch"
 end
 
 local function kneel_think(npc, now)
 	if npc.tifKneelLoopAt and now >= npc.tifKneelLoopAt then
 		npc.tifKneelLoopAt = nil
-		if Act.Clip(npc, "mwsu_idle") then Act.Loop(npc, "mwsu_idle") end
+		if Act.Clip(npc, "mwsu_idle") then
+			Act.Loop(npc, "mwsu_idle")
+		end
 	end
 end
 MO.KneelThink = kneel_think
@@ -158,8 +179,13 @@ function MO.Surrender(npc, now)
 	if npc.tifSurrendered then return end
 	npc.tifSurrendered = true
 	log(npc, "surrenders")
-	if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "surrender") end
-	if TIF.ProneB.Is(npc) then npc.tifProne = nil end
+	if TIF.CoverBehave.In(npc) then
+		TIF.CoverBehave.Leave(npc, "surrender")
+	end
+
+	if TIF.ProneB.Is(npc) then
+		npc.tifProne = nil
+	end
 	Move.Stop(npc)
 	pcall(npc.TIFDropWeapon, npc)
 	npc:SetTIFWeapon("")
@@ -197,6 +223,7 @@ function MO.BrokenThink(npc, c, now)
 		npc.tifPanic = nil
 		return false
 	end
+
 	npc.tifPanic = true
 	local f = npc.tifFire
 	f.want = false
@@ -211,7 +238,10 @@ function MO.BrokenThink(npc, c, now)
 		local hurt = npc:Health() < npc:GetMaxHealth() * 0.5
 		if (helpers == 0 or hurt) and not npc.tifSurrenderRolled then
 			npc.tifSurrenderRolled = true
-			if math.random() < 0.65 then MO.Surrender(npc, now) return true end
+			if math.random() < 0.65 then
+				MO.Surrender(npc, now)
+				return true
+			end
 		end
 	end
 
@@ -223,15 +253,20 @@ function MO.BrokenThink(npc, c, now)
 		local goal = Move.Snap(npc:GetPos() + away * 1200) or Move.Snap(npc:GetPos() + away * 600)
 		fl = { goal = goal, from = threat and Vector(threat) or npc:GetPos() }
 		npc.tifFlee = fl
-		if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "broken") end
+		if TIF.CoverBehave.In(npc) then
+			TIF.CoverBehave.Leave(npc, "broken")
+		end
 	end
+
 	npc.tifMode = A.MODE_RELAXED
 	local W = TIF.Weapon
 	if fl.goal and npc:GetPos():DistToSqr(fl.goal) > 80 * 80 then
 		npc.tifAction = "broken: running"
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil
-		if not Move.SetGoal(npc, fl.goal, "sprint", "flee") then fl.goal = nil end
+		if not Move.SetGoal(npc, fl.goal, "sprint", "flee") then
+			fl.goal = nil
+		end
 		local aim = panic_target(npc, c, now, MO.PANIC_RUN)
 		local w = npc.tifWep
 		if aim and w and w.reloadEnd <= 0 and w.ammo > 0 and not (w.def and w.def.projectile)
@@ -253,13 +288,17 @@ function MO.BrokenThink(npc, c, now)
 			npc.tifAction = "broken: panic firing"
 		end
 	end
+
 	return true
 end
 
 function MO.SquadAverage(sq)
 	local sum, n = 0, 0
 	for _, m in ipairs(TIF.Squad.Members(sq)) do
-		if m.tifMorale then sum, n = sum + m.tifMorale, n + 1 end
+		if m.tifMorale then
+			sum, n = sum + m.tifMorale, n + 1
+		end
 	end
+
 	return n > 0 and sum / n or 1
 end

@@ -40,12 +40,15 @@ function B.Set(npc, now)
 	local p = npc.tifProne
 	if p and p.phase == 2 and lmg(npc) then
 		npc.tifProneStill = npc.tifProneStill or now
-		if npc.loco:GetVelocity():Length2DSqr() > 25 then npc.tifProneStill = now end
+		if npc.loco:GetVelocity():Length2DSqr() > 25 then
+			npc.tifProneStill = now
+		end
 
 		if npc:GetTIFMode() == 1 then npc.tifProneAimAt = now
 		elseif now - (npc.tifProneAimAt or -99) > B.PRONE_HOLD then npc.tifProneStill = now end
 		return now - npc.tifProneStill >= B.PRONE_SET_AFTER
 	end
+
 	npc.tifProneStill = nil
 	return false
 end
@@ -67,17 +70,22 @@ function B.Find(npc, yaw)
 
 			local over = trace(Vector(inside.x, inside.y, base.z + h + 8), Vector(inside.x, inside.y, base.z + h + 8) + d * 60, npc)
 			if over.Hit then return nil end
-			if not TIF.GTG.Clip("mwb_" .. s.name .. "_aim", npc.tifHomeHost) then return nil end
+			if not TIF.GTG.Clip("mwb_" .. s.name .. "_aim", npc.tifHomeHost) then
+				return nil
+			end
 			return { set = s, pos = base + d * (dist - B.STANDOFF), yaw = yaw }
 		end
 	end
+
 	return nil
 end
 
 local function stop(npc)
 	npc.tifBipod = nil
 	npc.tifAimAt, npc.tifAimFree, npc.tifMuzzle = nil, nil, nil
-	if npc:GetNW2Float("tif_aim_yaw", 0) ~= 0 then npc:SetNW2Float("tif_aim_yaw", 0) end
+	if npc:GetNW2Float("tif_aim_yaw", 0) ~= 0 then
+		npc:SetNW2Float("tif_aim_yaw", 0)
+	end
 end
 B.Stop = stop
 
@@ -113,18 +121,26 @@ function B.Update(npc, c, now)
 		npc.tifAction = "bipod: setting up"
 		return true
 	end
+
 	local f = npc.tifFire
 	npc.tifStance = b.set.stance
 	if b.phase == "out" then
 		f.want = false
-		if now < b.untilT then npc.tifAction = "bipod: packing up" return true end
+		if now < b.untilT then
+			npc.tifAction = "bipod: packing up"
+			return true
+		end
 		stop(npc)
 		npc.tifNextBipod = now + 6
 		return false
 	end
 
 	local a = npc.tifAct
-	if not a or string.sub(a.name or "", 1, 4) ~= "mwb_" then stop(npc) return false end
+	if not a or string.sub(a.name or "", 1, 4) ~= "mwb_" then
+		stop(npc)
+		return false
+	end
+
 	if b.phase == "in" then
 		f.want = false
 		npc.tifAction = "bipod: setting up"
@@ -132,7 +148,9 @@ function B.Update(npc, c, now)
 			Act.Loop(npc, "mwb_" .. b.set.name .. "_aim")
 			b.phase = "aim"
 
-			if b.leave then pack(npc, b, now) end
+			if b.leave then
+				pack(npc, b, now)
+			end
 		end
 		return true
 	end
@@ -150,10 +168,13 @@ function B.Update(npc, c, now)
 		npc.tifAction = "bipod: packing up"
 		return true
 	end
+
 	npc.tifAimAt = aim
 	local r = math.rad(npc:GetAngles().y)
 	npc.tifMuzzle = npc:GetPos() + Vector(math.cos(r), math.sin(r), 0) * 30 + Vector(0, 0, b.set.gun)
-	if math.abs(yaw - npc:GetNW2Float("tif_aim_yaw", 0)) > 1 then npc:SetNW2Float("tif_aim_yaw", yaw) end
+	if math.abs(yaw - npc:GetNW2Float("tif_aim_yaw", 0)) > 1 then
+		npc:SetNW2Float("tif_aim_yaw", yaw)
+	end
 
 	f.want = c.visible or lost < 2.5
 	f.aimPos, f.target = aim, c.ent

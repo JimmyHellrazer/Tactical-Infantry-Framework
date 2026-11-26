@@ -34,7 +34,9 @@ local function set_aware(npc, st, now)
 	npc.tifAwareSince = now
 	npc:SetTIFAware(st)
 
-	if TIF.PassiveMW then TIF.PassiveMW.OnAware(npc, old, st, now) end
+	if TIF.PassiveMW then
+		TIF.PassiveMW.OnAware(npc, old, st, now)
+	end
 end
 
 local function look_random(npc, around, spread, now)
@@ -52,6 +54,7 @@ local function aim_point(npc, c, now)
 		npc.tifAimPickAt = now + math.Rand(0.8, 2)
 		npc.tifAimHead = math.random() < npc.tifArch.headshotChance
 	end
+
 	if npc.tifAimHead then return TIF.EyeOf(e) - HEAD_OFF end
 	return e:WorldSpaceCenter() + CHEST_OFF
 end
@@ -59,16 +62,21 @@ end
 local function gait(npc, kind, dist, now)
 	local g = npc.tifGait
 
-	if g and g.kind == kind and (now < g.untilT or Move.Moving(npc)) then return g.speed end
+	if g and g.kind == kind and (now < g.untilT or Move.Moving(npc)) then
+		return g.speed
+	end
 
 	local speed
 	if kind == "move" or kind == "advance" then
 		local len = dist
-		if kind == "advance" then len = dist - (npc.tifArch.prefRange and npc.tifArch.prefRange[2] or 0) * 0.85 end
+		if kind == "advance" then
+			len = dist - (npc.tifArch.prefRange and npc.tifArch.prefRange[2] or 0) * 0.85
+		end
 		speed = len > Move.SPRINT_DIST and "sprint" or "tactical"
 	else
 		speed = "tactical"
 	end
+
 	npc.tifGait = { kind = kind, speed = speed, untilT = now + math.Rand(3, 7) }
 	return speed
 end
@@ -102,13 +110,17 @@ local function mate_across(npc)
 			end
 		end
 	end
+
 	return false
 end
 
 local function low_ready(npc, now, coverFire)
 	local c = npc.tifPrimaryC
 	local hot = npc.tifFire.want or coverFire or (c and c.visible)
-	if hot then npc.tifLastHotAt = now end
+	if hot then
+		npc.tifLastHotAt = now
+	end
+
 	local eligible = npc.tifMode == A.MODE_AIM and npc.tifStance ~= 2 and not TIF.CoverBehave.In(npc)
 		and not npc.tifDowned and not npc.tifBipod
 	local quiet = now - (npc.tifLastHotAt or -99) > LR_QUIET
@@ -123,6 +135,7 @@ local function low_ready(npc, now, coverFire)
 	else
 		reason = ffLine or quiet
 	end
+
 	local want = eligible and not hot and reason
 	local on = npc:GetNW2Bool("tif_lowready", false)
 	if want then
@@ -137,6 +150,7 @@ local function low_ready(npc, now, coverFire)
 			npc:SetNW2Bool("tif_lowready", false)
 		end
 	end
+
 	if on and (npc.tifLowReadyUntil or 0) > now and npc.tifAction then
 		npc.tifAction = npc.tifAction .. " [friendly in line]"
 	end
@@ -149,7 +163,9 @@ local function sidestep_point(npc, threatPos, avoid)
 	to:Normalize()
 	local side = Vector(-to.y, to.x, 0) * (math.random() < 0.5 and -1 or 1)
 
-	if IsValid(avoid) and side:Dot(avoid:GetPos() - pos) > 0 then side:Mul(-1) end
+	if IsValid(avoid) and side:Dot(avoid:GetPos() - pos) > 0 then
+		side:Mul(-1)
+	end
 	return Move.Snap(pos + side * math.Rand(110, 240))
 end
 
@@ -188,7 +204,9 @@ local function update_awareness(npc, c, now)
 			end
 			if now - npc.tifSearch.start > arch.searchTime then
 				npc.tifHeightenedUntil = now + HEIGHTENED_TIME
-				for _, k in pairs(npc.tifK.contacts) do k.confirmed, k.meter = false, 0 end
+				for _, k in pairs(npc.tifK.contacts) do
+					k.confirmed, k.meter = false, 0
+				end
 				TIF.Say(npc, "clear", 0.5)
 				set_aware(npc, AW.UNAWARE, now)
 			end
@@ -211,6 +229,7 @@ local function update_awareness(npc, c, now)
 		set_aware(npc, AW.UNAWARE, now)
 		return
 	end
+
 	if st == AW.SEARCHING then
 
 		local sq = npc.tifSquad
@@ -226,10 +245,13 @@ local function update_awareness(npc, c, now)
 	local stim = npc.tifStim
 	local suspect = Per.Suspect(npc, now)
 	if suspect or (stim and now - stim.time < SUSPICIOUS_TIMEOUT) then
-		if st == AW.UNAWARE then TIF.Say(npc, "swear", 0.15) end
+		if st == AW.UNAWARE then
+			TIF.Say(npc, "swear", 0.15)
+		end
 		set_aware(npc, AW.SUSPICIOUS, now)
 		return
 	end
+
 	if st == AW.SUSPICIOUS and now - npc.tifAwareSince > SUSPICIOUS_TIMEOUT then
 		set_aware(npc, AW.UNAWARE, now)
 	end
@@ -242,27 +264,37 @@ local function duty(npc, now)
 	npc.tifAction = "duty"
 
 	local gp = npc.tifGuardPost
-	if gp then npc.tifPost, npc.tifPostYaw = gp.pos, gp.yaw end
+	if gp then
+		npc.tifPost, npc.tifPostYaw = gp.pos, gp.yaw
+	end
 
 	local PM = TIF.PassiveMW
 
 	if TIF.Squad.Duty(npc, now) then
-		if PM and PM.Duty(npc, now, not Move.Moving(npc)) then Move.Stop(npc) end
+		if PM and PM.Duty(npc, now, not Move.Moving(npc)) then
+			Move.Stop(npc)
+		end
 		return
 	end
+
 	npc.tifFormationLook = nil
 	local post = npc.tifPost
 	if post and npc:GetPos():DistToSqr(post) > 80 * 80 then
 		if PM and PM.Duty(npc, now, false) then return end
 		npc.tifAction = "return to post"
 		npc.tifFace = nil
-		if not Move.SetGoal(npc, post, "walk", "post", npc.tifPostYaw) then npc.tifPost = npc:GetPos() end
+		if not Move.SetGoal(npc, post, "walk", "post", npc.tifPostYaw) then
+			npc.tifPost = npc:GetPos()
+		end
 		return
 	end
+
 	Move.Stop(npc)
 	if PM and PM.Duty(npc, now, true) then return end
 	look_random(npc, npc.tifPostYaw, 70, now)
-	if Weapon.Reloading(npc) == false and npc.tifWep.ammo < npc.tifWep.clip * 0.5 then Weapon.StartReload(npc) end
+	if Weapon.Reloading(npc) == false and npc.tifWep.ammo < npc.tifWep.clip * 0.5 then
+		Weapon.StartReload(npc)
+	end
 end
 
 local function investigate(npc, now)
@@ -288,7 +320,9 @@ local function investigate(npc, now)
 		if npc.tifAct and npc.tifAct.trans then return end
 		if TIF.SearchMW and npc.tifLookedAt ~= key and not (stim and stim.kind == "man_down") then
 			npc.tifLookedAt = key
-			if math.random() < 0.6 and TIF.SearchMW.Look(npc, now, (pos - npc:GetPos()):Angle().y) then return end
+			if math.random() < 0.6 and TIF.SearchMW.Look(npc, now, (pos - npc:GetPos()):Angle().y) then
+				return
+			end
 		end
 		if PM and PM.Investigate(npc, now) then return end
 		look_random(npc, nil, 160, now)
@@ -307,9 +341,12 @@ local function alerted(npc, c, now)
 		npc.tifAction = "maneuver (not seen yet)"
 		npc.tifStance = A.STANCE_STAND
 		npc.tifFace = nil
-		if not Move.SetGoal(npc, goal, gait(npc, "move", 0, now), "maneuver") then npc.tifCoverCenter = nil end
+		if not Move.SetGoal(npc, goal, gait(npc, "move", 0, now), "maneuver") then
+			npc.tifCoverCenter = nil
+		end
 		return
 	end
+
 	npc.tifFace = c.pos + UP40
 	local dist = npc:GetPos():Distance(c.pos)
 	if arch.aggression >= 0.55 or dist < 900 then
@@ -317,7 +354,9 @@ local function alerted(npc, c, now)
 		npc.tifStance = A.STANCE_STAND
 		if dist > arch.prefRange[2] * 0.7 then
 			Move.SetGoal(npc, short_of(npc, c.pos, math.max(150, arch.prefRange[2] * 0.6)), gait(npc, "advance", dist, now), "close_in")
-		else Move.Stop(npc) end
+		else
+			Move.Stop(npc)
+		end
 	else
 		npc.tifAction = "hold, watching"
 		npc.tifStance = A.STANCE_CROUCH
@@ -337,6 +376,7 @@ local function prone_fight(npc, c, now, dist)
 		npc.tifAction = "prone: moving"
 		return
 	end
+
 	npc.tifAction = "prone"
 	local p = npc.tifProne
 	if c.visible then
@@ -346,15 +386,23 @@ local function prone_fight(npc, c, now, dist)
 		npc.tifFace, f.want = c.pos + UP40, false
 
 		local GRN = TIF.GrenadeMW
-		if GRN and GRN.OpenThrow and GRN.OpenThrow(npc, c, now, now - math.max(c.seenAt, c.heardAt)) then return end
+		if GRN and GRN.OpenThrow and GRN.OpenThrow(npc, c, now, now - math.max(c.seenAt, c.heardAt)) then
+			return
+		end
 	end
+
 	local supp = npc.tifSupp or 0
 	local lost = now - math.max(c.seenAt, c.heardAt)
 	local held = now - p.since
 	local done
 	if p.reason == "pinned" then done = supp < 0.25 and held > 6
-	else done = dist < 900 or lost > 4 end
-	if done or held > 40 then Pr.GetUp(npc) end
+	else
+		done = dist < 900 or lost > 4
+	end
+
+	if done or held > 40 then
+		Pr.GetUp(npc)
+	end
 end
 
 local function engage(npc, c, now)
@@ -365,7 +413,9 @@ local function engage(npc, c, now)
 	npc.tifMode = A.MODE_AIM
 	f.target = c.ent
 
-	if TIF.MeleeMW and dist < 200 and TIF.MeleeMW.Try(npc, c, now) then return end
+	if TIF.MeleeMW and dist < 200 and TIF.MeleeMW.Try(npc, c, now) then
+		return
+	end
 
 	if TIF.Shield and TIF.Shield.Try(npc, c, now) then return end
 	if TIF.Launcher and TIF.Launcher.Consider(npc, c, now) then return end
@@ -374,7 +424,10 @@ local function engage(npc, c, now)
 
 	local GRN = TIF.GrenadeMW
 	if GRN and npc.tifThrow and GRN.OpenThink(npc, now) then return end
-	if Pr.Is(npc) then prone_fight(npc, c, now, dist) return end
+	if Pr.Is(npc) then
+		prone_fight(npc, c, now, dist)
+		return
+	end
 
 	local BP = TIF.BipodMW
 	if BP and npc.tifBipod and BP.Update(npc, c, now) then return end
@@ -392,7 +445,9 @@ local function engage(npc, c, now)
 		else
 			npc.tifFace, f.want = nil, false
 		end
-		if not Move.SetGoal(npc, goal, sp, "maneuver") then npc.tifCoverCenter = nil end
+		if not Move.SetGoal(npc, goal, sp, "maneuver") then
+			npc.tifCoverCenter = nil
+		end
 		return
 	end
 
@@ -404,7 +459,9 @@ local function engage(npc, c, now)
 		end
 	end
 
-	if BP and not npc.tifBipod and dist >= arch.prefRange[1] and BP.Update(npc, c, now) then return end
+	if BP and not npc.tifBipod and dist >= arch.prefRange[1] and BP.Update(npc, c, now) then
+		return
+	end
 
 	if c.visible then
 		local aim = aim_point(npc, c, now)
@@ -424,7 +481,9 @@ local function engage(npc, c, now)
 		npc.tifEngageMove = em
 		if em and em.kind == "advance" and not TIF.Morale.Shaken(npc) then
 			npc.tifAction = "advance"
-			if not Move.Moving(npc) then TIF.Say(npc, "advance", 0.3) end
+			if not Move.Moving(npc) then
+				TIF.Say(npc, "advance", 0.3)
+			end
 			local sp = gait(npc, "advance", dist, now)
 			if sp == "run" or sp == "sprint" then
 
@@ -438,7 +497,9 @@ local function engage(npc, c, now)
 			local away = pos - c.pos
 			away.z = 0
 			away:Normalize()
-			if not Move.SetGoal(npc, pos + away * 280, "tactical", "back_off") then Move.Stop(npc) end
+			if not Move.SetGoal(npc, pos + away * 280, "tactical", "back_off") then
+				Move.Stop(npc)
+			end
 		elseif (npc.tifFFBlockedAt or 0) > now - 1 or now > (npc.tifNextShift or 0) then
 			npc.tifNextShift = now + math.Rand(4, 9)
 			local blocked = (npc.tifFFBlockedAt or 0) > now - 1
@@ -455,7 +516,9 @@ local function engage(npc, c, now)
 	else
 		local lost = now - math.max(c.seenAt, c.heardAt)
 
-		if GRN and GRN.OpenThrow and GRN.OpenThrow(npc, c, now, lost) then return end
+		if GRN and GRN.OpenThrow and GRN.OpenThrow(npc, c, now, lost) then
+			return
+		end
 		npc.tifFace = c.pos + UP40
 
 		local baseFire = npc.tifRole == "base" and lost < 5
@@ -478,11 +541,15 @@ local function engage(npc, c, now)
 			npc.tifFace, f.aimPos = aim, aim
 			f.want = now < (npc.tifTapUntil or 0)
 			npc.tifAction = "return fire (long range)"
-			if npc.tifMove.tag == "reacquire" then Move.Stop(npc) end
+			if npc.tifMove.tag == "reacquire" then
+				Move.Stop(npc)
+			end
 		else
 			f.want = false
 			npc.tifAction = "reacquire"
-			if lost > 1.5 then Move.SetGoal(npc, short_of(npc, c.pos, 150), gait(npc, "close", dist, now), "reacquire") end
+			if lost > 1.5 then
+				Move.SetGoal(npc, short_of(npc, c.pos, 150), gait(npc, "close", dist, now), "reacquire")
+			end
 		end
 	end
 
@@ -508,37 +575,53 @@ local function cqb(npc, c, now)
 	local cqS = npc.tifSquad and npc.tifSquad.cqb
 	if shooting and cqS and cqS.phase == "stack" and not cqS.committed then
 		local close = npc:GetPos():DistToSqr(c.pos) < 220 * 220
-		if not close and now - (npc.tifHurtAt or -99) > 3 then shooting = false end
+		if not close and now - (npc.tifHurtAt or -99) > 3 then
+			shooting = false
+		end
 	end
 
 	local q = npc.tifCQBQueue
 	if npc.tifCQBActUntil and now >= npc.tifCQBActUntil then
 		npc.tifCQBActUntil = nil
-		if npc.TIFSetSlim then npc:TIFSetSlim(false) end
+		if npc.TIFSetSlim then
+			npc:TIFSetSlim(false)
+		end
 
-		if npc.tifAct and npc.tifAct.name == npc.tifCQBActName and not (q and #q > 0) then TIF.Action.Clear(npc) end
+		if npc.tifAct and npc.tifAct.name == npc.tifCQBActName and not (q and #q > 0) then
+			TIF.Action.Clear(npc)
+		end
 		npc.tifCQBActName = nil
 	end
+
 	if not npc.tifCQBActUntil and q and #q > 0 and now >= (npc.tifCQBDelay or 0) then
 		npc.tifCQBDelay = nil
 		local item = table.remove(q, 1)
 
 		local yaw = item.yawFn and item.yawFn(npc) or item.yaw
 		if item.check and not item.check(npc, yaw or npc:GetAngles().y) then
-			if TIF.Debug then TIF.Debug("cqb: ", item.name, " skipped (path blocked)") end
+			if TIF.Debug then
+				TIF.Debug("cqb: ", item.name, " skipped (path blocked)")
+			end
 			return
 		end
-		if yaw then npc:SetAngles(Angle(0, yaw, 0)) end
+		if yaw then
+			npc:SetAngles(Angle(0, yaw, 0))
+		end
 		local d = Act.Play(npc, item.name, item.opts or { root = true })
 		if d then
 			npc.tifCQBActUntil = now + d * (item.hold or 1)
 			npc.tifCQBActName = item.name
 			npc.tifCQBLoop = nil
 
-			if npc.TIFSetSlim then npc:TIFSetSlim(true) end
+			if npc.TIFSetSlim then
+				npc:TIFSetSlim(true)
+			end
 		end
-		if item.onStart then item.onStart(npc, now, d or 0) end
+		if item.onStart then
+			item.onStart(npc, now, d or 0)
+		end
 	end
+
 	if npc.tifCQBActUntil then
 		Move.Stop(npc)
 		f.want = false
@@ -546,18 +629,26 @@ local function cqb(npc, c, now)
 		npc.tifStance = A.STANCE_STAND
 		return
 	end
+
 	local wait = t.wait
 	local atSpot = npc:GetPos():DistToSqr(t.goal) < 32 * 32
 	if wait and atSpot and not shooting and npc.tifCQBLoop ~= wait.name then
 		npc:SetAngles(Angle(0, wait.yaw, 0))
 
 		local wc = TIF.GTG.Clip(wait.name, npc.tifHomeHost)
-		if wc and not wc.loop then Act.Play(npc, wait.name) else Act.Loop(npc, wait.name) end
+		if wc and not wc.loop then
+			Act.Play(npc, wait.name)
+		else
+			Act.Loop(npc, wait.name)
+		end
 		npc.tifCQBLoop = wait.name
 	elseif npc.tifCQBLoop and (shooting or not atSpot or not wait or wait.name ~= npc.tifCQBLoop) then
-		if npc.tifAct and npc.tifAct.name == npc.tifCQBLoop then Act.Clear(npc) end
+		if npc.tifAct and npc.tifAct.name == npc.tifCQBLoop then
+			Act.Clear(npc)
+		end
 		npc.tifCQBLoop = nil
 	end
+
 	if npc.tifCQBLoop then
 		Move.Stop(npc)
 		f.want = false
@@ -565,6 +656,7 @@ local function cqb(npc, c, now)
 		npc.tifStance = A.STANCE_STAND
 		return
 	end
+
 	if shooting then
 		local aim = aim_point(npc, c, now)
 		npc.tifFace, f.aimPos, f.want, f.target = aim, aim, true, c.ent
@@ -572,6 +664,7 @@ local function cqb(npc, c, now)
 		f.want = false
 		npc.tifFace = t.face
 	end
+
 	local there = npc:GetPos():DistToSqr(t.goal) < 32 * 32
 	if there then
 		Move.Stop(npc)
@@ -589,10 +682,16 @@ local function cqb(npc, c, now)
 			local goal = via or t.goal
 
 			local alt = npc.tifCQBAlt
-			if alt and (now > alt.untilT or alt.for_ ~= goal) then npc.tifCQBAlt, alt = nil, nil end
-			if alt then goal = alt.pos end
+			if alt and (now > alt.untilT or alt.for_ ~= goal) then
+				npc.tifCQBAlt, alt = nil, nil
+			end
+			if alt then
+				goal = alt.pos
+			end
 			local ok = Move.SetGoal(npc, goal, t.speed or "tactical", "cqb")
-			if CQ and CQ.PathTrouble and not CQ.PathTrouble(npc, goal, ok, now) then npc.tifCQBFails = nil end
+			if CQ and CQ.PathTrouble and not CQ.PathTrouble(npc, goal, ok, now) then
+				npc.tifCQBFails = nil
+			end
 		end
 	end
 end
@@ -615,8 +714,12 @@ local function search_points(s)
 			scored[#scored + 1] = { p = p, score = score }
 		end
 	end
+
 	table.sort(scored, function(a, b) return a.score > b.score end)
-	for i = 1, math.min(3, #scored) do pts[#pts + 1] = scored[i].p end
+	for i = 1, math.min(3, #scored) do
+		pts[#pts + 1] = scored[i].p
+	end
+
 	return pts
 end
 
@@ -631,7 +734,9 @@ local function search(npc, now)
 		if npc:GetPos():DistToSqr(s.watch) > 80 * 80 then
 			npc.tifAction = "search: to overwatch"
 			npc.tifFace = s.pos + UP40
-			if not Move.SetGoal(npc, s.watch, "tactical", "search") then s.watch = nil end
+			if not Move.SetGoal(npc, s.watch, "tactical", "search") then
+				s.watch = nil
+			end
 		else
 			Move.Stop(npc)
 			npc.tifAction = "search: overwatch"
@@ -646,7 +751,10 @@ local function search(npc, now)
 		end
 		return
 	end
-	if not s.points then s.points, s.i = search_points(s), 1 end
+
+	if not s.points then
+		s.points, s.i = search_points(s), 1
+	end
 	local target = s.points[s.i]
 	if not target then
 		npc.tifAction = "search: watching"
@@ -655,6 +763,7 @@ local function search(npc, now)
 		look_random(npc, nil, 180, now)
 		return
 	end
+
 	npc.tifAction = "search " .. s.i .. "/" .. #s.points
 	local m = npc.tifMove
 	if m.goal == nil and (m.result == "arrived" or m.result == "fail" or m.result == "stuck" or m.result == "timeout")
@@ -673,9 +782,12 @@ local function search(npc, now)
 		end
 		return
 	end
+
 	npc.tifFace = target + Vector(0, 0, 50)
 	s.lastGoal = target
-	if not Move.SetGoal(npc, target, gait(npc, "close", 0, now), "search") then s.i = s.i + 1 end
+	if not Move.SetGoal(npc, target, gait(npc, "close", 0, now), "search") then
+		s.i = s.i + 1
+	end
 end
 
 function B.StartSearch(npc, pos, dir, now)
@@ -703,6 +815,7 @@ function B.Think(npc, dt)
 		end
 		TIF.Squad.Sync(npc, now)
 	end
+
 	Prof.End()
 
 	Prof.Begin("brain")
@@ -713,6 +826,7 @@ function B.Think(npc, dt)
 	if (npc.tifAware or AW.UNAWARE) > AW.UNAWARE or (npc.tifMove and npc.tifMove.goal ~= nil) then
 		Move.UpdateThreatAreas(npc)
 	end
+
 	update_awareness(npc, c, now)
 
 	local st = npc.tifAware
@@ -720,8 +834,12 @@ function B.Think(npc, dt)
 
 	local exiting = false
 	if not fighting then
-		if TIF.CoverBehave.In(npc) then exiting = TIF.CoverBehave.Exit(npc, "fight over") end
-		if TIF.ProneB.Is(npc) then TIF.ProneB.GetUp(npc) end
+		if TIF.CoverBehave.In(npc) then
+			exiting = TIF.CoverBehave.Exit(npc, "fight over")
+		end
+		if TIF.ProneB.Is(npc) then
+			TIF.ProneB.GetUp(npc)
+		end
 	end
 
 	if npc.tifVeh and not IsValid(npc.tifVeh) then
@@ -785,16 +903,28 @@ function B.Think(npc, dt)
 	elseif TIF.Morale.BrokenThink(npc, c, now) then
 
 	elseif npc.tifCQB and not TIF.ProneB.Is(npc) then
-		if TIF.CoverBehave.In(npc) then TIF.CoverBehave.Leave(npc, "room clearing") end
+		if TIF.CoverBehave.In(npc) then
+			TIF.CoverBehave.Leave(npc, "room clearing")
+		end
 		cqb(npc, c, now)
-	elseif st == AW.ENGAGED and c then engage(npc, c, now)
-	elseif st == AW.SEARCHING then search(npc, now)
-	elseif st == AW.ALERTED and c then alerted(npc, c, now)
-	elseif st == AW.SUSPICIOUS then investigate(npc, now)
-	else duty(npc, now) end
+	elseif st == AW.ENGAGED and c then
+		engage(npc, c, now)
+	elseif st == AW.SEARCHING then
+		search(npc, now)
+	elseif st == AW.ALERTED and c then
+		alerted(npc, c, now)
+	elseif st == AW.SUSPICIOUS then
+		investigate(npc, now)
+	else
+		duty(npc, now)
+	end
 
-	if not (st == AW.ENGAGED and c) then npc.tifFire.target = nil end
-	if TIF.ProneB.Is(npc) then npc.tifStance = 2 end
+	if not (st == AW.ENGAGED and c) then
+		npc.tifFire.target = nil
+	end
+	if TIF.ProneB.Is(npc) then
+		npc.tifStance = 2
+	end
 
 	local inCqb = npc.tifCQB ~= nil
 	if npc.tifCqbNet ~= inCqb then
@@ -823,9 +953,13 @@ function B.Think(npc, dt)
 			Weapon.Choose(npc, nil, now)
 		end
 	end
+
 	local mv = npc.tifMove
 	local coverFire = npc.tifCoverFire and now < npc.tifCoverFire.untilT
-	if coverFire then npc.tifMode = A.MODE_AIM end
+	if coverFire then
+		npc.tifMode = A.MODE_AIM
+	end
+
 	if mv.goal and mv.speed == "sprint" and not coverFire and not exiting and npc.tifStance ~= 2 then
 		npc.tifFire.want = false
 	end
@@ -834,8 +968,12 @@ function B.Think(npc, dt)
 		npc.tifMode = A.MODE_RELAXED
 		npc.tifStance = A.STANCE_STAND
 	end
+
 	low_ready(npc, now, coverFire)
-	if npc:GetTIFMode() ~= npc.tifMode then npc:SetTIFMode(npc.tifMode) end
+	if npc:GetTIFMode() ~= npc.tifMode then
+		npc:SetTIFMode(npc.tifMode)
+	end
+
 	if npc.tifKeepCrouchUntil then
 		if now < npc.tifKeepCrouchUntil and npc.tifStance == A.STANCE_STAND and not TIF.CoverBehave.In(npc) then
 			npc.tifStance = A.STANCE_CROUCH
@@ -843,6 +981,7 @@ function B.Think(npc, dt)
 			npc.tifKeepCrouchUntil = nil
 		end
 	end
+
 	local cur = npc:GetTIFStance()
 	local a = npc.tifAct
 	local inStanceClip = a and (string.sub(a.name, 1, 9) == "mwk_down_" or a.name == "mwk_up_8") and now - a.t0 < a.dur
@@ -851,7 +990,10 @@ function B.Think(npc, dt)
 			TIF.TransMW.Stance(npc, cur, npc.tifStance)
 		end
 		npc:SetTIFStance(npc.tifStance)
-		if npc.tifStance ~= 2 then npc:TIFApplyStance() end
+		if npc.tifStance ~= 2 then
+			npc:TIFApplyStance()
+		end
 	end
+
 	Prof.End()
 end

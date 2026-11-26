@@ -19,12 +19,14 @@ function A.Seq(ent, clip, ub)
 		m = {}
 		seqCache[model] = m
 	end
+
 	local name = ub and (clip.ub or clip.seq) or clip.seq
 	local s = m[name]
 	if s == nil then
 		s = ent:LookupSequence(name) or -1
 		m[name] = s
 	end
+
 	return s
 end
 
@@ -38,6 +40,7 @@ local function dir_set(clips, prefix)
 			end
 		end
 	end
+
 	table.sort(set, function(a, b) return a.ang < b.ang end)
 
 	local i = 1
@@ -51,10 +54,14 @@ local function dir_set(clips, prefix)
 			i = i + 1
 		end
 	end
+
 	if #set == 0 then return nil end
 
 	local sp = 0
-	for _, e in ipairs(set) do sp = sp + (e.clip.speed or 0) end
+	for _, e in ipairs(set) do
+		sp = sp + (e.clip.speed or 0)
+	end
+
 	set.speed = sp / #set
 	return set
 end
@@ -65,10 +72,13 @@ function A.PickDir(set, ang)
 	for i = 1, n do
 		local a, b = set[i], set[i % n + 1]
 		local span = (b.ang - a.ang) % 360
-		if span == 0 then span = 360 end
+		if span == 0 then
+			span = 360
+		end
 		local off = (ang - a.ang) % 360
 		if off <= span then return a.clip, b.clip, off / span end
 	end
+
 	return set[1].clip, set[1].clip, 0
 end
 
@@ -146,7 +156,9 @@ function A.Legs(hostId)
 				runSpeed = fast and fast.speed or walk.speed * 1.6 } }
 			for _, depth in ipairs({ "knee", "chest" }) do
 				local idle, w = clips["mwwd_calm_" .. depth .. "_idle"], clips["mwwd_calm_" .. depth .. "_walk"]
-				if idle and w then L.wade[depth] = { idle = idle, walk = w, walkSpeed = w.speed or 50 } end
+				if idle and w then
+					L.wade[depth] = { idle = idle, walk = w, walkSpeed = w.speed or 50 }
+				end
 			end
 		end
 	end
@@ -158,15 +170,23 @@ function A.Legs(hostId)
 	local function variants(first, prefix)
 		local list = { first }
 		for n = 2, 9 do
-			if clips[prefix .. n] then list[#list + 1] = clips[prefix .. n] end
+			if clips[prefix .. n] then
+				list[#list + 1] = clips[prefix .. n]
+			end
 		end
 		return #list > 1 and list or nil
 	end
+
 	L.relaxed.variants = variants(L.relaxed.idle, "mwv_idle_")
-	if L.alert then L.alert.variants = variants(L.alert.idle, "mwv_alert_") end
+	if L.alert then
+		L.alert.variants = variants(L.alert.idle, "mwv_alert_")
+	end
 
 	L.relaxed.walkVariants = variants(L.relaxed.walk, "mwv_walk_")
-	if L.alert then L.alert.walkVariants = variants(L.alert.walk, "mwv_awalk_") end
+	if L.alert then
+		L.alert.walkVariants = variants(L.alert.walk, "mwv_awalk_")
+	end
+
 	L.relaxed.walkSpeed = L.relaxed.walk.speed or 68
 	L.relaxed.runSpeed = L.relaxed.run and L.relaxed.run.speed or 186
 	L.relaxed.sprintSpeed = L.relaxed.sprint and L.relaxed.sprint.speed or 278
@@ -174,14 +194,20 @@ function A.Legs(hostId)
 	L.grade = { stairs = {}, slope = {} }
 	for name, c in pairs(clips) do
 		local st, ud = string.match(name, "^mwst_(%a+)_(%a+)$")
-		if st then L.grade.stairs[st .. "_" .. ud] = c end
+		if st then
+			L.grade.stairs[st .. "_" .. ud] = c
+		end
 		local g, ud2 = string.match(name, "^mwsl_(%a+)_(%a+)$")
-		if g then L.grade.slope[g .. "_" .. ud2] = c end
+		if g then
+			L.grade.slope[g .. "_" .. ud2] = c
+		end
 	end
 
 	for n = 1, 9 do
 		local c = clips["mwzw_" .. n]
-		if c then L.whizby = L.whizby or {} L.whizby[n] = c end
+		if c then
+			L.whizby = L.whizby or {} L.whizby[n] = c
+		end
 	end
 
 	for name, c in pairs(clips) do
@@ -204,11 +230,13 @@ function A.Legs(hostId)
 			variants = variants(clips.mwf_calm_idle, "mwf_calm_idle_"), walkVariants = variants(clips.mwf_calm_walk, "mwf_calm_walk_"),
 			walkSpeed = clips.mwf_calm_walk.speed or R.walkSpeed, runSpeed = R.runSpeed, sprintSpeed = R.sprintSpeed }
 	end
+
 	if L.alert and clips.mwf_alert_idle and clips.mwf_alert_walk then
 		L.alertFlash = { idle = clips.mwf_alert_idle, walk = clips.mwf_alert_walk, handLight = true,
 			variants = variants(clips.mwf_alert_idle, "mwf_alert_idle_"), walkVariants = variants(clips.mwf_alert_walk, "mwf_alert_walk_"),
 			walkSpeed = clips.mwf_alert_walk.speed or L.alert.walkSpeed }
 	end
+
 	L.aim.walkSpeed = L.aim.walk.speed
 	L.aim.runSpeed = L.aim.run and L.aim.run.speed or L.aim.walk.speed * 2
 	L.crouch.walkSpeed = L.crouch.walk.speed
@@ -219,7 +247,9 @@ function A.Legs(hostId)
 		if not aimIdle then return end
 		local aim, crouch = shallow(L.aim), shallow(L.crouch)
 		aim.idle = aimIdle
-		if crouchIdle then crouch.idle = crouchIdle end
+		if crouchIdle then
+			crouch.idle = crouchIdle
+		end
 		local alert = L.alert
 		if alert and alertIdle then
 			alert = shallow(L.alert)
@@ -227,6 +257,7 @@ function A.Legs(hostId)
 		end
 		L[kind] = { aim = aim, crouch = crouch, relaxed = L.relaxed, alert = alert }
 	end
+
 	with_idles("lmg", clips.lmg_idle, nil, clips.lmg_alert_idle)
 	with_idles("rpg", clips.rpg_idle, clips.rpg_crouch_idle, nil)
 
@@ -272,13 +303,17 @@ function A.Legs(hostId)
 			L.prone.bipod = { into = clips.mwb_prone_in, aim = clips.mwb_prone_aim, out = clips.mwb_prone_out }
 		end
 	end
+
 	legCache[hostId or "default"] = L
 	return L
 end
 
 function A.Speeds(hostId)
 	local L = A.Legs(hostId)
-	if not L then return { walk = 68, tactical = 90, run = 186, sprint = 278, crouch = 70 } end
+	if not L then
+		return { walk = 68, tactical = 90, run = 186, sprint = 278, crouch = 70 }
+	end
+
 	return {
 		walk = L.relaxed.walkSpeed,
 		tactical = L.aim.walkSpeed,

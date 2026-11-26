@@ -35,8 +35,13 @@ function LS.FallClip(npc, dmg)
 	local st = npc:GetTIFStance() == 1 and "cr" or "st"
 	local side = "back"
 	local f = dmg and dmg.GetDamageForce and dmg:GetDamageForce()
-	if f and f:LengthSqr() > 1 and f:Dot(npc:GetRight()) < 0 then side = "l" end
-	if math.random() < 0.25 then side = side == "l" and "back" or "l" end
+	if f and f:LengthSqr() > 1 and f:Dot(npc:GetRight()) < 0 then
+		side = "l"
+	end
+
+	if math.random() < 0.25 then
+		side = side == "l" and "back" or "l"
+	end
 	local name = "mwld_" .. st .. "_" .. side .. "_enter"
 	if has(npc, name) then return name end
 	name = "mwld_" .. st .. "_back_enter"
@@ -53,6 +58,7 @@ function LS.Down(npc, dmg, now)
 		Act.Loop(npc, "mwls_idle")
 		d.ls = { phase = "lying", since = now }
 	end
+
 	npc.tifHitboxPose = "down"
 end
 
@@ -63,8 +69,11 @@ local function crawl_clip(rel)
 	local best, bd
 	for _, c in ipairs(CRAWL) do
 		local d = math.abs(math.AngleDifference(rel, c[1]))
-		if not bd or d < bd then best, bd = c[2], d end
+		if not bd or d < bd then
+			best, bd = c[2], d
+		end
 	end
+
 	return "mwls_crawl_" .. best .. "_loop"
 end
 
@@ -77,13 +86,17 @@ local function crawl_goal(npc)
 		away.z = 0
 		away:Normalize()
 	end
+
 	local best, bd
 	for _, o in ipairs(TIF.Soldiers) do
 		if o ~= npc and IsValid(o) and not o.tifDead and not o.tifDowned and TIF.Relation(npc, o) == TIF.REL_ALLY then
 			local dd = o:GetPos():DistToSqr(pos)
-			if dd < 1500 * 1500 and (not bd or dd < bd) then best, bd = o, dd end
+			if dd < 1500 * 1500 and (not bd or dd < bd) then
+				best, bd = o, dd
+			end
 		end
 	end
+
 	local to = away
 	if IsValid(best) then
 		local t = best:GetPos() - pos
@@ -91,6 +104,7 @@ local function crawl_goal(npc)
 		t:Normalize()
 		to = to + t
 	end
+
 	if to:LengthSqr() < 0.01 then return nil end
 	to:Normalize()
 	return pos + to * LS.CRAWL_DIST
@@ -117,6 +131,7 @@ function LS.Think(npc, d, now)
 		end
 		return true
 	end
+
 	if s.phase == "fall" then
 		Move.Stop(npc)
 		if now >= s.untilT then
@@ -129,8 +144,11 @@ function LS.Think(npc, d, now)
 	if s.phase == "lying" and not s.crawled and now - s.since > math.Rand(1, 2.5) then
 		s.crawled = true
 		local g = crawl_goal(npc)
-		if g and Move.SetGoal(npc, g, "crawl", "crawl") then s.phase, s.untilT = "crawl", now + LS.CRAWL_TIME end
+		if g and Move.SetGoal(npc, g, "crawl", "crawl") then
+			s.phase, s.untilT = "crawl", now + LS.CRAWL_TIME
+		end
 	end
+
 	if s.phase == "crawl" then
 		local c = npc.tifPrimaryC
 		npc.tifFace = c and c.pos or nil
@@ -142,10 +160,13 @@ function LS.Think(npc, d, now)
 		elseif v:Length2DSqr() > 25 then
 			local rel = math.AngleDifference(v:Angle().y, npc:GetAngles().y)
 			local n = crawl_clip(rel)
-			if not npc.tifAct or npc.tifAct.name ~= n then Act.Loop(npc, n) end
+			if not npc.tifAct or npc.tifAct.name ~= n then
+				Act.Loop(npc, n)
+			end
 		end
 		return true
 	end
+
 	Move.Stop(npc)
 	return false
 end
@@ -156,6 +177,7 @@ function LS.GetUp(npc, d, now)
 		d.buddyUp = nil
 		return true
 	end
+
 	local s = d.ls or {}
 	d.ls = s
 	if s.phase ~= "getup" then
@@ -163,6 +185,7 @@ function LS.GetUp(npc, d, now)
 		s.phase, s.untilT = "getup", now + dur
 		return false
 	end
+
 	return now >= s.untilT
 end
 
@@ -172,8 +195,11 @@ local function side(p, from)
 	local best, bd
 	for n, a in pairs(NUM) do
 		local d = math.abs(math.AngleDifference(rel, a))
-		if has(p, "mwls_help_in_" .. n) and (not bd or d < bd) then best, bd = n, d end
+		if has(p, "mwls_help_in_" .. n) and (not bd or d < bd) then
+			best, bd = n, d
+		end
 	end
+
 	return best
 end
 
@@ -181,7 +207,10 @@ local function abort(p)
 	local d = p.tifDowned
 	if not d then return end
 	d.revive = nil
-	if d.ls then d.ls.phase, d.ls.since = "lying", CurTime() end
+	if d.ls then
+		d.ls.phase, d.ls.since = "lying", CurTime()
+	end
+
 	Act.Loop(p, "mwls_idle")
 end
 LS.Abort = abort
@@ -197,6 +226,7 @@ local function buddy_start(npc, p, d, now)
 			return nil
 		end
 	end
+
 	Move.Stop(npc)
 	Move.Stop(p)
 	npc:SetPos(p:GetPos())
@@ -215,9 +245,12 @@ local function buddy_step(npc, p, d, r, now)
 		d.revive = nil
 		d.treated = true
 		d.buddyUp = true
-		if d.ls then d.ls.phase = nil end
+		if d.ls then
+			d.ls.phase = nil
+		end
 		return false
 	end
+
 	local dur = Act.Play(npc, pre .. "help_" .. nextPh .. "_" .. r.sd, { root = true, clear = nextPh == "out" }) or 0
 	Act.Play(p, pre .. "hurt_" .. nextPh .. "_" .. r.sd, { root = true })
 	r.phase, r.untilT = nextPh, now + dur
@@ -235,12 +268,14 @@ function LS.MedicThink(npc, p, m, now)
 			TIF.Say(npc, "cover_me", 0.6)
 		end
 	end
+
 	if r and r.buddy then
 		r.seen = now
 		npc.tifStance = TIF.Anim.STANCE_CROUCH
 		npc.tifFace = nil
 		return buddy_step(npc, p, d, r, now)
 	end
+
 	if not r then
 		local n = side(p, npc:GetPos())
 		if not n then return false end
@@ -257,6 +292,7 @@ function LS.MedicThink(npc, p, m, now)
 		d.revive = r
 		TIF.Say(npc, "cover_me", 0.6)
 	end
+
 	r.seen = now
 	npc.tifStance = TIF.Anim.STANCE_CROUCH
 	npc.tifFace = nil
@@ -271,9 +307,12 @@ function LS.MedicThink(npc, p, m, now)
 	elseif r.phase == "out" and now >= r.untilT then
 		d.revive = nil
 		d.treated = true
-		if d.ls then d.ls.phase = nil end
+		if d.ls then
+			d.ls.phase = nil
+		end
 		return false
 	end
+
 	return true
 end
 
@@ -285,5 +324,6 @@ function LS.ReviveAlive(p, d, now)
 		abort(p)
 		return false
 	end
+
 	return true
 end

@@ -20,9 +20,13 @@ CQB.TIMEOUT = 180
 local TEAM_PREF = { assault = 1, breacher = 1, rifleman = 2, leader = 3, support = 5, marksman = 6 }
 
 local function log(sq, ...)
-	if SQ.Log then SQ.Log(sq, "[cqb] ", ...) end
+	if SQ.Log then
+		SQ.Log(sq, "[cqb] ", ...)
+	end
 
-	if TIF.Event then TIF.Event("cqb", "squad ", sq.id, " ", sq.faction or "", ": ", ...) end
+	if TIF.Event then
+		TIF.Event("cqb", "squad ", sq.id, " ", sq.faction or "", ": ", ...)
+	end
 end
 
 local function flat(v)
@@ -33,13 +37,19 @@ end
 
 local function members(sq)
 	local out = {}
-	for _, m in ipairs(SQ.Members(sq)) do out[#out + 1] = m end
+	for _, m in ipairs(SQ.Members(sq)) do
+		out[#out + 1] = m
+	end
+
 	return out
 end
 
 local function centroid(list)
 	local c = Vector()
-	for _, m in ipairs(list) do c:Add(m:GetPos()) end
+	for _, m in ipairs(list) do
+		c:Add(m:GetPos())
+	end
+
 	return c / math.max(1, #list)
 end
 
@@ -104,6 +114,7 @@ local function door_has_portal(e)
 		local ok, t = pcall(ap.GetInternalVariable, ap, "target")
 		if ok and t == name then return true end
 	end
+
 	return false
 end
 CQB.DoorHasPortal = door_has_portal
@@ -114,13 +125,21 @@ local function door_off(e, inward, hard)
 		e:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 		return
 	end
+
 	local p = ents.Create("prop_physics")
-	if not IsValid(p) then e:SetCollisionGroup(COLLISION_GROUP_DEBRIS) return end
+	if not IsValid(p) then
+		e:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+		return
+	end
+
 	p:SetModel(e:GetModel())
 	p:SetPos(e:GetPos())
 	p:SetAngles(e:GetAngles())
 	p:SetSkin(e:GetSkin() or 0)
-	for i = 0, (e:GetNumBodyGroups() or 1) - 1 do p:SetBodygroup(i, e:GetBodygroup(i)) end
+	for i = 0, (e:GetNumBodyGroups() or 1) - 1 do
+		p:SetBodygroup(i, e:GetBodygroup(i))
+	end
+
 	p:Spawn()
 	p:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	local ph = p:GetPhysicsObject()
@@ -129,6 +148,7 @@ local function door_off(e, inward, hard)
 		ph:SetVelocity((inward or Vector()) * 320 + Vector(0, 0, 60))
 		ph:AddAngleVelocity(VectorRand() * 120)
 	end
+
 	SafeRemoveEntityDelayed(p, 90)
 	e:SetNoDraw(true)
 	e:SetNotSolid(true)
@@ -140,15 +160,20 @@ local function open_door(d, by, method, inward)
 	local e = d.ent
 	local hard = method == "kick" or method == "breach" or method == "hammer"
 
-	if method == "grenade" and IsValid(e) and e:GetClass() == "prop_door_rotating" then e:Fire("SetSpeed", "300") end
+	if method == "grenade" and IsValid(e) and e:GetClass() == "prop_door_rotating" then
+		e:Fire("SetSpeed", "300")
+	end
 
 	if method == "hammer" and IsValid(e) then
 		e:EmitSound("physics/metal/metal_box_impact_hard" .. math.random(1, 3) .. ".wav", 90, math.random(90, 100))
 		method = "kick"
 	end
+
 	if (method == "kick" or method == "breach") and IsValid(e) then
 		e:Fire("Unlock")
-		if e:GetClass() == "prop_door_rotating" then e:Fire("SetSpeed", "450") end
+		if e:GetClass() == "prop_door_rotating" then
+			e:Fire("SetSpeed", "450")
+		end
 		if method == "breach" then
 			e:EmitSound("weapons/shotgun/shotgun_fire" .. math.random(6, 7) .. ".wav", 100, math.random(92, 100))
 			local ed = EffectData()
@@ -157,6 +182,7 @@ local function open_door(d, by, method, inward)
 		end
 		e:EmitSound("physics/wood/wood_furniture_break" .. math.random(1, 2) .. ".wav", 85, math.random(95, 105))
 	end
+
 	BLD.Open(d, by)
 	door_off(e, inward, hard)
 end
@@ -167,9 +193,12 @@ local function next_door(cq, room)
 		local other = BLD.OtherSide(d, room)
 		if other and not cq.cleared[other.id] then
 			local cost = d.center:Distance(cq.target) + (d.stair and 150 or 0)
-			if not bestCost or cost < bestCost then best, bestCost = d, cost end
+			if not bestCost or cost < bestCost then
+				best, bestCost = d, cost
+			end
 		end
 	end
+
 	return best
 end
 
@@ -188,9 +217,15 @@ local function team_ghost(m, on)
 	elseif m.tifCQBGroup ~= nil then
 
 		local held = false
-		if m.tifCrowdGhost then m.tifCrowdGhost.old, held = m.tifCQBGroup, true end
-		if m.tifShieldGroup then m.tifShieldGroup, held = m.tifCQBGroup, true end
-		if not held and m:GetCollisionGroup() == CQB.GHOST then m:SetCollisionGroup(m.tifCQBGroup) end
+		if m.tifCrowdGhost then
+			m.tifCrowdGhost.old, held = m.tifCQBGroup, true
+		end
+		if m.tifShieldGroup then
+			m.tifShieldGroup, held = m.tifCQBGroup, true
+		end
+		if not held and m:GetCollisionGroup() == CQB.GHOST then
+			m:SetCollisionGroup(m.tifCQBGroup)
+		end
 		m.tifCQBGroup = nil
 	end
 end
@@ -198,11 +233,19 @@ CQB.TeamGhost = team_ghost
 
 local function clear_acts(m)
 	team_ghost(m, false)
-	if m.TIFSetSlim then m:TIFSetSlim(false) end
+	if m.TIFSetSlim then
+		m:TIFSetSlim(false)
+	end
+
 	m.tifGlide, m.tifCQBAlt, m.tifCQBFails = nil, nil, nil
-	if m.tifAct and (m.tifAct.name == m.tifCQBLoop or m.tifAct.name == m.tifCQBActName) then TIF.Action.Clear(m) end
+	if m.tifAct and (m.tifAct.name == m.tifCQBLoop or m.tifAct.name == m.tifCQBActName) then
+		TIF.Action.Clear(m)
+	end
+
 	m.tifCQBQueue, m.tifCQBActUntil, m.tifCQBLoop, m.tifCQBDelay, m.tifCQBActName = nil, nil, nil, nil, nil
-	if m.GetNW2Bool and m:GetNW2Bool("tif_sledge", false) then m:SetNW2Bool("tif_sledge", false) end
+	if m.GetNW2Bool and m:GetNW2Bool("tif_sledge", false) then
+		m:SetNW2Bool("tif_sledge", false)
+	end
 end
 
 local function release(sq, cq, reason)
@@ -210,6 +253,7 @@ local function release(sq, cq, reason)
 		m.tifCQB = nil
 		clear_acts(m)
 	end
+
 	log(sq, "done: ", reason, " (", table.Count(cq.cleared), " room(s) cleared)")
 	sq.cqb = nil
 	if cq.prevOrder then
@@ -217,6 +261,7 @@ local function release(sq, cq, reason)
 		sq.order.time = CurTime()
 		SQ.Publish(sq)
 	end
+
 	hook.Run("TIF_CQBDone", sq, reason, cq)
 end
 
@@ -225,8 +270,11 @@ function CQB.DoorAt(pos, radius)
 	local best, bestD
 	for _, d in ipairs(BLD.Scan(pos, math.max(radius, 300))) do
 		local dd = d.center:DistToSqr(pos)
-		if dd < radius * radius and (not bestD or dd < bestD) then best, bestD = d, dd end
+		if dd < radius * radius and (not bestD or dd < bestD) then
+			best, bestD = d, dd
+		end
 	end
+
 	return best
 end
 
@@ -251,7 +299,9 @@ function CQB.Start(sq, target, quiet, opts)
 		local onA
 		fromRoom, onA = near_side_room(best, from)
 		targetRoom = BLD.RoomOf(onA and best.areaB or best.areaA)
-		if not target then target = best.center + best.normal * (onA and 200 or -200) end
+		if not target then
+			target = best.center + best.normal * (onA and 200 or -200)
+		end
 	else
 		local doors = BLD.Scan(target, 1100)
 		targetRoom = BLD.RoomAt(target)
@@ -260,13 +310,20 @@ function CQB.Start(sq, target, quiet, opts)
 		for _, d in ipairs(doors) do
 			if d.exterior then
 				local cost = from:Distance(d.center) + d.center:Distance(target) * 1.5
-				if targetRoom and BLD.RoomOf(d.areaB) == targetRoom then cost = cost - 600 end
-				if not bestCost or cost < bestCost then best, bestCost = d, cost end
+				if targetRoom and BLD.RoomOf(d.areaB) == targetRoom then
+					cost = cost - 600
+				end
+				if not bestCost or cost < bestCost then
+					best, bestCost = d, cost
+				end
 			end
 		end
 	end
+
 	if not best then
-		if not quiet then log(sq, "no way in found near ", tostring(target)) end
+		if not quiet then
+			log(sq, "no way in found near ", tostring(target))
+		end
 		return false
 	end
 
@@ -274,8 +331,13 @@ function CQB.Start(sq, target, quiet, opts)
 	table.sort(list, function(a, b) return (TEAM_PREF[a.tifArchId] or 4) < (TEAM_PREF[b.tifArchId] or 4) end)
 	local team, outside = {}, {}
 	for _, m in ipairs(list) do
-		if #team < size and (TEAM_PREF[m.tifArchId] or 4) < 5 then team[#team + 1] = m else outside[#outside + 1] = m end
+		if #team < size and (TEAM_PREF[m.tifArchId] or 4) < 5 then
+			team[#team + 1] = m
+		else
+			outside[#outside + 1] = m
+		end
 	end
+
 	if #team < 2 then
 
 		team, outside = {}, {}
@@ -289,18 +351,24 @@ function CQB.Start(sq, target, quiet, opts)
 		onEntry = opts.onEntry, single = opts.single and true or false, firstDoor = true }
 	cq.prevOrder = sq.order
 	sq.cqb = cq
-	for _, m in ipairs(team) do team_ghost(m, true) end
+	for _, m in ipairs(team) do
+		team_ghost(m, true)
+	end
+
 	sq.order = { kind = "clear", pos = Vector(target), time = CurTime() }
 	SQ.Publish(sq)
 	setup_door(cq, best, fromRoom)
 
-	if opts.door then cq.flow = false end
+	if opts.door then
+		cq.flow = false
+	end
 
 	for i, m in ipairs(outside) do
 		local side = Vector(-cq.inward.y, cq.inward.x, 0) * ((i % 2 == 0) and 1 or -1)
 		local p = TIF.Move.Snap(best.center - cq.inward * (220 + 40 * i) + side * (90 + 30 * i)) or m:GetPos()
 		m.tifCQB = { goal = p, face = best.center + Vector(0, 0, 50), speed = "tactical", crouch = true, label = "cover the building" }
 	end
+
 	log(sq, "start: team ", #team, ", outside ", #outside, ", door ", best.id, " (", #cq.slots, " slots)")
 	TIF.Say(team[1], "moving", 0.8)
 	return true
@@ -323,6 +391,7 @@ local function lr_variant(m, fmt, wantLeft)
 			any, anyC = any or n, anyC or c
 		end
 	end
+
 	return any, anyC
 end
 
@@ -350,6 +419,7 @@ local function cross_point(c, S, yaw, center, n)
 		end
 		prev, pu = side, u
 	end
+
 	return nil
 end
 
@@ -364,6 +434,7 @@ local function centre_cross(c, S0, target, center, n)
 		if math.abs(off) < 1 then break end
 		S = S - lat * off
 	end
+
 	local shift = Vector(S.x - S0.x, S.y - S0.y, 0):Length()
 	if shift > CQB.CROSS_SHIFT_MAX then return S0, aim_travel(c, S0, target) end
 	return S, aim_travel(c, S, target)
@@ -379,19 +450,31 @@ local GLIDE_MIN, GLIDE_MAX = Vector(-12, -12, 4), Vector(12, 12, 60)
 
 function CQB.Glide(npc, goal, now, maxR)
 	local gl = npc.tifGlide
-	if gl and gl.goal.x == goal.x and gl.goal.y == goal.y then gl.seen = now return true end
+	if gl and gl.goal.x == goal.x and gl.goal.y == goal.y then
+		gl.seen = now
+		return true
+	end
+
 	local pos = npc:GetPos()
 	local d = goal - pos
 	local dz = d.z
 	d.z = 0
 	local dist = d:Length()
-	if dist > (maxR or CQB.GLIDE_R) or dist < 1 or math.abs(dz) > 18 then npc.tifGlide = nil return false end
+	if dist > (maxR or CQB.GLIDE_R) or dist < 1 or math.abs(dz) > 18 then
+		npc.tifGlide = nil
+		return false
+	end
 
-	if npc.tifAct and not npc.tifAct.loop and not npc.tifAct.finished then return false end
+	if npc.tifAct and not npc.tifAct.loop and not npc.tifAct.finished then
+		return false
+	end
 	local tr = util.TraceHull({ start = pos, endpos = goal, mins = GLIDE_MIN, maxs = GLIDE_MAX, mask = MASK_NPCSOLID_BRUSHONLY, filter = npc })
 	if tr.Hit then return false end
 	TIF.Move.Stop(npc)
-	if npc.tifAct and npc.tifAct.trans then TIF.Action.Clear(npc) end
+	if npc.tifAct and npc.tifAct.trans then
+		TIF.Action.Clear(npc)
+	end
+
 	npc.tifGlide = { goal = Vector(goal), speed = CQB.GLIDE_SPEED, seen = now, t = now }
 	return true
 end
@@ -403,6 +486,7 @@ function CQB.GlideStep(npc, now)
 		npc.tifGlide = nil
 		return false
 	end
+
 	local dt = math.Clamp(now - (gl.t or now), 0, 0.1)
 	gl.t = now
 	local pos = npc:GetPos()
@@ -410,7 +494,11 @@ function CQB.GlideStep(npc, now)
 	local dz = d.z
 	d.z = 0
 	local dist = d:Length()
-	if dist < 0.5 then npc.tifGlide = nil return false end
+	if dist < 0.5 then
+		npc.tifGlide = nil
+		return false
+	end
+
 	local step = math.min(dist, gl.speed * dt)
 	d:Normalize()
 	npc:SetPos(Vector(pos.x + d.x * step, pos.y + d.y * step, pos.z + dz * (step / dist)))
@@ -436,6 +524,7 @@ function CQB.Through(npc, cq, goal, now)
 		inside.z = pos.z
 		if CQB.Glide(npc, inside, now, 170) then return "glide" end
 	end
+
 	return (TIF.Move.Snap(front)) or front
 end
 
@@ -449,11 +538,15 @@ function CQB.PathTrouble(npc, goal, ok, now)
 		if TIF.Event then TIF.Event("cqb", "squad ", sq and sq.id or "?", ": ", npc:GetClass(), "#", npc:EntIndex(),
 			string.format(" can't get to his spot %.0f u away (%s)", npc:GetPos():Distance(goal), tostring(m and m.result or "goal refused"))) end
 	end
+
 	if npc.tifCQBFails >= 2 then
 		local a = math.random() * math.pi * 2
 		local alt = TIF.Move.Snap(goal + Vector(math.cos(a) * 36, math.sin(a) * 36, 0))
-		if alt then npc.tifCQBAlt = { pos = alt, untilT = now + 3, for_ = goal } end
+		if alt then
+			npc.tifCQBAlt = { pos = alt, untilT = now + 3, for_ = goal }
+		end
 	end
+
 	return true
 end
 
@@ -513,6 +606,7 @@ local function go_item(cq, b, m)
 			warped = true
 		end
 	end
+
 	return { name = b.go, opts = opts, hold = 0.9,
 		yawFn = function(npc)
 			if b.stand or warped then return b.yaw end
@@ -522,7 +616,9 @@ local function go_item(cq, b, m)
 
 		check = function(npc, yaw)
 			if b.stand ~= nil then return true end
-			if warped then return clip_path_clear(npc, cclip(npc, b.go), b.yaw, cq, b.from) end
+			if warped then
+				return clip_path_clear(npc, cclip(npc, b.go), b.yaw, cq, b.from)
+			end
 			return clip_path_clear(npc, cclip(npc, b.go), yaw, cq)
 		end }
 end
@@ -555,6 +651,7 @@ function CQB.MoveStartU(c)
 		local x, y = TIF.Action.RootAt(c, u)
 		if x * x + y * y > 36 then return u - 0.02 end
 	end
+
 	return 0
 end
 
@@ -577,13 +674,19 @@ function breach_plan(cq, team, method)
 				local S, yw = centre_cross(c, slot.pos, tgt, d.center, cq.inward)
 				local free = S == slot.pos or not util.TraceHull({ start = S + Vector(0, 0, 8), endpos = S + Vector(0, 0, 8),
 					mins = Vector(-13, -13, 0), maxs = Vector(13, 13, 64), mask = MASK_NPCSOLID_BRUSHONLY }).StartSolid
-				if not free then S, yw = slot.pos, aim_travel(c, slot.pos, tgt) end
+				if not free then
+					S, yw = slot.pos, aim_travel(c, slot.pos, tgt)
+				end
 				cross[c] = { S, yw }
 				return clip_path_clear(m, c, yw, cq, S)
 			end
 			if not ok(goC) then
 				local n2, c2 = lr_variant(m, set[i], not wantLeft)
-				if c2 and n2 ~= goN and ok(c2) then goN, goC = n2, c2 else goN, goC = nil, nil end
+				if c2 and n2 ~= goN and ok(c2) then
+					goN, goC = n2, c2
+				else
+					goN, goC = nil, nil
+				end
 			end
 		end
 		if not goC then
@@ -639,10 +742,13 @@ function breach_plan(cq, team, method)
 				maxs = Vector(13, 13, 64), mask = MASK_NPCSOLID_BRUSHONLY })
 			if not tr.StartSolid and line_clear(p, atDoor, m) then
 				plan[i].stand, plan[i].yaw, plan[i].warpU = p, y0, du
-				if plan[i].wait then plan[i].wait.yaw = y0 end
+				if plan[i].wait then
+					plan[i].wait.yaw = y0
+				end
 			end
 		end
 	end
+
 	return plan[1] and plan or nil
 end
 
@@ -674,9 +780,12 @@ local function door_flash(m, toYaw)
 		if m.tifHomeHost and TIF.GTG.Clip(name, m.tifHomeHost) then
 			local y = toYaw - k.yaw
 			local turn = math.abs(math.AngleDifference(y, m:GetAngles().y))
-			if not bestTurn or turn < bestTurn then best, bestYaw, bestTurn = name, y, turn end
+			if not bestTurn or turn < bestTurn then
+				best, bestYaw, bestTurn = name, y, turn
+			end
 		end
 	end
+
 	if not best then return nil end
 	local k = CQB.DOOR_FLASH[best]
 	return best, bestYaw, k.hand, k.u
@@ -690,7 +799,10 @@ local function flash_in(sq, cq, team, now)
 	local mode = cvFlash:GetInt()
 	local GR = TIF.GrenadeMW
 	local m = team[2] or team[1]
-	if mode == 0 or not (GR and GR.Throw) or not IsValid(m) or cq.door.stair then return nil end
+	if mode == 0 or not (GR and GR.Throw) or not IsValid(m) or cq.door.stair then
+		return nil
+	end
+
 	if GR.HL2 and GR.HL2(m) then return nil end
 	if mode == 1 and not allied_to_players(m) then return nil end
 	if math.random() > cvFlashChance:GetFloat() then return nil end
@@ -702,6 +814,7 @@ local function flash_in(sq, cq, team, now)
 		name = m.tifHomeHost and TIF.GTG.Clip("mwg_throw_stand", m.tifHomeHost) and "mwg_throw_stand" or nil
 		yaw, hand = toYaw, Vector(16, 0, 58)
 	end
+
 	m:SetAngles(Angle(0, yaw, 0))
 	local d = name and TIF.Action.Play(m, name, { clear = true }) or 0
 	local c = name and TIF.GTG.Clip(name, m.tifHomeHost)
@@ -710,7 +823,10 @@ local function flash_in(sq, cq, team, now)
 	cq.flashWait = wait
 	local force = { pos = target, door = Vector(cq.door.center), inward = Vector(cq.inward) }
 	timer.Simple(rel, function()
-		if not IsValid(m) or m.tifDead then wait.lost = true return end
+		if not IsValid(m) or m.tifDead then
+			wait.lost = true
+			return
+		end
 		local a = Angle(0, yaw, 0)
 		local src = m:GetPos() + a:Forward() * hand.x - a:Right() * hand.y + Vector(0, 0, hand.z)
 		wait.g = GR.Throw(m, target, src, "flash", { force = force }) or false
@@ -723,9 +839,19 @@ end
 local function flash_waiting(cq, now)
 	local w = cq.flashWait
 	if not w then return false end
-	if w.lost or w.g == false or now >= w.untilT then cq.flashWait = nil return false end
-	if w.g ~= nil and not w.boom and (not IsValid(w.g) or w.g.tifDone) then w.boom = now end
-	if w.boom and now >= w.boom + CQB.AFTER_BANG then cq.flashWait = nil return false end
+	if w.lost or w.g == false or now >= w.untilT then
+		cq.flashWait = nil
+		return false
+	end
+
+	if w.g ~= nil and not w.boom and (not IsValid(w.g) or w.g.tifDone) then
+		w.boom = now
+	end
+	if w.boom and now >= w.boom + CQB.AFTER_BANG then
+		cq.flashWait = nil
+		return false
+	end
+
 	return true
 end
 
@@ -740,17 +866,23 @@ end
 function pick_method(cq, d)
 	if not cvVariety:GetBool() then return "open" end
 
-	if locked(d) then return (CQB.METHOD_WEIGHTS.hammer or 0) > 0 and math.random() < 0.4 and "hammer" or "kick" end
+	if locked(d) then
+		return (CQB.METHOD_WEIGHTS.hammer or 0) > 0 and math.random() < 0.4 and "hammer" or "kick"
+	end
 	local w, total = {}, 0
 	for k, v in pairs(CQB.METHOD_WEIGHTS) do
-		if v > 0 and (k ~= "grenade" or flash_ok(cq.team[1])) then w[#w + 1] = { k, v } total = total + v end
+		if v > 0 and (k ~= "grenade" or flash_ok(cq.team[1])) then
+			w[#w + 1] = { k, v } total = total + v
+		end
 	end
+
 	table.sort(w, function(a, b) return a[1] < b[1] end)
 	local r = math.random() * total
 	for _, e in ipairs(w) do
 		r = r - e[2]
 		if r <= 0 then return e[1] end
 	end
+
 	return "open"
 end
 
@@ -763,7 +895,10 @@ local function grenade_breach(sq, cq, m, rel, now)
 	local target = door + inward * CQB.FLASH_DEPTH
 	local force = { pos = target, door = Vector(door), inward = Vector(inward) }
 	timer.Simple(rel, function()
-		if not (IsValid(m) and GR and GR.Throw) or m.tifDead then wait.lost = true return end
+		if not (IsValid(m) and GR and GR.Throw) or m.tifDead then
+			wait.lost = true
+			return
+		end
 		wait.g = GR.Throw(m, target, door + inward * 14 + Vector(0, 0, 20), "flash", { force = force }) or false
 	end)
 	log(sq, "grenade breach (", m:EntIndex(), ")")
@@ -774,6 +909,7 @@ local function anyone_sees_enemy(list, now)
 		local c = m.tifPrimaryC
 		if c and c.visible then return true end
 	end
+
 	return false
 end
 
@@ -784,7 +920,9 @@ local function tick(sq, cq, now)
 	cq.team = team
 	if #team == 0 then return release(sq, cq, "entry team lost") end
 
-	if now - cq.started > CQB.TIMEOUT and not (cq.hold and not cq.go) then return release(sq, cq, "timed out") end
+	if now - cq.started > CQB.TIMEOUT and not (cq.hold and not cq.go) then
+		return release(sq, cq, "timed out")
+	end
 	local d = cq.door
 	local doorAim = d.center + Vector(0, 0, 50)
 	local seen = anyone_sees_enemy(team, now)
@@ -806,14 +944,20 @@ local function tick(sq, cq, now)
 
 				local tol = (bp and bp.m == m) and CQB.BREACH_READY or 45
 				local d2 = m:GetPos():DistToSqr(spot)
-				if d2 < tol * tol then ready = ready + 1 end
+				if d2 < tol * tol then
+					ready = ready + 1
+				end
 
 				local best = cq.stackBest and cq.stackBest[m]
 				local dist = math.sqrt(d2)
-				if cq.stackBest and (not best or dist < best - 16) then cq.stackBest[m], cq.progressAt = dist, now end
+				if cq.stackBest and (not best or dist < best - 16) then
+					cq.stackBest[m], cq.progressAt = dist, now
+				end
 
 				local sledge = cq.breachPlan and cq.breachPlan.method == "hammer" and bp and bp.m == m and i == 1 or false
-				if m:GetNW2Bool("tif_sledge", false) ~= sledge then m:SetNW2Bool("tif_sledge", sledge) end
+				if m:GetNW2Bool("tif_sledge", false) ~= sledge then
+					m:SetNW2Bool("tif_sledge", sledge)
+				end
 			else
 
 				m.tifCQB = { goal = TIF.Move.Snap(d.center - cq.inward * (90 + 40 * i)) or m:GetPos(), face = doorAim,
@@ -827,9 +971,15 @@ local function tick(sq, cq, now)
 		if cq.hold and cq.firstDoor and not cq.go then return end
 
 		local enough = ready >= #team
-		if enough then cq.fullAt = cq.fullAt or now else cq.fullAt = nil end
+		if enough then
+			cq.fullAt = cq.fullAt or now
+		else
+			cq.fullAt = nil
+		end
 		local settled = enough and now - cq.fullAt >= CQB.STACK_SETTLE
-		if cq.go and cq.firstDoor then settled = ready > 0 end
+		if cq.go and cq.firstDoor then
+			settled = ready > 0
+		end
 		local stalled = now - (cq.progressAt or cq.t0) > CQB.STACK_TIMEOUT or waited > CQB.STACK_MAX
 
 		if cq.committed or settled or (stalled and ready > 0) then
@@ -862,7 +1012,9 @@ local function tick(sq, cq, now)
 						cq.doorAt = now + b1.goDur * b1.doorU
 						cq.doorDue, cq.doorBy = cq.doorAt, team[1]
 						local rel = method == "grenade" and b1.goDur * (b1.relU or 0.3) or nil
-						if rel then grenade_breach(sq, cq, team[1], rel, now) end
+						if rel then
+							grenade_breach(sq, cq, team[1], rel, now)
+						end
 						if bp[2] and bp[2].m == team[2] then
 							team[2].tifCQBQueue = { go_item(cq, bp[2], team[2]) }
 
@@ -884,13 +1036,17 @@ local function tick(sq, cq, now)
 
 			if cq.firstDoor and cq.onEntry and not cq.entryPrep then
 				local ok, delay = pcall(cq.onEntry, sq, cq)
-				if not ok then TIF.Error("CQB onEntry: ", tostring(delay)) end
+				if not ok then
+					TIF.Error("CQB onEntry: ", tostring(delay))
+				end
 				cq.entryPrep = now + math.Clamp((ok and tonumber(delay)) or 0, 0, 6)
 			end
 
 			if not cq.entryPrep and not cq.flashed then
 				cq.flashed = true
-				if not cq.wentIn then flash_in(sq, cq, team, now) end
+				if not cq.wentIn then
+					flash_in(sq, cq, team, now)
+				end
 			end
 			if cq.entryPrep and now < cq.entryPrep then return end
 
@@ -933,16 +1089,24 @@ local function tick(sq, cq, now)
 				local s = slot and slot.side or 1
 				local idx
 				if d.stair then idx = i
-				elseif i == 1 then idx = s == 1 and 2 or 1
-				elseif i == 2 then idx = s == 1 and 2 or 1
-					if cq.points[idx] == team[1].tifCQB.goal then idx = idx == 1 and 2 or 1 end
-				else idx = i end
+				elseif i == 1 then
+					idx = s == 1 and 2 or 1
+				elseif i == 2 then
+					idx = s == 1 and 2 or 1
+					if cq.points[idx] == team[1].tifCQB.goal then
+						idx = idx == 1 and 2 or 1
+					end
+				else
+					idx = i
+				end
 				local p = cq.points[idx] or cq.points[1]
 
 				m.tifCQB = { goal = p, face = corner_look(d, p), speed = "tactical", label = "entry " .. i }
 			end
 		end
-		if cq.released >= #team then cq.phase, cq.t0 = "hold", now end
+		if cq.released >= #team then
+			cq.phase, cq.t0 = "hold", now
+		end
 		return
 	end
 
@@ -950,7 +1114,9 @@ local function tick(sq, cq, now)
 		local there = 0
 		for _, m in ipairs(team) do
 			local t = m.tifCQB
-			if t and m:GetPos():DistToSqr(t.goal) < 60 * 60 then there = there + 1 end
+			if t and m:GetPos():DistToSqr(t.goal) < 60 * 60 then
+				there = there + 1
+			end
 			if t then
 				t.speed, t.label = "tactical", "hold sector"
 				if m:GetPos():DistToSqr(t.goal) < 60 * 60 then
@@ -962,24 +1128,35 @@ local function tick(sq, cq, now)
 		if not cq.allInAt then
 			local inside = 0
 			for _, m in ipairs(team) do
-				if d.stair or (m:GetPos() - d.center):Dot(cq.inward) > 16 then inside = inside + 1 end
+				if d.stair or (m:GetPos() - d.center):Dot(cq.inward) > 16 then
+					inside = inside + 1
+				end
 			end
-			if inside >= #team or now - cq.t0 >= CQB.HOLD_ENTER_MAX then cq.allInAt = now end
+			if inside >= #team or now - cq.t0 >= CQB.HOLD_ENTER_MAX then
+				cq.allInAt = now
+			end
 		end
-		if seen then cq.quietSince = nil return end
+		if seen then
+			cq.quietSince = nil
+			return
+		end
 		if not cq.allInAt then return end
 		if there < #team and now - cq.allInAt < CQB.HOLD_WAIT then return end
 		cq.quietSince = cq.quietSince or now
 		if now - cq.quietSince < CQB.HOLD_MIN then return end
 
 		local room = cq.room
-		if room then cq.cleared[room.id] = true end
+		if room then
+			cq.cleared[room.id] = true
+		end
 		TIF.Say(team[math.random(#team)], "clear", 0.9)
 		log(sq, "room ", room and room.id or "?", " clear", d.stair and " (via stairs)" or "")
 		hook.Run("TIF_CQBRoomClear", sq, room, cq)
 		cq.firstDoor = false
 		if cq.single then return release(sq, cq, "room clear") end
-		if table.Count(cq.cleared) >= CQB.MAX_ROOMS then return release(sq, cq, "room limit") end
+		if table.Count(cq.cleared) >= CQB.MAX_ROOMS then
+			return release(sq, cq, "room limit")
+		end
 		local nd = room and next_door(cq, room)
 
 		if not nd and room then
@@ -989,7 +1166,10 @@ local function tick(sq, cq, now)
 				for _, dd in ipairs(BLD.DoorsOf(r)) do
 					local o = BLD.OtherSide(dd, r)
 					if o and not seenR[o.id] then
-						if not cq.cleared[o.id] then nd = dd room = r break end
+						if not cq.cleared[o.id] then
+							nd = dd room = r
+							break
+						end
 						seenR[o.id] = true
 						queue[#queue + 1] = o
 					end
@@ -1017,7 +1197,9 @@ timer.Create("tif_cqb_tick", 0.25, 0, function()
 end)
 
 function CQB.Stop(sq, reason)
-	if sq and sq.cqb then release(sq, sq.cqb, reason or "stopped") end
+	if sq and sq.cqb then
+		release(sq, sq.cqb, reason or "stopped")
+	end
 end
 
 function CQB.Go(sq, opts)
@@ -1035,8 +1217,11 @@ function CQB.Go(sq, opts)
 				end
 			end
 		end
-		if opts.onEntry ~= nil then cq.onEntry = opts.onEntry or nil end
+		if opts.onEntry ~= nil then
+			cq.onEntry = opts.onEntry or nil
+		end
 	end
+
 	cq.go = true
 	cq.started = CurTime()
 	return true
@@ -1068,22 +1253,30 @@ timer.Create("tif_debug_cqb_send", 0.5, 0, function()
 		net.WriteBool(d.exterior)
 		net.WriteBool(IsValid(d.ent))
 	end
+
 	net.WriteUInt(math.min(#active, 7), 3)
 	for i = 1, math.min(#active, 7) do
 		local cq = active[i]
 		net.WriteString(cq.phase)
 		net.WriteUInt(#cq.slots, 4)
-		for _, s in ipairs(cq.slots) do net.WriteVector(s.pos) end
+		for _, s in ipairs(cq.slots) do
+			net.WriteVector(s.pos)
+		end
 		net.WriteUInt(#cq.points, 4)
-		for _, p in ipairs(cq.points) do net.WriteVector(p) end
+		for _, p in ipairs(cq.points) do
+			net.WriteVector(p)
+		end
 		local areas = cq.room and cq.room.areas or {}
 		local n = math.min(#areas, 60)
 		net.WriteUInt(n, 7)
 		for j = 1, n do
 			local a = areas[j]
-			for k = 0, 3 do net.WriteVector(a:GetCorner(k)) end
+			for k = 0, 3 do
+				net.WriteVector(a:GetCorner(k))
+			end
 		end
 		net.WriteVector(cq.target)
 	end
+
 	net.Send(viewers)
 end)

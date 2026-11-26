@@ -44,6 +44,7 @@ function M.swing(a, b)
 		local x, y, z = p[1], p[2], p[3]
 		return { 2 * x * x - 1, 2 * x * y, 2 * x * z, 2 * x * y, 2 * y * y - 1, 2 * y * z, 2 * x * z, 2 * y * z, 2 * z * z - 1 }
 	end
+
 	local k = 1 / (1 + c)
 	local x, y, z = v[1], v[2], v[3]
 	return {
@@ -90,7 +91,10 @@ end
 
 local function read_floats(f, at, n, out)
 	f:Seek(at)
-	for k = 1, n do out[k] = f:ReadFloat() end
+	for k = 1, n do
+		out[k] = f:ReadFloat()
+	end
+
 	return out
 end
 
@@ -100,11 +104,13 @@ local function read_quat_rule(f, at, size)
 	if count < 1 or count > MAX_TRIGGERS or at + index < 0 or at + index + count * TRIGGER_SIZE > size then
 		return nil
 	end
+
 	local triggers = {}
 	for k = 1, count do
 		local v = read_floats(f, at + index + (k - 1) * TRIGGER_SIZE, 12, {})
 		triggers[k] = { tol = v[1], trigger = { v[2], v[3], v[4], v[5] }, pos = { v[6], v[7], v[8] }, quat = { v[9], v[10], v[11], v[12] } }
 	end
+
 	return { control = control, triggers = triggers }
 end
 
@@ -117,6 +123,7 @@ local function read_hitboxes(f, size, n)
 	if count < 0 or count > MAX_HITBOXES or at + index < 0 or at + index + count * HITBOX_SIZE > size then
 		return {}
 	end
+
 	local out, v = {}, {}
 	for h = 0, count - 1 do
 		local o = at + index + h * HITBOX_SIZE
@@ -127,6 +134,7 @@ local function read_hitboxes(f, size, n)
 			out[#out + 1] = { bone = bone, group = group, index = h, min = { v[1], v[2], v[3] }, max = { v[4], v[5], v[6] } }
 		end
 	end
+
 	return out
 end
 
@@ -147,6 +155,7 @@ local function group_of(sk, i)
 		if g then return g end
 		i = sk.parent[i]
 	end
+
 	return HITGROUP_GENERIC
 end
 
@@ -154,14 +163,19 @@ local function infer_groups(sk)
 	for _, h in ipairs(sk.hitboxes) do
 		if h.group ~= HITGROUP_GENERIC then return end
 	end
-	for _, h in ipairs(sk.hitboxes) do h.group = group_of(sk, h.bone) end
+	for _, h in ipairs(sk.hitboxes) do
+		h.group = group_of(sk, h.bone)
+	end
 end
 
 local function read_bones(f, size)
 	if size < HDR_NUMBONES + 8 or f:Read(4) ~= "IDST" then return nil end
 	f:Seek(HDR_NUMBONES)
 	local n, base = f:ReadLong(), f:ReadLong()
-	if n < 1 or n > MAX_BONES or base < 0 or base + n * BONE_SIZE > size then return nil end
+	if n < 1 or n > MAX_BONES or base < 0 or base + n * BONE_SIZE > size then
+		return nil
+	end
+
 	local sk = { n = n, name = {}, index = {}, parent = {}, R = {}, t = {}, weighted = {}, proc = {}, rule = {} }
 	local p = {}
 	for i = 0, n - 1 do
@@ -180,9 +194,14 @@ local function read_bones(f, size)
 		sk.name[i], sk.parent[i] = name, parent
 		sk.weighted[i] = bit_band(flags, VERTEX_MASK) ~= 0
 		sk.proc[i] = procindex ~= 0 and proctype or 0
-		if sk.proc[i] == PMS.PROC_QUAT then sk.rule[i] = read_quat_rule(f, o + procindex, size) end
-		if not sk.index[name] then sk.index[name] = i end
+		if sk.proc[i] == PMS.PROC_QUAT then
+			sk.rule[i] = read_quat_rule(f, o + procindex, size)
+		end
+		if not sk.index[name] then
+			sk.index[name] = i
+		end
 	end
+
 	sk.hitboxes = read_hitboxes(f, size, n)
 	infer_groups(sk)
 	return sk
@@ -191,8 +210,12 @@ end
 local function to_entity_space(sk)
 	local ix, top = sk.index, nil
 	for _, name in ipairs(UP_BONES) do
-		if ix[name] then top = ix[name] break end
+		if ix[name] then
+			top = ix[name]
+			break
+		end
 	end
+
 	local up = M.unit(M.sub(sk.t[top], sk.t[ix[PELVIS]]))
 	local left = up and M.sub(sk.t[ix[L_THIGH]], sk.t[ix[R_THIGH]])
 	if not left then return false end
@@ -205,6 +228,7 @@ local function to_entity_space(sk)
 		sk.R[i] = M.mul3(W, sk.R[i])
 		sk.t[i] = M.mulv(W, sk.t[i])
 	end
+
 	return true
 end
 
@@ -217,6 +241,7 @@ function PMS.ParseSkeleton(path)
 	for _, name in ipairs(PMS.Required) do
 		if not sk.index[name] then return nil end
 	end
+
 	if not to_entity_space(sk) then return nil end
 	return sk
 end
@@ -231,8 +256,11 @@ function PMS.Skeleton(model)
 	if sk == nil or (sk == false and CurTime() >= (PMS.SkeletonRetry[model] or 0)) then
 		sk = PMS.ParseSkeleton(model) or false
 		PMS.Skeletons[model] = sk
-		if not sk then PMS.SkeletonRetry[model] = CurTime() + 10 end
+		if not sk then
+			PMS.SkeletonRetry[model] = CurTime() + 10
+		end
 	end
+
 	return sk or nil
 end
 
@@ -253,9 +281,14 @@ end
 function PMS.Oddness(lsk, fsk)
 	local worst = 1
 	local function take(a, b)
-		if a and b and a > 0.01 and b > 0.01 then worst = math.max(worst, a / b, b / a) end
+		if a and b and a > 0.01 and b > 0.01 then
+			worst = math.max(worst, a / b, b / a)
+		end
 	end
-	for _, l in ipairs(PMS.Limbs) do take(dist(fsk, l[1], l[2]), dist(lsk, l[1], l[2])) end
+
+	for _, l in ipairs(PMS.Limbs) do
+		take(dist(fsk, l[1], l[2]), dist(lsk, l[1], l[2]))
+	end
 	local fp, lp = fsk.t[fsk.index[PELVIS]], lsk.t[lsk.index[PELVIS]]
 	take(fp[3], lp[3])
 	local R, L = "valvebiped.bip01_r_upperarm", "valvebiped.bip01_l_upperarm"
@@ -269,4 +302,6 @@ function PMS.ResetMaps()
 	PMS.Gen = (PMS.Gen or 0) + 1
 end
 
-if PMS.Maps then PMS.ResetMaps() end
+if PMS.Maps then
+	PMS.ResetMaps()
+end

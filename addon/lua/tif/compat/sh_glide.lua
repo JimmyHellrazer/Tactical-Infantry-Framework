@@ -21,22 +21,30 @@ end
 
 if SERVER then
 	function A.StartEngine(veh)
-		if veh.GetEngineState and veh:GetEngineState() == 0 and veh.TurnOn then veh:TurnOn() end
+		if veh.GetEngineState and veh:GetEngineState() == 0 and veh.TurnOn then
+			veh:TurnOn()
+		end
 	end
 
 	function A.StopEngine(veh)
-		if veh.TurnOff then veh:TurnOff() end
+		if veh.TurnOff then
+			veh:TurnOff()
+		end
 	end
 
 	function A.Drive(veh, throttle, steer, brake, handbrake)
 
-		if veh.AwakePhysics then veh:AwakePhysics() end
+		if veh.AwakePhysics then
+			veh:AwakePhysics()
+		end
 		veh:SetInputFloat(1, "accelerate", math.Clamp(throttle or 0, 0, 1))
 		veh:SetInputFloat(1, "steer", math.Clamp(steer or 0, -1, 1))
 		veh:SetInputFloat(1, "brake", math.Clamp(brake or 0, 0, 1))
 
 		local hb = handbrake == true
-		if (veh:GetInputBool(1, "handbrake") == true) ~= hb then veh:SetInputBool(1, "handbrake", hb) end
+		if (veh:GetInputBool(1, "handbrake") == true) ~= hb then
+			veh:SetInputBool(1, "handbrake", hb)
+		end
 	end
 
 	function A.Release(veh)

@@ -41,7 +41,9 @@ local function claim(seat, npc)
 	seat:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	local ph = seat:GetPhysicsObject()
 	if IsValid(ph) then
-		if seat.tifSeatMotion == nil then seat.tifSeatMotion = ph:IsMotionEnabled() end
+		if seat.tifSeatMotion == nil then
+			seat.tifSeatMotion = ph:IsMotionEnabled()
+		end
 		ph:EnableMotion(false)
 	end
 end
@@ -49,27 +51,38 @@ end
 local function free(seat)
 	if not IsValid(seat) then return end
 	seat.tifSeatTaken = nil
-	if seat.tifSeatCG then seat:SetCollisionGroup(seat.tifSeatCG) end
+	if seat.tifSeatCG then
+		seat:SetCollisionGroup(seat.tifSeatCG)
+	end
+
 	seat.tifSeatCG = nil
 	local ph = seat:GetPhysicsObject()
 	if IsValid(ph) and seat.tifSeatMotion ~= nil then
 		ph:EnableMotion(seat.tifSeatMotion)
-		if seat.tifSeatMotion then ph:Wake() end
+		if seat.tifSeatMotion then
+			ph:Wake()
+		end
 	end
+
 	seat.tifSeatMotion = nil
 end
 
 function SM.Release(npc)
 	local a = npc.tifActivity
 	local seat = a and a.smart and a.smart.seat
-	if seat and IsValid(seat) and seat.tifSeatTaken == npc then free(seat) end
+	if seat and IsValid(seat) and seat.tifSeatTaken == npc then
+		free(seat)
+	end
 end
 
 local function stale(seat)
 	local t = seat.tifSeatTaken
 	if not t then return false end
 	local a = IsValid(t) and t.tifActivity
-	if a and a.smart and a.smart.seat == seat and not t.tifDead then return false end
+	if a and a.smart and a.smart.seat == seat and not t.tifDead then
+		return false
+	end
+
 	free(seat)
 	return true
 end
@@ -129,7 +142,9 @@ function SM.Find(npc, anchor, watch)
 		if (cls == "prop_physics" or cls == "prop_dynamic" or cls == "prop_physics_multiplayer") and mdl ~= "" then
 			local isSeat = false
 			for _, k in ipairs(SM.SEAT_MODELS) do if string.find(mdl, k, 1, true) then isSeat = true break end end
-			if isSeat and e.tifSeatTaken then stale(e) end
+			if isSeat and e.tifSeatTaken then
+				stale(e)
+			end
 			if isSeat and not e.tifSeatTaken then
 				local c = e:WorldSpaceCenter()
 				local top = util.TraceLine({ start = c + Vector(0, 0, 40), endpos = c - Vector(0, 0, 40),
@@ -143,7 +158,10 @@ function SM.Find(npc, anchor, watch)
 						local dd = yaw_dir(e:GetAngles().y + k * 90)
 						local b = util.TraceLine({ start = top.HitPos + Vector(0, 0, 14), endpos = top.HitPos + Vector(0, 0, 14) + dd * 24,
 							filter = function(x) return x == e end })
-						if b.Hit then face = e:GetAngles().y + k * 90 + 180 break end
+						if b.Hit then
+							face = e:GetAngles().y + k * 90 + 180
+							break
+						end
 					end
 					face = face or watch
 					local kinds = {}
@@ -160,13 +178,16 @@ function SM.Find(npc, anchor, watch)
 			end
 		end
 	end
+
 	return out
 end
 
 function SM.Start(npc, spot, now, seated)
 	local a = { smart = spot, name = spot.kind }
 	if spot.kind == "sit" then
-		if spot.seat then claim(spot.seat, npc) end
+		if spot.seat then
+			claim(spot.seat, npc)
+		end
 		if seated then
 			npc:SetPos(spot.pos)
 			npc:SetAngles(Angle(0, spot.yaw, 0))
@@ -184,6 +205,7 @@ function SM.Start(npc, spot, now, seated)
 		if not d then return nil end
 		a.phase, a.untilT = "enter", now + d
 	end
+
 	return a
 end
 
@@ -203,6 +225,7 @@ function SM.Step(npc, a, now, loopFor)
 	elseif a.phase == "exit" and now >= a.untilT then
 		return false
 	end
+
 	return true
 end
 
@@ -216,16 +239,24 @@ end
 
 function SM.Leave(npc, a, now, startled, threatPos, hurry)
 	local s = a.smart
-	if s.seat and IsValid(s.seat) and s.seat.tifSeatTaken == npc then free(s.seat) end
+	if s.seat and IsValid(s.seat) and s.seat.tifSeatTaken == npc then
+		free(s.seat)
+	end
+
 	local name, opts = nil, { root = true, clear = true, rate = hurry and 1.4 or 1 }
 	if s.kind == "sit" then
 		name = s.prefix .. "_react"
-		if not startled then opts.rate = 0.75 end
+		if not startled then
+			opts.rate = 0.75
+		end
 	elseif startled and a.phase == "loop" then
 		name = s.prefix .. "_react_" .. dir_to(npc, threatPos)
 	else
 		name = s.prefix .. "_exit"
 	end
-	if not clip(npc, name) then name = s.prefix .. "_exit" end
+
+	if not clip(npc, name) then
+		name = s.prefix .. "_exit"
+	end
 	return Act.Play(npc, name, opts)
 end

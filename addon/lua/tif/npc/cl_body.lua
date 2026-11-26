@@ -38,22 +38,37 @@ local function host_bone_check(e)
 		Bd.Stats.early = (Bd.Stats.early or 0) + 1
 		return
 	end
+
 	Bd.Stats.checks = Bd.Stats.checks + 1
-	if e:GetLayerSequence(0) ~= st.want0 then Bd.Stats.overwritten = Bd.Stats.overwritten + 1 end
+	if e:GetLayerSequence(0) ~= st.want0 then
+		Bd.Stats.overwritten = Bd.Stats.overwritten + 1
+	end
 end
 
 function Bd.Add(ent)
 	if States[ent] then return end
 
 	States[ent] = { legW = {}, ubW = {}, phase = 0, idleT = math.Rand(0, 10), pitch = 0, idleVar = (ent:EntIndex() * 7) % 60 }
-	if not ent.tifBoneCb then ent.tifBoneCb = ent:AddCallback("BuildBonePositions", host_bone_check) end
+	if not ent.tifBoneCb then
+		ent.tifBoneCb = ent:AddCallback("BuildBonePositions", host_bone_check)
+	end
 end
 
 local function remove_parts(st)
-	if IsValid(st.follower) then st.follower:Remove() end
-	if IsValid(st.gun) then st.gun:Remove() end
-	if IsValid(st.backGun) then st.backGun:Remove() end
-	if IsValid(st.launcherGun) then st.launcherGun:Remove() end
+	if IsValid(st.follower) then
+		st.follower:Remove()
+	end
+	if IsValid(st.gun) then
+		st.gun:Remove()
+	end
+
+	if IsValid(st.backGun) then
+		st.backGun:Remove()
+	end
+	if IsValid(st.launcherGun) then
+		st.launcherGun:Remove()
+	end
+
 	st.follower, st.gun, st.backGun, st.backClass = nil, nil, nil, nil
 	st.launcherGun, st.launcherClass = nil, nil
 end
@@ -62,18 +77,27 @@ function Bd.State(ent) return States[ent] end
 
 function Bd.Remove(ent)
 	local st = States[ent]
-	if st and not st.handedOver then remove_parts(st) end
-	if st and TIF.Props then TIF.Props.Remove(st) end
+	if st and not st.handedOver then
+		remove_parts(st)
+	end
+
+	if st and TIF.Props then
+		TIF.Props.Remove(st)
+	end
 	States[ent] = nil
 end
 
 local function rest_pose(f)
 	local seq = f:LookupSequence("reference")
-	if not seq or seq < 0 then seq = f:LookupSequence("ragdoll") end
+	if not seq or seq < 0 then
+		seq = f:LookupSequence("ragdoll")
+	end
+
 	if seq and seq >= 0 then
 		f:ResetSequence(seq)
 		f.tifRestSeq = seq
 	end
+
 	f:SetCycle(0)
 	f:SetPlaybackRate(0)
 end
@@ -90,7 +114,9 @@ end
 local function apply_look(f, skin, bodygroups)
 	f:SetSkin(skin or 0)
 	local digits = string.Explode(" ", bodygroups or "")
-	for i = 0, f:GetNumBodyGroups() - 1 do f:SetBodygroup(i, tonumber(digits[i + 1]) or 0) end
+	for i = 0, f:GetNumBodyGroups() - 1 do
+		f:SetBodygroup(i, tonumber(digits[i + 1]) or 0)
+	end
 end
 
 local function make_follower(parent, model, skin, bodygroups, vb)
@@ -107,10 +133,12 @@ local function make_follower(parent, model, skin, bodygroups, vb)
 		f:CreateShadow()
 		return f
 	end
+
 	for _, m in ipairs(map.MAN) do
 		f:ManipulateBoneAngles(m.b, m.angle)
 		f:ManipulateBonePosition(m.b, m.vector)
 	end
+
 	f.tifMap = map
 	f:AddCallback("BuildBonePositions", solve_cb)
 	f:CreateShadow()
@@ -124,7 +152,9 @@ local function make_gun(ent, class, vb)
 	local g = ClientsideModel(wm, RENDERGROUP_OPAQUE)
 	if not IsValid(g) then return nil end
 
-	if not g:LookupBone("PH_R_Hand") then g.tifFree = true end
+	if not g:LookupBone("PH_R_Hand") then
+		g.tifFree = true
+	end
 
 	g.tifHold = stored.TIFBaked and stored.TIFBaked.hold or nil
 	if vb or g.tifFree then return g end
@@ -145,10 +175,13 @@ local function mw_weapon(hostId, class)
 		local list = {}
 		for n = 1, 4 do
 			local c = G.Clip(prefix .. n, hostId)
-			if c then list[#list + 1] = c end
+			if c then
+				list[#list + 1] = c
+			end
 		end
 		return #list > 0 and list or nil
 	end
+
 	local fs = fires("mw_fire_" .. kind .. "_")
 	return kind, stand, crouch, def and def.reload_time or 2.2, fs, fires("mw_fire_" .. kind .. "_cr_") or fs
 end
@@ -166,18 +199,30 @@ local function ensure_parts(ent, st)
 		st.proneOn, st.vbSpine2, st.vbSpine4, st.spine, st.pitch = false, nil, nil, nil, 0
 		st.vbPelvis, st.vbSp0, st.vbSp1, st.eyeHead = nil, nil, nil, nil
 		st.lastB2P, st.lastB2Y, st.lastB4Y = nil, nil, nil
-		for i = 0, ent:GetBoneCount() - 1 do ent:ManipulateBoneAngles(i, angle_zero) end
-		if st.tiltOn then ent:SetRenderAngles(nil) end
+		for i = 0, ent:GetBoneCount() - 1 do
+			ent:ManipulateBoneAngles(i, angle_zero)
+		end
+		if st.tiltOn then
+			ent:SetRenderAngles(nil)
+		end
 		st.tiltOn, st.tiltP, st.tiltR = false, 0, 0
 		Bd.Stats.hostSwaps = (Bd.Stats.hostSwaps or 0) + 1
 	end
+
 	st.hostId = hostId
 	st.vb = G.IsVB(hostId)
 	local vis = cvRetarget:GetBool() and ent:GetTIFVisual() or ""
 
-	if st.visFrom and st.visFrom ~= vis then st.visFrom, st.visAlt, st.visFails = nil, nil, 0 end
-	if vis ~= "" and st.visFrom == vis and st.visAlt then vis = st.visAlt end
-	if IsValid(st.follower) then st.visFails = 0 end
+	if st.visFrom and st.visFrom ~= vis then
+		st.visFrom, st.visAlt, st.visFails = nil, nil, 0
+	end
+	if vis ~= "" and st.visFrom == vis and st.visAlt then
+		vis = st.visAlt
+	end
+
+	if IsValid(st.follower) then
+		st.visFails = 0
+	end
 
 	local now = CurTime()
 	if now >= (st.partRetry or 0) then
@@ -197,10 +242,15 @@ local function ensure_parts(ent, st)
 				end
 			end
 		end
-		if ent:GetTIFWeapon() ~= "" and not IsValid(st.gun) then st.wclass = nil end
+		if ent:GetTIFWeapon() ~= "" and not IsValid(st.gun) then
+			st.wclass = nil
+		end
 	end
+
 	if vis ~= st.vis then
-		if IsValid(st.follower) then st.follower:Remove() end
+		if IsValid(st.follower) then
+			st.follower:Remove()
+		end
 
 		local plain = st.vb and not (TIF.Modular and TIF.Modular.NeedsRetarget(vis))
 		st.follower = vis ~= "" and make_follower(ent, vis, ent:GetTIFSkin(), ent:GetTIFBodygroups(), plain) or nil
@@ -219,9 +269,12 @@ local function ensure_parts(ent, st)
 			st.look = look
 		end
 	end
+
 	local class = ent:GetTIFWeapon()
 	if class ~= st.wclass then
-		if IsValid(st.gun) then st.gun:Remove() end
+		if IsValid(st.gun) then
+			st.gun:Remove()
+		end
 		st.gun = class ~= "" and make_gun(ent, class, st.vb) or nil
 		st.wclass = class
 		st.gunDropped = nil
@@ -238,7 +291,10 @@ local function ensure_parts(ent, st)
 		st.gunOff, st.gunGripInv = nil, nil
 		st.proneOn = false
 	end
-	if not st.legs then st.legs = A.Legs(st.hostId) end
+
+	if not st.legs then
+		st.legs = A.Legs(st.hostId)
+	end
 end
 
 local function approach(w, target, rate, dt)
@@ -250,21 +306,33 @@ local function settle(weights, targets, rate, dt)
 	for clip, w in pairs(weights) do
 		local t = targets[clip] or 0
 		local nw = approach(w, t, rate, dt)
-		if nw <= 0.001 and t <= 0 then weights[clip] = nil else weights[clip] = nw end
+		if nw <= 0.001 and t <= 0 then
+			weights[clip] = nil
+		else
+			weights[clip] = nw
+		end
 	end
+
 	for clip, t in pairs(targets) do
-		if not weights[clip] and t > 0 then weights[clip] = approach(0, t, rate, dt) end
+		if not weights[clip] and t > 0 then
+			weights[clip] = approach(0, t, rate, dt)
+		end
 	end
 end
 
 local function top(weights, n, sorted)
 	local pool = sorted._p
-	if not pool then pool = {} sorted._p = pool end
+	if not pool then
+		pool = {} sorted._p = pool
+	end
+
 	local count = 0
 	for clip, w in pairs(weights) do
 		count = count + 1
 		local e = pool[count]
-		if not e then e = {} pool[count] = e end
+		if not e then
+			e = {} pool[count] = e
+		end
 		e.clip, e.w = clip, w
 		local j = count
 		while j > 1 and sorted[j - 1].w < w do
@@ -273,20 +341,28 @@ local function top(weights, n, sorted)
 		end
 		sorted[j] = e
 	end
+
 	local keep = count < n and count or n
-	for i = #sorted, keep + 1, -1 do sorted[i] = nil end
+	for i = #sorted, keep + 1, -1 do
+		sorted[i] = nil
+	end
+
 	return sorted
 end
 local LEG_BUF, UB_BUF = {}, {}
 local LEG_TGT, UB_TGT = {}, {}
 
 local function clear_table(t)
-	for k in pairs(t) do t[k] = nil end
+	for k in pairs(t) do
+		t[k] = nil
+	end
 	return t
 end
 
 local function add(t, clip, w)
-	if clip and w > 0.0005 then t[clip] = (t[clip] or 0) + w end
+	if clip and w > 0.0005 then
+		t[clip] = (t[clip] or 0) + w
+	end
 end
 
 Bd.HIP_MAX, Bd.HIP_RATE = 70, 240
@@ -308,7 +384,10 @@ function Bd.ClipCarriesGun(clip)
 	if e and e.r then
 		for _, r in ipairs(e.r) do if r > Bd.CARRY_R then v = true break end end
 	end
-	if H then carryCache[src] = v end
+
+	if H then
+		carryCache[src] = v
+	end
 	return v
 end
 
@@ -318,7 +397,9 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 
 	local PS = (st.pistol and legs.pistol) or (st.wkind and legs[st.wkind]) or nil
 
-	if mode ~= 1 and stance ~= 1 and speed > 25 and math.abs(relAng) > 75 then mode = 1 end
+	if mode ~= 1 and stance ~= 1 and speed > 25 and math.abs(relAng) > 75 then
+		mode = 1
+	end
 
 	local rg = st.runGun and legs.rungun and legs.rungun[st.runGun]
 	if rg and speed > 100 and not PS then
@@ -334,8 +415,11 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		if math.abs(grade) > 0.45 then
 			local key
 			if mode == 1 then key = speed > 200 and "run" or (speed > 140 and "fast" or "aim")
-			elseif st.alertPosture then key = (st.light and GR.stairs["alertf_" .. ud]) and "alertf" or "alert"
-			else key = speed > 120 and "run" or ((st.light and GR.stairs["calmf_" .. ud]) and "calmf" or "calm") end
+			elseif st.alertPosture then
+				key = (st.light and GR.stairs["alertf_" .. ud]) and "alertf" or "alert"
+			else
+				key = speed > 120 and "run" or ((st.light and GR.stairs["calmf_" .. ud]) and "calmf" or "calm")
+			end
 			clip = GR.stairs[key .. "_" .. ud]
 		else
 			local g = speed > 200 and "sprint" or (speed > 150 and "run" or (speed > 100 and "jog"
@@ -387,10 +471,13 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		hip_turn(st, relAng, moveK)
 		return T, AL
 	end
+
 	if stance == 1 or mode == 1 then
 		local set = stance == 1 and ((PS and PS.crouch) or legs.crouch) or ((PS and PS.aim) or legs.aim)
 
-		if stance ~= 1 and st.cqbMode and legs.cqb and not st.pistol then set = legs.cqb end
+		if stance ~= 1 and st.cqbMode and legs.cqb and not st.pistol then
+			set = legs.cqb
+		end
 		local moveK = math.Clamp(speed / (set.walkSpeed * 0.6), 0, 1)
 		local rk = set.run and math.Clamp((speed - set.walkSpeed) / math.max(1, set.runSpeed - set.walkSpeed), 0, 1) or 0
 
@@ -398,7 +485,9 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		if set.twitches then
 			local now, tw = CurTime(), st.aimTw
 			local quiet = now - (st.lastShot or 0) > 2
-			if tw and (moveK > 0.05 or not quiet or now - st.aimTwT >= tw.dur) then st.aimTw, tw = nil, nil end
+			if tw and (moveK > 0.05 or not quiet or now - st.aimTwT >= tw.dur) then
+				st.aimTw, tw = nil, nil
+			end
 			if not tw and moveK < 0.05 and quiet and now >= (st.aimTwNext or 0) then
 				if st.aimTwNext then
 					tw = set.twitches[math.random(#set.twitches)]
@@ -424,6 +513,7 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 		end
 		return T, set
 	end
+
 	local set = (PS and PS.relaxed) or (st.light and legs.relaxedFlash) or legs.relaxed
 	local moveK = math.Clamp(speed / (set.walkSpeed * 0.6), 0, 1)
 	local rk = math.Clamp((speed - set.walkSpeed) / math.max(1, set.runSpeed - set.walkSpeed), 0, 1)
@@ -501,23 +591,30 @@ local function ub_targets(ent, st, mode, speed, now)
 		add(T, st.ubAct, 1)
 		return T, UB_RATE * 2
 	end
+
 	if not W then return T, nil end
 
 	if st.fullBody then
 		local shot = ent:GetTIFShotTime()
-		if shot ~= st.lastShot then st.lastShot, st.flashAt = shot, now end
+		if shot ~= st.lastShot then
+			st.lastShot, st.flashAt = shot, now
+		end
 		return T, UB_RATE * 1.5
 	end
+
 	local rs = ent:GetTIFReloadStart()
 	if rs > 0 and W.reload and now - rs < W.reload.dur then
 		st.ubCycle[W.reload] = math.Clamp((now - rs) / W.reload.dur, 0, 1)
 		add(T, W.reload, 1)
 		return T, UB_RATE * 2
 	end
+
 	if mode == 1 then
 		local shot = ent:GetTIFShotTime()
 		if shot ~= st.lastShot then
-			if not st.lastShot or shot - st.lastShot > W.rate * 2.5 then st.burstStart = shot end
+			if not st.lastShot or shot - st.lastShot > W.rate * 2.5 then
+				st.burstStart = shot
+			end
 			st.lastShot = shot
 			st.flashAt = now
 		end
@@ -567,7 +664,10 @@ end
 
 local function last_plant(c)
 	local frames = math.max(1, (c.frames or 2) - 1)
-	if (c.lplant and c.lplant[1]) == 0 and (c.rplant and c.rplant[1]) == 0 then return nil end
+	if (c.lplant and c.lplant[1]) == 0 and (c.rplant and c.rplant[1]) == 0 then
+		return nil
+	end
+
 	local best, foot = -1, nil
 	for _, f in ipairs(c.lplant or {}) do if f <= frames and f > best then best, foot = f, "l" end end
 	for _, f in ipairs(c.rplant or {}) do if f <= frames and f > best then best, foot = f, "r" end end
@@ -577,7 +677,9 @@ end
 
 local STOP_FOOT = { "^(mwt_stop_%a+_)([lr])(_%d)$", "^(mwp_cstop_)([lr])()$" }
 function Bd.StopFoot(ent, st, name)
-	if name == "" or string.sub(name, 5, 8) ~= "stop" and string.sub(name, 5, 9) ~= "cstop" then return name end
+	if name == "" or string.sub(name, 5, 8) ~= "stop" and string.sub(name, 5, 9) ~= "cstop" then
+		return name
+	end
 	local t0 = ent:GetNW2Float("tif_act_t", 0)
 	local sw = st.stopFoot
 	if sw and sw.t0 == t0 and sw.from == name then return sw.to end
@@ -591,22 +693,30 @@ function Bd.StopFoot(ent, st, name)
 			if have and have ~= want then
 				local other = a .. (foot == "l" and "r" or "l") .. b
 				local oc = G.Clip(other, st.hostId)
-				if oc and (first_plant(oc) or (foot == "l" and "r" or "l")) == want then to = other end
+				if oc and (first_plant(oc) or (foot == "l" and "r" or "l")) == want then
+					to = other
+				end
 			end
 			break
 		end
 	end
+
 	st.stopFoot = { t0 = t0, from = name, to = to }
 	return to
 end
 
 function Bd.FootHandoff(st, prev, cur, now)
 	if not prev or prev == "" then return end
-	if string.sub(prev, 1, 10) ~= "mwt_start_" and string.sub(prev, 1, 11) ~= "mwp_cstart_" then return end
+	if string.sub(prev, 1, 10) ~= "mwt_start_" and string.sub(prev, 1, 11) ~= "mwp_cstart_" then
+		return
+	end
+
 	local c = G.Clip(prev, st.hostId)
 	if not c then return end
 	local foot, since = last_plant(c)
-	if foot then st.footHand = { foot = foot, since = since, at = now } end
+	if foot then
+		st.footHand = { foot = foot, since = since, at = now }
+	end
 end
 
 local function clip_cycle(st, clip, moving)
@@ -622,6 +732,7 @@ local function clip_cycle(st, clip, moving)
 		local t0 = st.loopStart and st.loopStart[clip] or 0
 		return ((st.idleT - t0) % clip.dur) / clip.dur
 	end
+
 	return 0
 end
 
@@ -643,6 +754,7 @@ local function kick_pool(ent, st, K)
 	local function own(cr)
 		return pool_of(K, kind, cr and "cr" or "st") or pool_of(K, kind, "st") or pool_of(K, "rifle", cr and "cr" or "st")
 	end
+
 	if st.vbProne then
 
 		if st.vbProne ~= 2 or not (st.aim9 or st.bipod == "set") then return nil end
@@ -651,11 +763,14 @@ local function kick_pool(ent, st, K)
 	local an = st.actName or ""
 	local t, p = string.match(an, "^mwc_(%a%a)(p?)_aim$")
 	if t then
-		if p == "p" or st.pistol then return pool_of(K, "pistol", "st") or own(false), 1 end
+		if p == "p" or st.pistol then
+			return pool_of(K, "pistol", "st") or own(false), 1
+		end
 		if t == "cr" then return own(true), 1 end
 		if t == "st" then return own(false), 1 end
 		return pool_of(K, "lean", t) or own(t == "lc" or t == "rc"), 1
 	end
+
 	if string.match(an, "^mwb_%a+_aim$") then
 		return own(string.find(an, "crouch", 1, true) ~= nil), Bd.BIPOD_W
 	end
@@ -689,6 +804,7 @@ local function recoil_kicks(ent, st, legs, now)
 			st.kicks[KICK_SLOTS[st.kickI]] = { clip = c, t0 = now, w = 1, flinch = true }
 		end
 	end
+
 	local w = Bd.KICK_W * cvKick:GetFloat()
 
 	local stop = st.fullBody and not (st.vbProne or string.match(st.actName or "", "^mw[cb]_.-_aim$"))
@@ -712,8 +828,12 @@ local function check_slots(ent, st, now)
 	st.nextSlotCheck = now + 0.5
 	local ok = true
 	for i = 0, A.SLOTS - 1 do
-		if not ent:IsValidLayer(i) then ok = false break end
+		if not ent:IsValidLayer(i) then
+			ok = false
+			break
+		end
 	end
+
 	st.slotsOk = ok
 	if not ok and now > (st.nextRefreshAsk or 0) then
 		st.nextRefreshAsk = now + 2
@@ -722,6 +842,7 @@ local function check_slots(ent, st, now)
 		net.WriteEntity(ent)
 		net.SendToServer()
 	end
+
 	return ok
 end
 
@@ -730,12 +851,16 @@ local SCRATCH_ANG2 = Angle(0, 0, 0)
 
 local function flinch(ent, st, now)
 	local ht = ent:GetTIFHitTime()
-	if ht ~= st.hitTime then st.hitTime = ht end
+	if ht ~= st.hitTime then
+		st.hitTime = ht
+	end
+
 	local bone = st.spine
 	if bone == nil then
 		bone = ent:LookupBone("ValveBiped.Bip01_Spine2") or false
 		st.spine = bone
 	end
+
 	if not bone then return end
 	local k = ht > 0 and 1 - (now - ht) / FLINCH_TIME or 0
 	if k > 0 then
@@ -762,6 +887,7 @@ local function vb_pose(ent, st, now, dt)
 		b4 = ent:LookupBone("ValveBiped.Bip01_Spine4") or false
 		st.vbSpine2, st.vbSpine4 = b2, b4
 	end
+
 	if not (b2 and b4) then return end
 	local aiming = ent:GetTIFMode() == 1 and not st.fullBody and not ent:GetNW2Bool("tif_lowready", false)
 	Bd.AIM_TRIM = cvTrim:GetFloat()
@@ -770,8 +896,11 @@ local function vb_pose(ent, st, now, dt)
 	local kick = 0
 	if st.flashAt and not (st.legs and st.legs.kicks) then
 		local t = now - st.flashAt
-		if t < Bd.KICK_T then kick = -Bd.KICK * (1 - t / Bd.KICK_T) ^ 2 end
+		if t < Bd.KICK_T then
+			kick = -Bd.KICK * (1 - t / Bd.KICK_T) ^ 2
+		end
 	end
+
 	local side, push = 0, 0
 	local ht = ent:GetTIFHitTime()
 	local k = ht > 0 and 1 - (now - ht) / FLINCH_TIME or 0
@@ -780,6 +909,7 @@ local function vb_pose(ent, st, now, dt)
 		push = d:Dot(ent:GetForward()) * 12 * k
 		side = d:Dot(ent:GetRight()) * 9 * k
 	end
+
 	local b2p = side
 	local b2y = st.pitch * 0.45 + push + kick
 	local b4y = st.pitch * 0.45 + kick * 0.6
@@ -788,6 +918,7 @@ local function vb_pose(ent, st, now, dt)
 		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = b2p, b2y, 0
 		ent:ManipulateBoneAngles(b2, SCRATCH_ANG)
 	end
+
 	if b4y ~= st.lastB4Y then
 		st.lastB4Y = b4y
 		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = 0, b4y, 0
@@ -801,6 +932,7 @@ local function vb_pose(ent, st, now, dt)
 		st.vbSp0 = ent:LookupBone("ValveBiped.Bip01_Spine") or false
 		st.vbSp1 = ent:LookupBone("ValveBiped.Bip01_Spine1") or false
 	end
+
 	if bp and st.vbSp0 and st.vbSp1 then
 		local hwant = st.fullBody and 0 or (st.hipWant or 0)
 		st.hip = approach(st.hip or 0, hwant, Bd.HIP_RATE, dt)
@@ -860,8 +992,11 @@ local function compose(ent, st, dt, now)
 		vx = (pos.x - st.lastPos.x) * invDt
 		vy = (pos.y - st.lastPos.y) * invDt
 		vz = (pos.z - st.lastPos.z) * invDt
-		if vx * vx + vy * vy + vz * vz > 640000 then vx, vy, vz = 0, 0, 0 end
+		if vx * vx + vy * vy + vz * vz > 640000 then
+			vx, vy, vz = 0, 0, 0
+		end
 	end
+
 	st.lastPos = pos
 	local sv = st.vel
 	if sv then
@@ -873,6 +1008,7 @@ local function compose(ent, st, dt, now)
 		sv = Vector(vx, vy, vz)
 		st.vel = sv
 	end
+
 	local speed = sv:Length2D()
 	local g = speed > 20 and math_clamp(sv.z / speed, -1.5, 1.5) or 0
 	st.grade = st.grade and (st.grade + (g - st.grade) * math_min(1, dt * 4)) or g
@@ -888,10 +1024,14 @@ local function compose(ent, st, dt, now)
 		Bd.FootHandoff(st, st.footAct, actName, now)
 		st.footAct = actName
 	end
+
 	actName = Bd.StopFoot(ent, st, actName)
 	st.actName = actName
 	local actClip = actName ~= "" and G.Clip(actName, st.hostId) or nil
-	if not (actClip and actClip.loop) then st.actLoopT0 = nil end
+	if not (actClip and actClip.loop) then
+		st.actLoopT0 = nil
+	end
+
 	local caim = ent:GetNW2Bool("tif_caim", false)
 
 	local baseName = actClip and ent:GetNW2String("tif_act_base", "") or ""
@@ -920,7 +1060,9 @@ local function compose(ent, st, dt, now)
 
 	st.hideGun = st.vb and ent:GetNW2Bool("tif_dying", false)
 
-	if st.wasFullBody and not st.fullBody then st.ubFastUntil = now + 0.4 end
+	if st.wasFullBody and not st.fullBody then
+		st.ubFastUntil = now + 0.4
+	end
 	st.wasFullBody = st.fullBody
 	st.ubAct = nil
 	st.hipWant = 0
@@ -935,7 +1077,9 @@ local function compose(ent, st, dt, now)
 		local t0 = ent:GetNW2Float("tif_prone_t", now)
 		local tr = st.vbProne == 1 and PR.down or (st.vbProne == 3 and PR.up or nil)
 		local PRp = st.pistol and PR.pistol or nil
-		if PRp and st.vbProne == 3 and PRp.up then tr = PRp.up end
+		if PRp and st.vbProne == 3 and PRp.up then
+			tr = PRp.up
+		end
 		local BPd = st.wkind == "lmg" and PR.bipod
 		if tr and BPd then
 			if st.vbProne == 1 then
@@ -943,13 +1087,17 @@ local function compose(ent, st, dt, now)
 					st.bipodDownT = t0
 					st.bipodDown = ent:GetTIFMode() == 1 and BPd.into ~= nil
 				end
-				if st.bipodDown then tr = BPd.into end
+				if st.bipodDown then
+					tr = BPd.into
+				end
 			elseif st.vbProne == 3 then
 				if st.bipodUpT ~= t0 then
 					st.bipodUpT = t0
 					st.bipodUp = st.bipod == "set" and BPd.out ~= nil
 				end
-				if st.bipodUp then tr = BPd.out end
+				if st.bipodUp then
+					tr = BPd.out
+				end
 			end
 		end
 		if tr then
@@ -957,7 +1105,9 @@ local function compose(ent, st, dt, now)
 			st.legCycle[tr] = math.Clamp((now - t0) / math.max(0.05, span), 0, 1)
 			LT = { [tr] = 1 }
 			st.bipod = nil
-			if st.bipodDown and st.vbProne == 1 then st.bipodWantT = now end
+			if st.bipodDown and st.vbProne == 1 then
+				st.bipodWantT = now
+			end
 		else
 			LT = {}
 			local moveK = PR.crawl and math.Clamp(speed / 12, 0, 1) or 0
@@ -975,7 +1125,9 @@ local function compose(ent, st, dt, now)
 				elseif ru >= 1 and moveK < 0.5 and st.bipodWantT and now - st.bipodWantT < Bd.BIPOD_HOLD then want = true end
 				if st.bipodDown then
 					st.bipodDown = nil
-					if want then st.bipod, st.bipodT = "set", now end
+					if want then
+						st.bipod, st.bipodT = "set", now
+					end
 				end
 				if want and st.bipod ~= "set" then st.bipod, st.bipodT = "set", now
 				elseif not want and st.bipod then st.bipod = nil end
@@ -997,7 +1149,9 @@ local function compose(ent, st, dt, now)
 				st.aim9 = still and AIMc.aim9 or nil
 
 				local tw = st.proneTw
-				if tw and (still or moveK > 0.05 or now - st.proneTwT >= tw.dur) then st.proneTw, tw = nil, nil end
+				if tw and (still or moveK > 0.05 or now - st.proneTwT >= tw.dur) then
+					st.proneTw, tw = nil, nil
+				end
 				if not tw and not still and moveK < 0.05 and PR.twitches and now >= (st.proneTwNext or 0) then
 					if st.proneTwNext then
 						tw = PR.twitches[math.random(#PR.twitches)]
@@ -1030,13 +1184,17 @@ local function compose(ent, st, dt, now)
 		local u
 		if actClip.loop and (actClip.speed or 0) < 1 then
 
-			if not st.actLoopT0 then st.actLoopT0 = ent:GetNW2Float("tif_act_t", now) end
+			if not st.actLoopT0 then
+				st.actLoopT0 = ent:GetNW2Float("tif_act_t", now)
+			end
 			u = ((now - st.actLoopT0) / actClip.dur) % 1
 		else
 			st.actLoopT0 = nil
 			u = actClip.loop and (t / actClip.dur) % 1 or math.Clamp(t / actClip.dur, 0, 1)
 
-			if rate < 0 then u = 1 - u end
+			if rate < 0 then
+				u = 1 - u
+			end
 		end
 
 		local fixed = ent:GetNW2Float("tif_act_cycle", -1)
@@ -1060,7 +1218,9 @@ local function compose(ent, st, dt, now)
 			st.legCycle[actClip] = u
 			LT = { [actClip] = 1 }
 		end
-		if caim then mode = 1 end
+		if caim then
+			mode = 1
+		end
 	else
 
 		local legMode = (st.slotsOk == false and st.wset) and 1 or mode
@@ -1069,22 +1229,35 @@ local function compose(ent, st, dt, now)
 
 	st.loopStart = st.loopStart or {}
 	for clip, t in pairs(LT) do
-		if t > 0 and not st.legW[clip] then st.loopStart[clip] = st.idleT end
+		if t > 0 and not st.legW[clip] then
+			st.loopStart[clip] = st.idleT
+		end
 	end
+
 	settle(st.legW, LT, actClip and LEG_RATE * 1.3 or LEG_RATE, dt)
 
 	for k in pairs(st.legCycle) do
-		if not st.legW[k] then st.legCycle[k] = nil end
+		if not st.legW[k] then
+			st.legCycle[k] = nil
+		end
 	end
+
 	for k in pairs(st.loopStart) do
-		if not st.legW[k] then st.loopStart[k] = nil end
+		if not st.legW[k] then
+			st.loopStart[k] = nil
+		end
 	end
+
 	local legTop = top(st.legW, #A.LEG_SLOTS, LEG_BUF)
 	local dom
 	for i = 1, #legTop do
 		local c = legTop[i].clip
-		if (c.speed or 0) > 1 then dom = c break end
+		if (c.speed or 0) > 1 then
+			dom = c
+			break
+		end
 	end
+
 	if dom then
 		local h = st.footHand
 		if h then
@@ -1095,8 +1268,12 @@ local function compose(ent, st, dt, now)
 		end
 		st.phase = st.phase + dt * G.StrideRate(dom) * math_clamp(speed / math_max(1, dom.speed), 0, 2)
 	end
+
 	local total = 0
-	for i = 1, #legTop do total = total + legTop[i].w end
+	for i = 1, #legTop do
+		total = total + legTop[i].w
+	end
+
 	local acc = 0
 	st.want0 = nil
 	st.legPlay = st.legPlay or {}
@@ -1111,7 +1288,9 @@ local function compose(ent, st, dt, now)
 			local seq = A.Seq(ent, e.clip, false)
 			local cyc = clip_cycle(st, e.clip, moving)
 			local lp = st.legPlay[i]
-			if not lp then lp = {} st.legPlay[i] = lp end
+			if not lp then
+				lp = {} st.legPlay[i] = lp
+			end
 			st.legPlayN = i
 			lp.clip, lp.cycle, lp.w = e.clip, cyc, e.w / total
 			write_slot(ent, slot, seq, cyc, e.w / acc)
@@ -1127,30 +1306,42 @@ local function compose(ent, st, dt, now)
 	st.ubCycle = st.ubCycle or {}
 	local UT, rate = ub_targets(ent, st, mode, speed, now)
 	rate = rate or UB_RATE
-	if st.ubFastUntil and now < st.ubFastUntil then rate = math_max(rate, LEG_RATE * 2.5) end
+	if st.ubFastUntil and now < st.ubFastUntil then
+		rate = math_max(rate, LEG_RATE * 2.5)
+	end
+
 	settle(st.ubW, UT, rate, dt)
 	local ubTop = top(st.ubW, #A.UB_SLOTS, UB_BUF)
 	local utotal, uacc = 0, 0
-	for i = 1, #ubTop do utotal = utotal + ubTop[i].w end
+	for i = 1, #ubTop do
+		utotal = utotal + ubTop[i].w
+	end
+
 	for i = 1, #A.UB_SLOTS do
 		local slot = A.UB_SLOTS[i]
 		local e = ubTop[i]
 		if e and utotal > 0 then
 			uacc = uacc + e.w
 			local cyc = st.ubCycle[e.clip]
-			if cyc == nil then cyc = clip_cycle(st, e.clip, moving) end
+			if cyc == nil then
+				cyc = clip_cycle(st, e.clip, moving)
+			end
 			write_slot(ent, slot, A.Seq(ent, e.clip, true), cyc, i == 1 and math_min(1, utotal) or e.w / uacc)
 		else
 			write_slot(ent, slot, nil, 0, 0)
 		end
 	end
-	for i = 5, A.SLOTS - 1 do ent:SetLayerWeight(i, IDLE_WEIGHT) end
+
+	for i = 5, A.SLOTS - 1 do
+		ent:SetLayerWeight(i, IDLE_WEIGHT)
+	end
 	recoil_kicks(ent, st, legs, now)
 
 	if not (TIFG_JGUN_UNDRIVEN and TIFG_JGUN_HOLD) and not Bd.WarnedJgun then
 		Bd.WarnedJgun = true
 		MsgC(Color(255, 120, 80), "[TIF] tif_mw_anims gun tables (zz_jgun.lua) not loaded on this client: guns follow the hand, not the gun bone\n")
 	end
+
 	local lj, uj, best, bestW = 0, 0, nil, 0
 	local ld, ud = 0, 0
 	local bestO
@@ -1159,18 +1350,28 @@ local function compose(ent, st, dt, now)
 		local r, h, i, i2, k = hold_of(e.clip, st.legCycle[e.clip] or clip_cycle(st, e.clip, moving))
 		lj = lj + e.w * r
 		ld = ld + e.w * clip_driven(e.clip)
-		if h and e.w * r > bestW then best, bestW, bestO = h, e.w * r, hold_pos(h, i, i2, k) end
+		if h and e.w * r > bestW then
+			best, bestW, bestO = h, e.w * r, hold_pos(h, i, i2, k)
+		end
 	end
-	if total > 0 then lj, ld = lj / total, ld / total end
+
+	if total > 0 then
+		lj, ld = lj / total, ld / total
+	end
 	local uw = math_min(1, utotal)
 	for idx = 1, #ubTop do
 		local e = ubTop[idx]
 		local r, h, i, i2, k = hold_of(e.clip, st.ubCycle[e.clip])
 		uj = uj + e.w * r
 		ud = ud + e.w * clip_driven(e.clip)
-		if h and e.w * r * 2 > bestW then best, bestW, bestO = h, e.w * r * 2, hold_pos(h, i, i2, k) end
+		if h and e.w * r * 2 > bestW then
+			best, bestW, bestO = h, e.w * r * 2, hold_pos(h, i, i2, k)
+		end
 	end
-	if utotal > 0 then uj, ud = uj / utotal, ud / utotal end
+
+	if utotal > 0 then
+		uj, ud = uj / utotal, ud / utotal
+	end
 	st.jgunW = uw * uj + (1 - uw) * lj
 	st.jrotW = uw * ud + (1 - uw) * ld
 	if best then
@@ -1180,13 +1381,17 @@ local function compose(ent, st, dt, now)
 		end
 		st.jgunA = best.m
 	end
+
 	if bestO then
 		local jo = st.jgunO
-		if not jo then jo = Vector() st.jgunO = jo end
+		if not jo then
+			jo = Vector() st.jgunO = jo
+		end
 		jo.x, jo.y, jo.z = bestO.x, bestO.y, bestO.z
 	else
 		st.jgunO = nil
 	end
+
 	st.rikW = 0
 
 	if st.wset then
@@ -1194,6 +1399,7 @@ local function compose(ent, st, dt, now)
 		st.pitch = approach(st.pitch, want, 4, dt)
 		ent:SetPoseParameter("gtg_aim_pitch", st.pitch)
 	end
+
 	ent:SetPoseParameter("gtg_hold_gait", 0)
 	if st.vb then
 
@@ -1205,6 +1411,7 @@ local function compose(ent, st, dt, now)
 		ent:SetPoseParameter("mw_aim_yaw", st.a9y)
 		ent:SetPoseParameter("mw_aim_pitch", st.a9p)
 	end
+
 	Bd.Stats.composed = Bd.Stats.composed + 1
 end
 
@@ -1239,6 +1446,7 @@ local function measure_gun_offset(ent, st)
 		local rb = ent:LookupBone(R_HAND)
 		hm = rb and ent:GetBoneMatrix(rb)
 	end
+
 	if not (hm and pm) then return end
 	local p, a = WorldToLocal(pm:GetTranslation(), pm:GetAngles(), hm:GetTranslation(), hm:GetAngles())
 
@@ -1264,24 +1472,33 @@ local function gun_info(model)
 		local at
 		for _, n in ipairs(MUZZLES) do
 			local i = e:LookupAttachment(n)
-			if i and i > 0 then at = e:GetAttachment(i) break end
+			if i and i > 0 then
+				at = e:GetAttachment(i)
+				break
+			end
 		end
 
 		local mins, maxs = e:GetModelBounds()
 		local ext = maxs - mins
 		local barrel = (ext.x >= ext.y and ext.x >= ext.z) and Vector(1, 0, 0)
 			or ((ext.y >= ext.z) and Vector(0, 1, 0) or Vector(0, 0, 1))
-		if at and (at.Pos - grip):Dot(barrel) < 0 then barrel = -barrel end
+		if at and (at.Pos - grip):Dot(barrel) < 0 then
+			barrel = -barrel
+		end
 		local c = (mins + maxs) * 0.5 - grip
 		local up = c - barrel * c:Dot(barrel)
-		if up:LengthSqr() < 0.25 then up = Vector(0, 0, 1) - barrel * barrel.z end
+		if up:LengthSqr() < 0.25 then
+			up = Vector(0, 0, 1) - barrel * barrel.z
+		end
 
 		local function att(name)
 			local i = e:LookupAttachment(name)
 			return i and i > 0 and e:GetAttachment(i) or nil
 		end
 		local gr, ab, au = att("grip_r"), att("tif_axis_b"), att("tif_axis_u")
-		if gr then grip = gr.Pos end
+		if gr then
+			grip = gr.Pos
+		end
 		if at and ab and au then
 			barrel = at.Pos - ab.Pos
 			barrel:Normalize()
@@ -1318,6 +1535,7 @@ local function cached_bone(cache, ent, name)
 		b = ent:LookupBone(name) or false
 		cache[mdl] = b
 	end
+
 	return b or nil
 end
 
@@ -1346,17 +1564,23 @@ local function gun_pose(st, src, gi)
 		if jw > 0.001 then
 			local o = st.jgunO
 			local rp = o and src:LocalToWorld(o) or (st.jgunA and (jm * st.jgunA):GetTranslation())
-			if rp then pos = LerpVector(jw, hp, rp) end
+			if rp then
+				pos = LerpVector(jw, hp, rp)
+			end
 		end
 		return pos, ang
 	end
+
 	local fwd, right, up = rm:GetForward(), rm:GetRight(), rm:GetUp()
 	local grip = rm:GetTranslation() + fwd * GRIP_IN
 	local barrel = st.pistol and (fwd * 0.97 - right * 0.24 + up * 0.06) or (fwd * 0.84 + right * 0.49 - up * 0.24)
 	barrel:Normalize()
 	local wup = -up * 0.99 - fwd * 0.08 - right * 0.12
 	wup = wup - barrel * wup:Dot(barrel)
-	if wup:LengthSqr() < 0.01 then wup = -up end
+	if wup:LengthSqr() < 0.01 then
+		wup = -up
+	end
+
 	wup:Normalize()
 	GUN_M:Identity()
 	GUN_M:SetForward(barrel)
@@ -1386,6 +1610,7 @@ local function place_gun_vb(st, src)
 			ang = LerpAngle(k, ang, sa)
 		end
 	end
+
 	g:SetPos(pos)
 	g:SetAngles(ang)
 	g:InvalidateBoneCache()
@@ -1408,6 +1633,7 @@ local function prone_enter(ent, st)
 		f:SetLocalPos(vector_origin)
 		f:SetLocalAngles(angle_zero)
 	end
+
 	if IsValid(g) then
 		g:RemoveEffects(EF_BONEMERGE)
 		g:SetParent(nil)
@@ -1439,8 +1665,11 @@ local function prone_exit(ent, st)
 		rest_pose(f)
 		f:InvalidateBoneCache()
 	end
+
 	attach(st.follower, ent, true)
-	if not st.vb and not (IsValid(st.gun) and st.gun.tifFree) then attach(st.gun, ent, true) end
+	if not st.vb and not (IsValid(st.gun) and st.gun.tifFree) then
+		attach(st.gun, ent, true)
+	end
 end
 
 local function prone_update(ent, st, phase, now)
@@ -1451,7 +1680,10 @@ local function prone_update(ent, st, phase, now)
 	local name = PRONE_SEQ[phase] or (moving and PRONE_CRAWL or PRONE_IDLE)
 	local seq = f:LookupSequence(name)
 	if not seq or seq < 0 then return end
-	if f:GetSequence() ~= seq then f:ResetSequence(seq) end
+	if f:GetSequence() ~= seq then
+		f:ResetSequence(seq)
+	end
+
 	local dur = math.max(0.05, f:SequenceDuration(seq))
 	local cyc = PRONE_SEQ[phase] and math.Clamp((now - t0) / dur, 0, 1) or ((st.idleT % dur) / dur)
 	f:SetCycle(cyc)
@@ -1498,6 +1730,7 @@ local function prone_tilt(ent, st, dt, now, weight, target)
 		st.tiltWantP = (zf and zb) and math_clamp(math_deg(math_atan2(zb - zf, 60)), -TILT_MAX, TILT_MAX) or 0
 		st.tiltWantR = (zr and zl) and math_clamp(math_deg(math_atan2(zl - zr, 24)), -TILT_MAX, TILT_MAX) or 0
 	end
+
 	local wp, wr = (st.tiltWantP or 0) * weight, (st.tiltWantR or 0) * weight
 	st.tiltP = approach(st.tiltP or 0, wp, 60, dt)
 	st.tiltR = approach(st.tiltR or 0, wr, 60, dt)
@@ -1521,7 +1754,9 @@ local LOD_PARTS = { "gun", "backGun", "launcherGun", "prop" }
 local function hide_placed(st)
 	for _, k in ipairs(LOD_PARTS) do
 		local e = st[k]
-		if IsValid(e) then e:SetNoDraw(true) end
+		if IsValid(e) then
+			e:SetNoDraw(true)
+		end
 	end
 end
 Bd.HidePlaced = hide_placed
@@ -1533,15 +1768,26 @@ local function update(ent, st, dt, now)
 	local dormant = ent:IsDormant()
 
 	local knocked = ent:GetNW2Bool("tif_knocked", false)
-	if IsValid(st.follower) then st.follower:SetNoDraw(dormant or knocked) end
-	if IsValid(st.gun) then st.gun:SetNoDraw(dormant or knocked) end
-	if IsValid(st.backGun) then st.backGun:SetNoDraw(dormant or knocked) end
-	if IsValid(st.launcherGun) then st.launcherGun:SetNoDraw(dormant or knocked) end
+	if IsValid(st.follower) then
+		st.follower:SetNoDraw(dormant or knocked)
+	end
+
+	if IsValid(st.gun) then
+		st.gun:SetNoDraw(dormant or knocked)
+	end
+	if IsValid(st.backGun) then
+		st.backGun:SetNoDraw(dormant or knocked)
+	end
+
+	if IsValid(st.launcherGun) then
+		st.launcherGun:SetNoDraw(dormant or knocked)
+	end
 	if knocked then return end
 	if dormant then
 		st.wasDormant = true
 		return
 	end
+
 	local woke = st.wasDormant == true
 	st.wasDormant = false
 	local prone = ent:GetNW2Int("tif_prone", 0)
@@ -1566,10 +1812,15 @@ local function update(ent, st, dt, now)
 		local pt = now - ent:GetNW2Float("tif_prone_t", now)
 		local w = prone == 2 and 1 or (prone == 1 and math.Clamp(pt / 1.4, 0, 1) or 1 - math.Clamp(pt / 1.6, 0, 1))
 		prone_tilt(ent, st, dt, now, w, st.follower)
-		if ent:GetTIFShotTime() ~= st.lastShot then st.lastShot, st.flashAt = ent:GetTIFShotTime(), now end
+		if ent:GetTIFShotTime() ~= st.lastShot then
+			st.lastShot, st.flashAt = ent:GetTIFShotTime(), now
+		end
 		return
 	end
-	if st.proneOn then prone_exit(ent, st) end
+
+	if st.proneOn then
+		prone_exit(ent, st)
+	end
 
 	local f = st.follower
 	if IsValid(f) and f.tifRestSeq and now >= (st.restCheck or 0) then
@@ -1580,12 +1831,14 @@ local function update(ent, st, dt, now)
 			Bd.Stats.restFixed = (Bd.Stats.restFixed or 0) + 1
 		end
 	end
+
 	attach(st.follower, ent, woke)
 	local freeGun = IsValid(st.gun) and st.gun.tifFree
 	if not st.vb and not freeGun then
 		attach(st.gun, ent, woke)
 		measure_gun_offset(ent, st)
 	end
+
 	if woke then
 
 		st.lastPos, st.vel = nil, nil
@@ -1602,6 +1855,7 @@ local function update(ent, st, dt, now)
 			return
 		end
 	end
+
 	dt = dt + (st.lodDt or 0)
 	st.lodN, st.lodDt = 0, 0
 	st.offScreen = off
@@ -1613,7 +1867,10 @@ local function update(ent, st, dt, now)
 	Prof.End()
 
 	Prof.Begin("cl_foley")
-	if st.vb and TIF.FoleyCL then TIF.FoleyCL.Update(ent, st, now) end
+	if st.vb and TIF.FoleyCL then
+		TIF.FoleyCL.Update(ent, st, now)
+	end
+
 	Prof.End()
 	Prof.Begin("cl_pose")
 	if not check_slots(ent, st, now) then
@@ -1624,7 +1881,12 @@ local function update(ent, st, dt, now)
 			ent:SetCycle(st.mainCycle or 0)
 		end
 	end
-	if st.vb then vb_pose(ent, st, now, dt) else flinch(ent, st, now) end
+
+	if st.vb then
+		vb_pose(ent, st, now, dt)
+	else
+		flinch(ent, st, now)
+	end
 
 	if st.vb and (st.vbProne or st.tiltOn) then
 		local w = 0
@@ -1632,11 +1894,15 @@ local function update(ent, st, dt, now)
 		if PR then
 			local pt = now - ent:GetNW2Float("tif_prone_t", now)
 			if st.vbProne == 2 then w = 1
-			elseif st.vbProne == 1 then w = math.Clamp(pt / math.max(0.1, PR.down.dur), 0, 1)
-			else w = 1 - math.Clamp(pt / math.max(0.1, PR.up.dur), 0, 1) end
+			elseif st.vbProne == 1 then
+				w = math.Clamp(pt / math.max(0.1, PR.down.dur), 0, 1)
+			else
+				w = 1 - math.Clamp(pt / math.max(0.1, PR.up.dur), 0, 1)
+			end
 		end
 		prone_tilt(ent, st, dt, now, w, "host")
 	end
+
 	Prof.End()
 	st.writeFrame = FrameNumber()
 	ent:InvalidateBoneCache()
@@ -1645,31 +1911,46 @@ local function update(ent, st, dt, now)
 		hide_placed(st)
 		return
 	end
+
 	Prof.Begin("cl_bones")
 
 	if not st.vb and freeGun and IsValid(st.follower) then
 		st.follower:SetupBones()
 		place_gun_vb(st, st.follower)
 	end
+
 	if st.vb and IsValid(st.gun) then
 		st.gun:SetNoDraw(st.hideGun == true)
 
 		st.slingW = math.Approach(st.slingW or 0, st.slung and 1 or 0, dt * 3.5)
-		if TIF.Feet then TIF.Feet.Prepare(ent, st, now, dt) end
-		if TIF.GunHold then TIF.GunHold.Prepare(ent, st, now) end
+		if TIF.Feet then
+			TIF.Feet.Prepare(ent, st, now, dt)
+		end
+		if TIF.GunHold then
+			TIF.GunHold.Prepare(ent, st, now)
+		end
 		ent:SetupBones()
 		place_gun_vb(st, ent)
-		if TIF.Eyes then TIF.Eyes.Update(ent, st) end
+		if TIF.Eyes then
+			TIF.Eyes.Update(ent, st)
+		end
 
-		if TIF.GunMag and not st.hideGun then TIF.GunMag.Update(ent, st) end
+		if TIF.GunMag and not st.hideGun then
+			TIF.GunMag.Update(ent, st)
+		end
 
-		if TIF.GunHold then TIF.GunHold.Post(ent, st) end
+		if TIF.GunHold then
+			TIF.GunHold.Post(ent, st)
+		end
 	end
 
 	if st.vb and TIF.Props then
-		if not (IsValid(st.gun)) then ent:SetupBones() end
+		if not (IsValid(st.gun)) then
+			ent:SetupBones()
+		end
 		TIF.Props.Update(ent, st, now)
 	end
+
 	Prof.End()
 end
 
@@ -1698,11 +1979,15 @@ function L.Frame()
 		L.live = false
 		return
 	end
+
 	L.live = true
 	L.eye, L.fwd = v.pos, v.fwd
 	local ply = LocalPlayer()
 	local fov = math.max(v.fov or 0, IsValid(ply) and ply.GetFOV and ply:GetFOV() or 0)
-	if fov <= 0 then fov = 90 end
+	if fov <= 0 then
+		fov = 90
+	end
+
 	local aspect = ScrW() / math.max(1, ScrH())
 	local th = math.tan(math.rad(math.min(fov, 170)) / 2) * aspect * 0.75
 	local tv = th / aspect
@@ -1722,9 +2007,12 @@ end
 function L.OnScreen(ent, st)
 	if not L.live then return true end
 	if in_cone(ent) then
-		if st then st.lodOutT = nil end
+		if st then
+			st.lodOutT = nil
+		end
 		return true
 	end
+
 	if not st then return false end
 	local now = RealTime()
 	st.lodOutT = st.lodOutT or now
@@ -1749,9 +2037,12 @@ hook.Add("PreRender", "tif_body", function()
 					TIF.Error("Soldier animation error: ", tostring(err))
 				end
 			end
-			if st.slotsOk == false and not ent:IsDormant() then missing = missing + 1 end
+			if st.slotsOk == false and not ent:IsDormant() then
+				missing = missing + 1
+			end
 		end
 	end
+
 	Bd.Stats.soldiers = n
 	Bd.Stats.missingNow = missing
 	Prof.End()
@@ -1760,7 +2051,9 @@ end)
 function Bd.DrawHost(ent, flags)
 	local st = States[ent]
 
-	if not st then Bd.Add(ent) end
+	if not st then
+		Bd.Add(ent)
+	end
 	if st and IsValid(st.follower) then return end
 	ent:DrawModel(flags)
 end
@@ -1779,7 +2072,10 @@ local function muzzle_local(model)
 		local a
 		for _, n in ipairs(MUZZLES) do
 			local i = e:LookupAttachment(n)
-			if i and i > 0 then a = i break end
+			if i and i > 0 then
+				a = i
+				break
+			end
 		end
 		local b = e:LookupBone(PH_HAND) or e:LookupBone(R_HAND) or 0
 		local at = a and e:GetAttachment(a)
@@ -1790,6 +2086,7 @@ local function muzzle_local(model)
 		end
 		e:Remove()
 	end
+
 	muzzleOf[model] = m
 	return m or nil
 end
@@ -1804,7 +2101,10 @@ end
 
 function Bd.MuzzleWorld(ent)
 	local st = States[ent]
-	if not st or st.offScreen or not IsValid(st.gun) or ent:IsDormant() then return nil end
+	if not st or st.offScreen or not IsValid(st.gun) or ent:IsDormant() then
+		return nil
+	end
+
 	local p, a = muzzle_world_pa(st.gun)
 	return p and { Pos = p, Ang = a } or nil
 end
@@ -1838,7 +2138,9 @@ local pending = {}
 local function hide(self) end
 
 hook.Add("OnEntityCreated", "tif_body_corpse", function(ent)
-	if IsValid(ent) and ent:GetClass() == "prop_ragdoll" then pending[ent] = RealTime() + 3 end
+	if IsValid(ent) and ent:GetClass() == "prop_ragdoll" then
+		pending[ent] = RealTime() + 3
+	end
 end)
 
 local function dress_corpse(rag)
@@ -1853,6 +2155,7 @@ local function dress_corpse(rag)
 		rag.RenderOverride = hide
 		Bd.Rags[#Bd.Rags + 1] = { ent = f, rag = rag }
 	end
+
 	return true
 end
 
@@ -1860,7 +2163,9 @@ hook.Add("Think", "tif_body_corpse", function()
 	if next(pending) ~= nil then
 		local now = RealTime()
 		for rag, deadline in pairs(pending) do
-			if not IsValid(rag) or now > deadline or dress_corpse(rag) then pending[rag] = nil end
+			if not IsValid(rag) or now > deadline or dress_corpse(rag) then
+				pending[rag] = nil
+			end
 		end
 	end
 end)
@@ -1869,12 +2174,16 @@ timer.Create("tif_body_rags", 0.25, 0, function()
 	for i = #Bd.Rags, 1, -1 do
 		local r = Bd.Rags[i]
 		if not IsValid(r.ent) or not IsValid(r.rag) then
-			if IsValid(r.ent) then r.ent:Remove() end
+			if IsValid(r.ent) then
+				r.ent:Remove()
+			end
 			table.remove(Bd.Rags, i)
 		else
 			local dormant = r.rag:IsDormant()
 			r.ent:SetNoDraw(dormant)
-			if not dormant and (r.wasDormant or r.ent:GetParent() ~= r.rag) then attach(r.ent, r.rag, true) end
+			if not dormant and (r.wasDormant or r.ent:GetParent() ~= r.rag) then
+				attach(r.ent, r.rag, true)
+			end
 			r.wasDormant = dormant
 		end
 	end

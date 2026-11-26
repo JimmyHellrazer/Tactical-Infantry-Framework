@@ -22,6 +22,7 @@ function TIF.FreeSpot(pos, ignore)
 			end
 		end
 	end
+
 	return pos
 end
 
@@ -49,16 +50,24 @@ function TIF.SpawnPoints(center, n, radius, loose)
 			elseif navmesh.GetNavAreaCount() > 0 then
 				p = nil
 			end
-			if p and (math.abs(p.z - center.z) > 160 or (p - center):Length2D() > radius + 24) then p = nil end
+			if p and (math.abs(p.z - center.z) > 160 or (p - center):Length2D() > radius + 24) then
+				p = nil
+			end
 		end
 		local free = p ~= nil and TIF.Room(p)
 		if free then
 			for _, q in ipairs(pts) do
-				if q:DistToSqr(p) < 48 * 48 then free = false break end
+				if q:DistToSqr(p) < 48 * 48 then
+					free = false
+					break
+				end
 			end
 		end
-		if free then pts[#pts + 1] = p end
+		if free then
+			pts[#pts + 1] = p
+		end
 	end
+
 	return pts
 end
 
@@ -67,33 +76,48 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 	if navmesh.GetNavAreaCount() == 0 then
 		local msg = "This map has no navmesh: soldiers can't move, find cover or withdraw. Run nav_generate (then reload the map)."
 		TIF.Warn(msg)
-		if IsValid(ply) then ply:ChatPrint("[TIF] " .. msg) end
+		if IsValid(ply) then
+			ply:ChatPrint("[TIF] " .. msg)
+		end
 	end
+
 	if not TIF.Factions[faction] then
 		TIF.Error("Unknown faction ", tostring(faction), ". Known: ", table.concat(table.GetKeys(TIF.Factions), ", "))
 		return {}
 	end
+
 	if arch and not TIF.Archetypes[arch] then
 		TIF.Warn("Unknown archetype ", arch, "; using rifleman")
 		arch = "rifleman"
 	end
+
 	local out = {}
 
 	local pts = opts.points or TIF.SpawnPoints(center, count, opts.radius, opts.loose)
-	if IsValid(ply) then undo.Create("TIF Soldiers") end
+	if IsValid(ply) then
+		undo.Create("TIF Soldiers")
+	end
+
 	for _, p in ipairs(pts) do
 		local ent = ents.Create("tif_soldier_" .. faction)
 		if not IsValid(ent) then
 			ent = ents.Create("tif_soldier")
-			if IsValid(ent) then ent.tifSpawnFaction = faction end
+			if IsValid(ent) then
+				ent.tifSpawnFaction = faction
+			end
 		end
 		if IsValid(ent) then
 			local yaw
 			if face == "random" then yaw = math.Rand(-180, 180)
-			elseif isvector(face) then yaw = (face - p):Angle().y
-			elseif face == "away" and IsValid(ply) then yaw = (p - ply:GetPos()):Angle().y
-			elseif IsValid(ply) then yaw = (ply:GetPos() - p):Angle().y
-			else yaw = 0 end
+			elseif isvector(face) then
+				yaw = (face - p):Angle().y
+			elseif face == "away" and IsValid(ply) then
+				yaw = (p - ply:GetPos()):Angle().y
+			elseif IsValid(ply) then
+				yaw = (ply:GetPos() - p):Angle().y
+			else
+				yaw = 0
+			end
 			ent.tifArchId = (opts.archetypes and opts.archetypes[#out + 1]) or arch or "rifleman"
 			ent.tifHealthOverride = opts.health
 			ent.tifNoAutoSquad = #pts > 1 or opts.noSquad
@@ -102,9 +126,12 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 			ent:Spawn()
 			ent:Activate()
 			out[#out + 1] = ent
-			if IsValid(ply) then undo.AddEntity(ent) end
+			if IsValid(ply) then
+				undo.AddEntity(ent)
+			end
 		end
 	end
+
 	if IsValid(ply) then
 		undo.SetPlayer(ply)
 		undo.Finish()
@@ -114,8 +141,11 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 		local leader = out[1]
 		for _, e in ipairs(out) do if e.tifArchId == "leader" then leader = e break end end
 		local sq = TIF.Squad.Create(faction, out, leader)
-		if opts.order then TIF.Squad.SetOrder(sq, opts.order, opts.orderPos, opts.orderYaw) end
+		if opts.order then
+			TIF.Squad.SetOrder(sq, opts.order, opts.orderPos, opts.orderYaw)
+		end
 	end
+
 	return out
 end
 

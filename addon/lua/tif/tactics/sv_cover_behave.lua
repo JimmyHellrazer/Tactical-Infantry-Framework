@@ -39,31 +39,43 @@ local function names(npc, cov, kind)
 	local h = cov.high and "high" or "low"
 	local hw = cov.high and "hi" or "low"
 	local s = cov.side
-	if kind == "idle" then return { P .. h .. "_idle_" .. s, "cov2_" .. h .. "_idle_" .. s } end
-	if kind == "peek" then return { P .. h .. "_idle_" .. s .. "_peek", "cov2_" .. h .. "_idle_" .. s .. "_peek" } end
+	if kind == "idle" then
+		return { P .. h .. "_idle_" .. s, "cov2_" .. h .. "_idle_" .. s }
+	end
+
+	if kind == "peek" then
+		return { P .. h .. "_idle_" .. s .. "_peek", "cov2_" .. h .. "_idle_" .. s .. "_peek" }
+	end
 	if kind == "intro" then
 		local tail = cov.high and "_corner_long" or "_centre_long"
 		return { W .. "intro_" .. hw .. "_" .. s .. tail, "cw2_intro_" .. hw .. "_" .. s .. tail }
 	end
+
 	if kind == "outro" then
 		local tail = cov.high and "_corner_long" or "_centre_long"
 		return { W .. "outro_" .. hw .. "_" .. s .. tail, "cw2_outro_" .. hw .. "_" .. s .. tail }
 	end
-	if kind == "reload" then return { W .. h .. "_reload", "cw2_" .. h .. "_reload" } end
+
+	if kind == "reload" then
+		return { W .. h .. "_reload", "cw2_" .. h .. "_reload" }
+	end
 	if kind == "switch" then
 		local o = s == "l" and "r" or "l"
 		return { P .. h .. "_" .. s .. "_to_" .. h .. "_" .. o, "cov2_" .. h .. "_" .. s .. "_to_" .. h .. "_" .. o }
 	end
+
 	if kind == "blind_in" then
 		local v = cov.high and "_enter_hi" or "_enter_45"
 		return { W .. "blindfire_" .. hw .. "_" .. s .. v, "cw2_blindfire_" .. hw .. "_" .. s .. v }
 	end
+
 	if kind == "blind" then
 		return { W .. "blindfire_" .. hw .. "_" .. s .. "_aim_med", "cw2_blindfire_" .. hw .. "_" .. s .. "_aim_med" }
 	end
 	if kind == "blind_out" then
 		return { W .. "blindfire_" .. hw .. "_" .. s .. "_exit", "cw2_blindfire_" .. hw .. "_" .. s .. "_exit" }
 	end
+
 	return {}
 end
 
@@ -78,6 +90,7 @@ local function pick_side(pt, threat)
 		if side == "l" and not pt.edgeL and pt.edgeR then return "r" end
 		if side == "r" and not pt.edgeR and pt.edgeL then return "l" end
 	end
+
 	return side
 end
 
@@ -99,7 +112,9 @@ local function set_phase(npc, cov, phase, now)
 end
 
 local function caim(npc, on)
-	if npc:GetNW2Bool("tif_caim", false) ~= on then npc:SetNW2Bool("tif_caim", on) end
+	if npc:GetNW2Bool("tif_caim", false) ~= on then
+		npc:SetNW2Bool("tif_caim", on)
+	end
 end
 
 function CB.In(npc)
@@ -116,7 +131,9 @@ function CB.Leave(npc, reason)
 		npc.tifLastCov = { origin = cov.origin, ny = cov.ny, t = cov.t, hy = cov.hy, time = CurTime() }
 	end
 
-	if (reason == "exposed" or reason == "flanked") and cov.pt and cov.pt.key then Cover.Cache[cov.pt.key] = nil end
+	if (reason == "exposed" or reason == "flanked") and cov.pt and cov.pt.key then
+		Cover.Cache[cov.pt.key] = nil
+	end
 	Act.Clear(npc)
 	Cover.Release(npc)
 	caim(npc, false)
@@ -124,7 +141,10 @@ function CB.Leave(npc, reason)
 	npc.tifBlind = false
 
 	npc.tifAimAt, npc.tifAimFree, npc.tifMuzzle = nil, nil, nil
-	if npc:GetNW2Float("tif_aim_yaw", 0) ~= 0 then npc:SetNW2Float("tif_aim_yaw", 0) end
+	if npc:GetNW2Float("tif_aim_yaw", 0) ~= 0 then
+		npc:SetNW2Float("tif_aim_yaw", 0)
+	end
+
 	npc.tifHitboxPose = nil
 	npc.tifCoverLeftAt = CurTime()
 	npc.tifCoverLeaveReason = reason
@@ -142,10 +162,12 @@ function CB.Exit(npc, reason)
 		end
 		return true
 	end
+
 	if cov.phase ~= "idle" and cov.phase ~= "peek" then
 		CB.Leave(npc, reason)
 		return false
 	end
+
 	local P = prefixes(npc)
 	local h = cov.high and "high" or "low"
 	local n = clip_name(npc, { P .. "exit_" .. h .. "_" .. cov.side .. "_0-5m_00", "cov2_exit_" .. h .. "_" .. cov.side .. "_0-5m_00" })
@@ -154,6 +176,7 @@ function CB.Exit(npc, reason)
 		CB.Leave(npc, reason)
 		return false
 	end
+
 	caim(npc, false)
 	cov.exitReason = reason
 	cov.phaseEnd = now + dur
@@ -170,6 +193,7 @@ local function want_cover(npc, now)
 		dlog(npc, string.format("wants cover: %s (roll %.2f vs %.2f)", tostring(npc.tifCoverRoll < arch.coverUse + supp * 0.5),
 			npc.tifCoverRoll, arch.coverUse + supp * 0.5))
 	end
+
 	return (npc.tifCoverRoll or 1) < arch.coverUse + supp * 0.5
 end
 
@@ -182,18 +206,24 @@ local function has_cover_clips(npc)
 		npc.tifHasCoverClips = (Act.Clip(npc, P .. "high_idle_l") or Act.Clip(npc, "cov2_high_idle_l")) ~= nil
 			and (Act.Clip(npc, W .. "intro_low_l_centre_long") or Act.Clip(npc, "cw2_intro_low_l_centre_long")) ~= nil
 	end
+
 	return npc.tifHasCoverClips
 end
 
 function CB.Seek(npc, threat, now, opts)
-	if now < (npc.tifNextCoverSearch or 0) or not has_cover_clips(npc) then return false end
+	if now < (npc.tifNextCoverSearch or 0) or not has_cover_clips(npc) then
+		return false
+	end
 
 	if not TIF.Budget.Take("cover_search", 1) then return false end
 	npc.tifNextCoverSearch = now + math.Rand(2.5, 4)
 	local avoid = {}
 	for _, b in ipairs(npc.tifBadCover or {}) do
-		if now - b.time < 30 then avoid[#avoid + 1] = b.pos end
+		if now - b.time < 30 then
+			avoid[#avoid + 1] = b.pos
+		end
 	end
+
 	opts = opts or { radius = 650, maxTravel = 900 }
 	opts.avoid = avoid
 
@@ -202,22 +232,32 @@ function CB.Seek(npc, threat, now, opts)
 	end
 
 	local leashC, leashR = TIF.Squad.Leash(npc)
-	if leashC and npc:GetPos():DistToSqr(leashC) > (leashR * 0.6) ^ 2 then opts.center = leashC end
+	if leashC and npc:GetPos():DistToSqr(leashC) > (leashR * 0.6) ^ 2 then
+		opts.center = leashC
+	end
+
 	local pt, stats = Cover.Find(npc, threat, opts)
 	if pt and leashC and pt.pos:DistToSqr(leashC) > leashR * leashR then
 		pt = nil
 		stats.outsideLeash = (stats.outsideLeash or 0) + 1
 	end
+
 	npc.tifCoverStats = stats
 	npc.tifCoverSearchFailed = pt == nil or (pt.score or -99) < -2.5
 	local parts = {}
-	for k, v in SortedPairs(stats or {}) do parts[#parts + 1] = k .. "=" .. tostring(v) end
+	for k, v in SortedPairs(stats or {}) do
+		parts[#parts + 1] = k .. "=" .. tostring(v)
+	end
+
 	dlog(npc, "search: ", table.concat(parts, " "), pt and string.format(" -> best %.1f %s %s", pt.score or -99,
 		pt.high and "high" or "low", pt.canShoot and "shoot" or "hide") or " -> nothing")
 	if npc.tifCoverSearchFailed then return false end
 	Cover.Reserve(pt, npc)
 	npc.tifCov = { pt = pt, origin = pt.pos, ny = pt.ny, high = pt.high, side = pick_side(pt, threat), canShoot = pt.canShoot }
-	if CB.MW and CB.MW.Use(npc) then CB.MW.Prepare(npc, npc.tifCov) end
+	if CB.MW and CB.MW.Use(npc) then
+		CB.MW.Prepare(npc, npc.tifCov)
+	end
+
 	set_phase(npc, npc.tifCov, "move", now)
 	TIF.Say(npc, (npc.tifSupp or 0) > 0.4 and "cover_me" or "moving", 0.35)
 	return true
@@ -226,7 +266,10 @@ end
 local function start_idle(npc, cov, now)
 	set_phase(npc, cov, "idle", now)
 	local n = clip_name(npc, names(npc, cov, "idle"))
-	if n then Act.Loop(npc, n) end
+	if n then
+		Act.Loop(npc, n)
+	end
+
 	local p = npc.tifArch.coverPause
 
 	local roleK = npc.tifRole == "base" and 0.6 or 1
@@ -246,6 +289,7 @@ function CB.Update(npc, c, now)
 		if not CB.Seek(npc, c.pos, now) then return false end
 		cov = npc.tifCov
 	end
+
 	if cov.mw and CB.MW then return CB.MW.Update(npc, c, now) end
 	Prof.Begin("cover_behave")
 	local arch = npc.tifArch
@@ -282,7 +326,9 @@ function CB.Update(npc, c, now)
 		local m = npc.tifMove
 		if c and c.visible then
 			npc.tifFace = c.ent:WorldSpaceCenter()
-			if arch.aggression > 0.5 then f.want, f.aimPos = true, c.ent:WorldSpaceCenter() end
+			if arch.aggression > 0.5 then
+				f.want, f.aimPos = true, c.ent:WorldSpaceCenter()
+			end
 		else
 			npc.tifFace = nil
 		end
@@ -301,7 +347,9 @@ function CB.Update(npc, c, now)
 				local clip = Act.Clip(npc, n)
 				if clip then
 					local err = math.abs(need - (clip.move and clip.move[3] or 0))
-					if not bestErr or err < bestErr then best, bestErr = n, err end
+					if not bestErr or err < bestErr then
+						best, bestErr = n, err
+					end
 				end
 			end
 			cov.phaseEnd = now + (best and Act.Play(npc, best, { to = { pos = cov.origin, yaw = face }, rate = 1.15 }) or 0)
@@ -314,7 +362,9 @@ function CB.Update(npc, c, now)
 
 				npc.tifBadCover = npc.tifBadCover or {}
 				table.insert(npc.tifBadCover, { pos = cov.origin, time = now })
-				if #npc.tifBadCover > 8 then table.remove(npc.tifBadCover, 1) end
+				if #npc.tifBadCover > 8 then
+					table.remove(npc.tifBadCover, 1)
+				end
 				CB.Leave(npc, accepted and ("path " .. tostring(m.result)) or "goal off navmesh or failed recently")
 				Prof.End()
 				return false
@@ -408,7 +458,9 @@ function CB.Update(npc, c, now)
 		local idleName = clip_name(npc, names(npc, cov, "idle"))
 		local loopName = wantPeek and clip_name(npc, names(npc, cov, "peek")) or idleName
 
-		if loopName then Act.Loop(npc, loopName, loopName ~= idleName and { base = idleName } or nil) end
+		if loopName then
+			Act.Loop(npc, loopName, loopName ~= idleName and { base = idleName } or nil)
+		end
 		cov.phase = wantPeek and "peek" or "idle"
 		npc.tifAction = "cover: " .. cov.phase
 
@@ -458,7 +510,9 @@ function CB.Update(npc, c, now)
 
 	elseif phase == "reload" then
 		npc.tifStance = cov.high and A.STANCE_STAND or A.STANCE_CROUCH
-		if now >= cov.phaseEnd and not Weapon.Reloading(npc) then start_idle(npc, cov, now) end
+		if now >= cov.phaseEnd and not Weapon.Reloading(npc) then
+			start_idle(npc, cov, now)
+		end
 
 	elseif phase == "switch" then
 		if now >= cov.phaseEnd then
@@ -477,9 +531,13 @@ function CB.Update(npc, c, now)
 
 	elseif phase == "blind" then
 		npc.tifBlind = true
-		if c then f.want, f.aimPos = true, c.pos + UP40 end
+		if c then
+			f.want, f.aimPos = true, c.pos + UP40
+		end
 		local n = clip_name(npc, names(npc, cov, "blind"))
-		if n then Act.Loop(npc, n) end
+		if n then
+			Act.Loop(npc, n)
+		end
 		if now > cov.blindUntil or not c then
 			npc.tifBlind = false
 			f.want = false
@@ -489,7 +547,9 @@ function CB.Update(npc, c, now)
 		end
 
 	elseif phase == "blind_out" then
-		if now >= cov.phaseEnd then start_idle(npc, cov, now) end
+		if now >= cov.phaseEnd then
+			start_idle(npc, cov, now)
+		end
 	end
 
 	Prof.End()

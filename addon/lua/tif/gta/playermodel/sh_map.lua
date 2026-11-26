@@ -23,7 +23,9 @@ for _, side in ipairs({ "l", "r" }) do
 	local def = { pre .. "hand", pre .. "finger1", pre .. "finger4", pre .. "finger2" }
 	PMS.Palm[pre .. "hand"], PMS.Palm[pre .. "forearm"] = def, def
 	for finger = 0, 4 do
-		for joint = 0, 2 do PMS.Aim[pre .. "finger" .. finger .. (joint > 0 and joint or "")] = false end
+		for joint = 0, 2 do
+			PMS.Aim[pre .. "finger" .. finger .. (joint > 0 and joint or "")] = false
+		end
 	end
 end
 
@@ -47,6 +49,7 @@ function M.angles(R)
 	if xy > 0.001 then
 		return math_deg(math_atan2(-fz, xy)), math_deg(math_atan2(fy, fx)), math_deg(math_atan2(R[8], R[9]))
 	end
+
 	return math_deg(math_atan2(-fz, xy)), math_deg(math_atan2(-R[2], R[5])), 0
 end
 
@@ -63,6 +66,7 @@ local function offsets(lsk, fsk, merged, children)
 		end
 		return #kids == 1 and kids[1] or nil
 	end
+
 	for i = 0, fsk.n - 1 do
 		local li = merged[i]
 		if li then
@@ -76,7 +80,9 @@ local function offsets(lsk, fsk, merged, children)
 					if palm then
 						local nf, nl = palm_normal(fsk, palm), palm_normal(lsk, palm)
 						local ff, fl = nf and frame(df, nf), nl and frame(dl, nl)
-						if ff and fl then s = mul3(fl, tr3(ff)) end
+						if ff and fl then
+							s = mul3(fl, tr3(ff))
+						end
 					end
 					s = s or swing(df, dl)
 				end
@@ -90,6 +96,7 @@ local function offsets(lsk, fsk, merged, children)
 			off[i] = mul3(tr3(lsk.R[li]), mul3(s, fsk.R[i]))
 		end
 	end
+
 	return off
 end
 
@@ -106,7 +113,9 @@ local function order_steps(fsk, kind)
 		if seen[i] then return end
 		seen[i] = true
 		local p = fsk.parent[i]
-		if p >= 0 and kind[p] then visit(p) end
+		if p >= 0 and kind[p] then
+			visit(p)
+		end
 		if kind[i] == QUAT then
 			local c = fsk.rule[i].control
 			visit(c)
@@ -114,9 +123,13 @@ local function order_steps(fsk, kind)
 		end
 		order[#order + 1] = i
 	end
+
 	for i = 0, fsk.n - 1 do
-		if kind[i] then visit(i) end
+		if kind[i] then
+			visit(i)
+		end
 	end
+
 	return order
 end
 
@@ -135,8 +148,12 @@ local function hit_data(fsk, kof, P)
 			end
 		end
 	end
+
 	local steps = {}
-	for k in pairs(need) do steps[#steps + 1] = k end
+	for k in pairs(need) do
+		steps[#steps + 1] = k
+	end
+
 	table.sort(steps)
 	return hits, steps
 end
@@ -153,6 +170,7 @@ local function hit_bounds(fsk)
 			zmin, zmax, r = math.min(zmin, z), math.max(zmax, z), math.max(r, math_sqrt(x * x + y * y))
 		end
 	end
+
 	if zmax < zmin then return 0, 0 end
 	local half = (zmax - zmin) / 2
 	return zmin + half, math_sqrt(half * half + r * r) + REACH_PAD
@@ -165,14 +183,22 @@ function PMS.BuildMap(lsk, fsk, mode)
 	local n, fname, fparent, proc, rule = fsk.n, fsk.name, fsk.parent, fsk.proc, fsk.rule
 
 	local merged, needed, children = {}, {}, {}
-	for i = 0, n - 1 do merged[i] = lsk.index[fname[i]] end
-	for _, h in ipairs(fsk.hitboxes) do needed[h.bone] = true end
+	for i = 0, n - 1 do
+		merged[i] = lsk.index[fname[i]]
+	end
+
+	for _, h in ipairs(fsk.hitboxes) do
+		needed[h.bone] = true
+	end
 	for i = n - 1, 0, -1 do
 		if fsk.weighted[i] or needed[i] then
 			needed[i] = true
-			if fparent[i] >= 0 then needed[fparent[i]] = true end
+			if fparent[i] >= 0 then
+				needed[fparent[i]] = true
+			end
 		end
 	end
+
 	for i = 0, n - 1 do
 		local p = fparent[i]
 		if merged[i] and p >= 0 then
@@ -180,6 +206,7 @@ function PMS.BuildMap(lsk, fsk, mode)
 			children[p][#children[p] + 1] = i
 		end
 	end
+
 	local off = offsets(lsk, fsk, merged, children)
 
 	local kind = {}
@@ -200,30 +227,38 @@ function PMS.BuildMap(lsk, fsk, mode)
 			end
 		end
 	end
+
 	for i = 0, n - 1 do
 		if kind[i] == QUAT then
 			local c = rule[i].control
 			local ok = c >= 0 and c < n and kind[c] and fparent[c] >= 0 and kind[fparent[c]]
-			if not ok then kind[i] = BIND end
+			if not ok then
+				kind[i] = BIND
+			end
 		end
 	end
 
 	local order = order_steps(fsk, kind)
 	local kof = {}
-	for k, i in ipairs(order) do kof[i] = k end
+	for k, i in ipairs(order) do
+		kof[i] = k
+	end
 
 	local map = { n = #order, B = {}, K = {}, P = {}, LB = {}, OFF = {}, FK = {}, RL = {}, Q = {}, MAN = {},
 		oddness = oddness, own_all = own_all, scale = 1, W = {}, E = {}, HAS = {}, ROT = {}, SW = {}, SE = {}, SH = {} }
 	if own_all then
 		map.scale = fsk.t[fsk.index[PELVIS]][3] / math.max(1, lsk.t[lsk.index[PELVIS]][3])
 	end
+
 	for k, i in ipairs(order) do
 		local p = fparent[i]
 		local pk = p >= 0 and kof[p] or 0
 		map.B[k], map.K[k], map.P[k] = i, kind[i], pk
 		if kind[i] == MERGE then
 			map.LB[k], map.OFF[k] = merged[i], off[i]
-			if fname[i] == PELVIS then map.root = k end
+			if fname[i] == PELVIS then
+				map.root = k
+			end
 			if pk ~= 0 and (own_all or PMS.OwnLength[fname[i]]) then
 				map.FK[k] = mulv(tr3(fsk.R[p]), sub(fsk.t[i], fsk.t[p]))
 			end
@@ -263,14 +298,18 @@ function PMS.BuildMap(lsk, fsk, mode)
 				for j = 0, lsk.n - 1 do
 					local b = j
 					while b >= 0 and b ~= lh do b = lsk.parent[b] end
-					if b == lh then subtree[#subtree + 1] = j end
+					if b == lh then
+						subtree[#subtree + 1] = j
+					end
 				end
 				map.hands[#map.hands + 1] = { k = kof[fh], lb = lh, sub = subtree, side = side }
 			end
 		end
 		map.chain = {}
 		for k = 1, map.n do
-			if on_chain[k] then map.chain[#map.chain + 1] = k end
+			if on_chain[k] then
+				map.chain[#map.chain + 1] = k
+			end
 		end
 		local function k_of(name) local i = fsk.index["valvebiped.bip01_" .. name] return i and kof[i] end
 		local ua, fa, lh, rh = k_of("l_upperarm"), k_of("l_forearm"), k_of("l_hand"), k_of("r_hand")
@@ -279,6 +318,7 @@ function PMS.BuildMap(lsk, fsk, mode)
 			map.left = { ua = ua, fa = fa, hand = lh, rhand = rh }
 		end
 	end
+
 	return map
 end
 
@@ -294,11 +334,15 @@ function PMS.MapFor(leader_model, follower_model)
 		PMS.ResetMaps()
 		PMS.MapMode = mode
 	end
+
 	local key = string.lower(leader_model) .. "\n" .. string.lower(follower_model) .. "\n" .. mode
 	local map = PMS.Maps[key]
 
 	PMS.MapRetry = PMS.MapRetry or {}
-	if map == false and CurTime() >= (PMS.MapRetry[key] or 0) then map = nil end
+	if map == false and CurTime() >= (PMS.MapRetry[key] or 0) then
+		map = nil
+	end
+
 	if map == nil then
 		local lsk, fsk = PMS.Skeleton(leader_model), PMS.Skeleton(follower_model)
 		map = lsk and fsk and PMS.BuildMap(lsk, fsk, mode) or false
@@ -308,7 +352,10 @@ function PMS.MapFor(leader_model, follower_model)
 			end
 		end
 		PMS.Maps[key] = map
-		if not map then PMS.MapRetry[key] = CurTime() + 10 end
+		if not map then
+			PMS.MapRetry[key] = CurTime() + 10
+		end
 	end
+
 	return map or nil
 end

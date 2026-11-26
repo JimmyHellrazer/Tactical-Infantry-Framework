@@ -36,6 +36,7 @@ local function resolve(path)
 		cur = cur[part]
 		if cur == nil then return nil end
 	end
+
 	return cur
 end
 A.Resolve = resolve
@@ -100,9 +101,12 @@ function A.DoorWindow(clip)
 	local a, b
 	for _, t in ipairs(clip and clip.tags or {}) do
 		if t[1] == "Door" and istable(t[4]) then
-			if t[4].Start == true and not a then a = t[2] elseif t[4].Start == false and a and not b then b = t[2] end
+			if t[4].Start == true and not a then
+				a = t[2] elseif t[4].Start == false and a and not b then b = t[2]
+			end
 		end
 	end
+
 	if a and b and b > a then return a, b end
 	return nil
 end
@@ -132,7 +136,9 @@ if SERVER then
 		if not IsValid(e) then return nil end
 		e:SetPos(pos)
 		e:SetAngles(dir:Angle())
-		if e.Setup then e:Setup(p, dir, npc) end
+		if e.Setup then
+			e:Setup(p, dir, npc)
+		end
 		e:Spawn()
 		e:Activate()
 		return e
@@ -164,8 +170,11 @@ end
 function A.WeaponClasses()
 	local out = {}
 	for class, w in pairs(istable(TIFG) and TIFG.Weapons or {}) do
-		if istable(w.GTG) and w.Primary and (w.Primary.ClipSize or 0) > 0 then out[#out + 1] = class end
+		if istable(w.GTG) and w.Primary and (w.Primary.ClipSize or 0) > 0 then
+			out[#out + 1] = class
+		end
 	end
+
 	table.sort(out)
 	return out
 end
@@ -173,7 +182,9 @@ end
 function A.HoldSet() return nil end
 
 function A.FrameForPhase(clip, phase)
-	if istable(GTG) and GTG.ClipFrameForPhase then return GTG.ClipFrameForPhase(clip, phase) end
+	if istable(GTG) and GTG.ClipFrameForPhase then
+		return GTG.ClipFrameForPhase(clip, phase)
+	end
 	return (phase % 1) * math.max(1, clip.frames - 1)
 end
 
@@ -187,12 +198,16 @@ function A.StrideRate(clip)
 end
 
 function A.Skeleton(model)
-	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.Skeleton) then return nil end
+	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.Skeleton) then
+		return nil
+	end
 	return GTG.PMS.Skeleton(model)
 end
 
 function A.MapFor(hostModel, visualModel)
-	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.MapFor) then return nil end
+	if not (istable(GTG) and istable(GTG.PMS) and GTG.PMS.MapFor) then
+		return nil
+	end
 	return GTG.PMS.MapFor(hostModel, visualModel)
 end
 

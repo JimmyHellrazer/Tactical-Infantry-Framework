@@ -28,18 +28,24 @@ end
 
 function D.Stop(veh, why)
 	local d = veh.tifDrive
-	if d then d.state, d.why = "stop", why end
+	if d then
+		d.state, d.why = "stop", why
+	end
 end
 
 function D.Resume(veh)
 	local d = veh.tifDrive
-	if d then d.state, d.stuckSince = "drive", nil end
+	if d then
+		d.state, d.stuckSince = "drive", nil
+	end
 end
 
 function D.Clear(veh)
 	veh.tifDrive = nil
 	D.Active[veh] = nil
-	if IsValid(veh) then GL.Drive(veh, 0, 0, 1, true) end
+	if IsValid(veh) then
+		GL.Drive(veh, 0, 0, 1, true)
+	end
 end
 
 local function ahead(d, pos, dist)
@@ -52,6 +58,7 @@ local function ahead(d, pos, dist)
 		dist = dist - seg
 		prev = p
 	end
+
 	return pts[#pts], #pts
 end
 
@@ -64,6 +71,7 @@ local function tick(veh, d, now)
 		GL.Release(veh)
 		return
 	end
+
 	local pos = veh:GetPos()
 	local fwd = flat(veh:GetForward())
 	local vel = veh:GetVelocity()
@@ -80,8 +88,13 @@ local function tick(veh, d, now)
 		local p = pts[d.i]
 		local to = p - pos
 		to.z = 0
-		if to:Length() < 200 or (to:Dot(fwd) < 0 and to:Length() < 450) then d.i = d.i + 1 else break end
+		if to:Length() < 200 or (to:Dot(fwd) < 0 and to:Length() < 450) then
+			d.i = d.i + 1
+		else
+			break
+		end
 	end
+
 	local final = pts[#pts]
 	local toEnd = Vector(final.x - pos.x, final.y - pos.y, 0):Length()
 	if d.i == #pts and toEnd < d.arrive then
@@ -91,7 +104,9 @@ local function tick(veh, d, now)
 			local cb = d.onArrive
 			d.onArrive = nil
 			local ok, err = pcall(cb, veh)
-			if not ok then TIF.Error("onArrive error: ", tostring(err)) end
+			if not ok then
+				TIF.Error("onArrive error: ", tostring(err))
+			end
 		end
 		return
 	end
@@ -106,20 +121,31 @@ local function tick(veh, d, now)
 	local far = ahead(d, pos, look * 2)
 	local turn = math.abs(math.AngleDifference((far - target):Angle().y, want))
 	local vT = d.speed * math.Clamp(1 - math.max(turn, math.abs(err)) / 100, 0.3, 1)
-	if d.i >= #pts - 1 then vT = math.min(vT, toEnd * 0.7 + 80) end
+	if d.i >= #pts - 1 then
+		vT = math.min(vT, toEnd * 0.7 + 80)
+	end
 
-	if d.speedCap then vT = math.min(vT, d.speedCap) end
+	if d.speedCap then
+		vT = math.min(vT, d.speedCap)
+	end
 
 	local plen = math.Clamp(math.abs(speed) * 1.1, 140, 700)
 	probe.start = pos + fwd * 60
 	probe.endpos = probe.start + fwd * plen
 	probe.filter = { veh }
-	for _, c in ipairs(veh:GetChildren()) do probe.filter[#probe.filter + 1] = c end
+	for _, c in ipairs(veh:GetChildren()) do
+		probe.filter[#probe.filter + 1] = c
+	end
+
 	local hit = util.TraceHull(probe)
 
-	if hit.Hit and hit.HitWorld and hit.HitNormal.z > 0.64 then hit = { Hit = false, Fraction = 1 } end
+	if hit.Hit and hit.HitWorld and hit.HitNormal.z > 0.64 then
+		hit = { Hit = false, Fraction = 1 }
+	end
 	d.blocked = hit.Hit and not hit.HitWorld and IsValid(hit.Entity) and hit.Entity ~= veh
-	if hit.Hit then vT = math.min(vT, math.max(0, (hit.Fraction * plen - 80) * 1.2)) end
+	if hit.Hit then
+		vT = math.min(vT, math.max(0, (hit.Fraction * plen - 80) * 1.2))
+	end
 
 	if d.reverseUntil then
 		if now < d.reverseUntil then
@@ -129,6 +155,7 @@ local function tick(veh, d, now)
 		end
 		d.reverseUntil, d.stuckSince = nil, nil
 	end
+
 	if vT >= 40 and math.abs(speed) < 25 then
 		d.stuckSince = d.stuckSince or now
 		if now - d.stuckSince > 2.5 then
@@ -140,7 +167,10 @@ local function tick(veh, d, now)
 	end
 
 	local throttle, brake = 0, 0
-	if vT >= 40 then d.blockedSince = nil end
+	if vT >= 40 then
+		d.blockedSince = nil
+	end
+
 	if vT < 40 then
 
 		d.vT, d.state = vT, "blocked"
@@ -160,6 +190,7 @@ local function tick(veh, d, now)
 	else
 		throttle = 0.15
 	end
+
 	d.vT, d.state = vT, "drive"
 	GL.Drive(veh, throttle, steer, brake, false)
 end

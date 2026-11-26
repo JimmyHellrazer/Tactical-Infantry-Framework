@@ -12,14 +12,20 @@ function E.Emit(kind, pos, radius, src, faction)
 	Prof.Begin("events")
 	local r = E.Recent
 	r[#r + 1] = { kind = kind, pos = pos, radius = radius, time = CurTime() }
-	if #r > RECENT_MAX then table.remove(r, 1) end
+	if #r > RECENT_MAX then
+		table.remove(r, 1)
+	end
+
 	for _, npc in ipairs(TIF.Soldiers) do
 		if IsValid(npc) and not npc.tifDead and npc ~= src then
 			local reach = radius * (npc.tifArch and npc.tifArch.hearing or 1)
 			local d2 = npc:GetPos():DistToSqr(pos)
-			if d2 < reach * reach then npc:TIFHear(kind, pos, d2, src, faction) end
+			if d2 < reach * reach then
+				npc:TIFHear(kind, pos, d2, src, faction)
+			end
 		end
 	end
+
 	Prof.End()
 end
 
@@ -52,8 +58,12 @@ hook.Add("PlayerFootstep", "tif_events", function(ply, pos)
 	local speed = ply:GetVelocity():Length2D()
 	local radius
 	if ply:Crouching() or ply:KeyDown(IN_WALK) or (ply.IsProne and ply:IsProne()) then radius = 90
-	elseif speed > 220 then radius = 550
-	else radius = 260 end
+	elseif speed > 220 then
+		radius = 550
+	else
+		radius = 260
+	end
+
 	E.Emit("footstep", pos, radius, ply, TIF.FactionOf(ply))
 end)
 

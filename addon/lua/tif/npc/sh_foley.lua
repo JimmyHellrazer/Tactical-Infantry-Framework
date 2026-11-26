@@ -55,6 +55,7 @@ function F.SurfaceOf(tr)
 			if string.find(name, e[1], 1, true) then return e[2] end
 		end
 	end
+
 	return BY_MAT[tr.MatType] or "concrete"
 end
 
@@ -71,9 +72,12 @@ function F.SurfaceAt(pos, ignore)
 		local w = util.TraceLine(down)
 		if w.Hit and not w.StartSolid then
 			local depth = w.HitPos.z - tr.HitPos.z
-			if depth > 2 then s = depth < 9 and "puddle" or "ankle" end
+			if depth > 2 then
+				s = depth < 9 and "puddle" or "ankle"
+			end
 		end
 	end
+
 	return s
 end
 
@@ -88,6 +92,7 @@ function F.PickAny(...)
 		local p = F.Pick((select(i, ...)))
 		if p then return p end
 	end
+
 	return nil
 end
 
@@ -108,7 +113,9 @@ if SERVER then
 		local born, last = CurTime(), 0
 		rag:AddCallback("PhysicsCollide", function(ent, data)
 			local now = CurTime()
-			if now - born > F.BODY_TIME or now - last < F.BODY_GAP or data.Speed < F.BODY_MIN then return end
+			if now - born > F.BODY_TIME or now - last < F.BODY_GAP or data.Speed < F.BODY_MIN then
+				return
+			end
 			if IsValid(data.HitEntity) and data.HitEntity == ent then return end
 			last = now
 			local row = ROW[surf_of_hit(data)] or ROW.concrete
@@ -116,7 +123,9 @@ if SERVER then
 			local mass = IsValid(data.PhysObject) and data.PhysObject:GetMass() or 5
 			local part = (mass >= 9 and "torso") or (data.Speed > 260 and "limb_lrg") or "limb_sm"
 			local snd = F.PickAny("fall/" .. row[2] .. "/" .. part, "fall/concrete_dry/" .. part)
-			if snd then ent:EmitSound(snd, 72, math.random(95, 105), math.Clamp(data.Speed / 400, 0.35, 1)) end
+			if snd then
+				ent:EmitSound(snd, 72, math.random(95, 105), math.Clamp(data.Speed / 400, 0.35, 1))
+			end
 		end)
 	end
 
@@ -131,7 +140,9 @@ if SERVER then
 			hits = hits + 1
 			local row = ROW[surf_of_hit(data)] or ROW.concrete
 			local snd = F.PickAny("drop/" .. set .. "/" .. row[3], "drop/" .. set .. "/concrete", "drop/metal_ar/concrete")
-			if snd then ent:EmitSound(snd, 70, math.random(96, 104), hits == 1 and 1 or 0.55) end
+			if snd then
+				ent:EmitSound(snd, 70, math.random(96, 104), hits == 1 and 1 or 0.55)
+			end
 		end)
 	end
 end

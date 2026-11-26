@@ -9,10 +9,16 @@ function TIF.RegisterFaction(id, def)
 		TIF.Modular.Retarget = TIF.Modular.Retarget or {}
 		local function flag(list) for _, m in ipairs(list or {}) do if isstring(m) then TIF.Modular.Retarget[string.lower(m)] = true end end end
 		flag(def.models)
-		for _, v in ipairs(def.variants or {}) do flag(v.models) end
+		for _, v in ipairs(def.variants or {}) do
+			flag(v.models)
+		end
 	end
+
 	TIF.Factions[id] = def
-	if TIF.ClearRelationCache then TIF.ClearRelationCache() end
+	if TIF.ClearRelationCache then
+		TIF.ClearRelationCache()
+	end
+
 	return def
 end
 
@@ -40,7 +46,9 @@ local function pick_gun(list)
 end
 
 function TIF.Loadout(fac, archId)
-	if isstring(fac) then fac = TIF.Factions[fac] or {} end
+	if isstring(fac) then
+		fac = TIF.Factions[fac] or {}
+	end
 	fac = fac or {}
 	local L = fac.loadouts or {}
 	local l = L[archId or ""] or L.default or {}
@@ -52,12 +60,16 @@ function TIF.Loadout(fac, archId)
 		launcher = launcher or primary
 		primary = pick_gun(l.rifle) or pick_gun(d.primary) or pick_gun(fac.weapons) or "weapon_tifmw_m4_sof_a"
 	end
+
 	return TIF.WeaponAlias(primary), TIF.WeaponAlias(secondary), launcher and TIF.WeaponAlias(launcher) or nil
 end
 
 local function mw(list)
 	local out = {}
-	for i, id in ipairs(list) do out[i] = "weapon_tifmw_" .. id end
+	for i, id in ipairs(list) do
+		out[i] = "weapon_tifmw_" .. id
+	end
+
 	return out
 end
 
@@ -112,7 +124,10 @@ end
 local BF4RU = "models/tif_factions/bf4ru/"
 local function bf4ru(list)
 	local out = {}
-	for i, n in ipairs(list) do out[i] = BF4RU .. n .. ".mdl" end
+	for i, n in ipairs(list) do
+		out[i] = BF4RU .. n .. ".mdl"
+	end
+
 	return out
 end
 

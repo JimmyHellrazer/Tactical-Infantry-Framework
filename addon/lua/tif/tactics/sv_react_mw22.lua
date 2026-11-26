@@ -25,7 +25,9 @@ local function free(npc)
 	if npc.tifHostId ~= npc.tifHomeHost then return false end
 	local a = npc.tifAct
 
-	if a and not string.find(a.name or "", "^mw[tlxsrika]_") then return false end
+	if a and not string.find(a.name or "", "^mw[tlxsrika]_") then
+		return false
+	end
 	return true
 end
 R.Free = free
@@ -36,9 +38,12 @@ local function by_travel(npc, names, ang)
 		local c = clip(npc, n)
 		if c and (c.move[1] ~= 0 or c.move[2] ~= 0) then
 			local e = math.abs(math.AngleDifference(math.deg(math.atan2(c.move[2], c.move[1])), ang))
-			if not be or e < be then best, be = n, e end
+			if not be or e < be then
+				best, be = n, e
+			end
 		end
 	end
+
 	return best, be
 end
 R.ByTravel = by_travel
@@ -62,7 +67,10 @@ function R.Dodge(npc, gpos, now)
 	local away = npc:GetPos() - gpos
 	away.z = 0
 	local dist = away:Length()
-	if dist < 1 then away = -npc:GetForward() end
+	if dist < 1 then
+		away = -npc:GetForward()
+	end
+
 	local awayYaw = away:Angle().y
 	if dist < R.DIVE_R and clip(npc, "mwe_dive_8") then
 
@@ -74,6 +82,7 @@ function R.Dodge(npc, gpos, now)
 		hold(npc, now, d1 + d2, "diving from a grenade")
 		return true
 	end
+
 	local rel = math.AngleDifference(awayYaw, npc:GetAngles().y)
 	local name = by_travel(npc, JUMPS, rel)
 	if not name then return false end
@@ -99,11 +108,15 @@ hook.Add("Think", "tif_react22_grenades", function()
 					if IsValid(s) and s ~= owner and not s.tifDead and s:GetPos():DistToSqr(gp) < R.GRENADE_R * R.GRENADE_R
 						and math.abs(s:GetPos().z - gp.z) < 80 then
 						any = true
-						if R.Dodge(s, gp, now) then TIF.Say(s, "grenade_incoming", 0.7) end
+						if R.Dodge(s, gp, now) then
+							TIF.Say(s, "grenade_incoming", 0.7)
+						end
 					end
 				end
 
-				if any then g.tifDodged = true end
+				if any then
+					g.tifDodged = true
+				end
 			end
 		end
 	end
@@ -127,7 +140,9 @@ function R.VehicleDodge(npc, veh, now)
 	rel.z = 0
 	local along = rel:Dot(dir)
 	local lateral = rel:Dot(Vector(-dir.y, dir.x, 0))
-	if along < 0 or along / speed > R.VEH_TIME or math.abs(lateral) > R.VEH_LANE then return false end
+	if along < 0 or along / speed > R.VEH_TIME or math.abs(lateral) > R.VEH_LANE then
+		return false
+	end
 
 	local awayW = Vector(-dir.y, dir.x, 0) * (lateral >= 0 and 1 or -1)
 	local ang = math.AngleDifference(awayW:Angle().y, npc:GetAngles().y)
@@ -136,6 +151,7 @@ function R.VehicleDodge(npc, veh, now)
 	for _, n in ipairs({ "2", "4", "6", "8" }) do
 		names[#names + 1] = (close and "mwz_vdodge_short_" or "mwz_vdodge_") .. n
 	end
+
 	local name = by_travel(npc, names, ang) or by_travel(npc, { "mwz_vdodge_2", "mwz_vdodge_4", "mwz_vdodge_6", "mwz_vdodge_8" }, ang)
 	if not name then return false end
 	local d = play(npc, name)
@@ -156,6 +172,7 @@ hook.Add("Think", "tif_react22_vehicles", function()
 		vehList = {}
 		for _, e in ipairs(ents.GetAll()) do if IsValid(e) and is_vehicle(e) then vehList[#vehList + 1] = e end end
 	end
+
 	for _, veh in ipairs(vehList) do
 		if IsValid(veh) and is_vehicle(veh) and veh:GetVelocity():Length2DSqr() > R.VEH_SPEED * R.VEH_SPEED then
 			local vp = veh:GetPos()
@@ -169,7 +186,9 @@ hook.Add("Think", "tif_react22_vehicles", function()
 end)
 
 function R.Shock(npc, dmg, now)
-	if not free(npc) or dmg:GetDamage() < R.SHOCK_MIN or math.random() > R.SHOCK_CHANCE then return false end
+	if not free(npc) or dmg:GetDamage() < R.SHOCK_MIN or math.random() > R.SHOCK_CHANCE then
+		return false
+	end
 	local st = npc:GetTIFStance() == A.STANCE_CROUCH and "crouch" or "stand"
 	local d1 = play(npc, "mwe_shock_" .. st)
 	if not d1 then return false end
@@ -180,7 +199,9 @@ function R.Shock(npc, dmg, now)
 end
 
 function R.Assess(npc, dmg, now)
-	if not free(npc) or npc.tifAware ~= TIF.AWARE.UNAWARE or math.random() > R.ASSESS_CHANCE then return false end
+	if not free(npc) or npc.tifAware ~= TIF.AWARE.UNAWARE or math.random() > R.ASSESS_CHANCE then
+		return false
+	end
 	local att = dmg:GetAttacker()
 	local from = IsValid(att) and att:GetPos() or (npc:GetPos() - dmg:GetDamageForce())
 	local want = math.AngleDifference((from - npc:GetPos()):Angle().y, npc:GetAngles().y)
@@ -189,9 +210,12 @@ function R.Assess(npc, dmg, now)
 		local c = clip(npc, n)
 		if c then
 			local e = math.abs(math.AngleDifference(c.move[3] or 0, want))
-			if not be or e < be then best, be = n, e end
+			if not be or e < be then
+				best, be = n, e
+			end
 		end
 	end
+
 	local d = best and play(npc, best)
 	if not d then return false end
 	hold(npc, now, d * 0.85, "hit: where from?")
