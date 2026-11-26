@@ -12,7 +12,25 @@ assert(loadfile(ROOT .. "tif/config/sh_content.lua"))()
 local F, U = TIF.Factions.usmc_woodland, TIF.Factions.usmc
 check(F ~= nil, "usmc_woodland registered")
 check(F and F.name == "US Marines (MARPAT Woodland)", "name")
-check(F and F.side == "ally" and F.allies and F.allies.usmc, "on the Marines' side, allied with usmc")
+check(F and F.side == "ally" and F.relationsAs == "usmc", "relations as the Marines")
+TIF.REL_ALLY, TIF.REL_NEUTRAL, TIF.REL_HOSTILE = 0, 1, 2
+CreateConVar = CreateConVar or function() return { GetString = function() return "usmc" end, GetBool = function() return false end } end
+FCVAR_ARCHIVE, FCVAR_REPLICATED = 1, 2
+hook = hook or { Add = function() end }
+GetConVar = GetConVar or function() return { GetBool = function() return false end, GetString = function() return "" end } end
+local okF, errF = pcall(function() assert(loadfile(ROOT .. "tif/core/sh_factions.lua"))() end)
+if not okF then print(errF) end
+check(okF and TIF.FactionRelation ~= nil, "faction relations loaded")
+if TIF.FactionRelation then
+	TIF.Factions.operators = { allies = { usmc = true, pmc = true } }
+	TIF.Factions.cartel = { neutral = { usmc = true } }
+	check(TIF.FactionRelation("usmc_woodland", "usmc") == TIF.REL_ALLY, "woodland and Marines are allies")
+	check(TIF.FactionRelation("operators", "usmc_woodland") == TIF.REL_ALLY, "a faction allied with usmc is allied with woodland (the player as operators)")
+	check(TIF.FactionRelation("usmc_woodland", "operators") == TIF.REL_ALLY, "both ways")
+	check(TIF.FactionRelation("cartel", "usmc_woodland") == TIF.REL_NEUTRAL, "usmc's neutrals are woodland's neutrals")
+	check(TIF.FactionRelation("usmc_woodland", "insurgents") == TIF.REL_HOSTILE, "usmc's enemies are woodland's enemies")
+	check(TIF.FactionRelation("usmc_woodland", "pmc") == TIF.REL_ALLY, "the old pmc alias too")
+end
 check(F and #F.models == 3, "three outfits")
 for _, m in ipairs(F and F.models or {}) do
 	check(m:find("marpat_", 1, true) ~= nil, m .. " is a woodland model")

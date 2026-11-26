@@ -1175,7 +1175,7 @@ function GR.Want(npc, c, now, lost)
 	local d = npc:GetPos():Distance(c.pos)
 	if d < GR.MIN or d > GR.MAX then return false end
 	for _, s in ipairs(TIF.Soldiers) do
-		if IsValid(s) and s ~= npc and s:GetTIFFaction() == npc:GetTIFFaction() and s:GetPos():DistToSqr(c.pos) < 320 * 320 then
+		if IsValid(s) and s ~= npc and TIF.Relation(s, npc) ~= TIF.REL_HOSTILE and s:GetPos():DistToSqr(c.pos) < 320 * 320 then
 			return false
 		end
 	end

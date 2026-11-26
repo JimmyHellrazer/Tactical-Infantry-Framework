@@ -286,4 +286,36 @@ dark.nw = { tif_light = false }
 check(T.Turn(dark, 90) and last():find("^mwt_turn_calm_"), "no light: the plain calm turn (" .. tostring(last()) .. ")")
 local pr = soldier({ mode = 1, wep = "pistol" })
 check(T.Start(pr, { tag = "advance", speed = "sprint" }) and last():find("^mwt_start_pstlrun_"), "pistol sprinting off: AI pistol run start (" .. tostring(last()) .. ")")
+
+local sp = soldier({ mode = 1 })
+check(T.Start(sp, { tag = "maneuver", speed = "sprint" }) and last():find("^mwt_start_run_"), "rifle sprint off on a squad bound: AI run start (" .. tostring(last()) .. ")")
+local cr = soldier({ mode = 1, stance = 1 })
+check(T.Start(cr, { tag = "move", speed = "tactical" }) and last():find("^mwt_start_cwalk_"), "crouched walk off: crouch walk start (" .. tostring(last()) .. ")")
+cr.tifAct = nil
+check(T.Start(cr, { tag = "close", speed = "run" }) and last():find("^mwt_start_cfast_"), "crouched run off: crouch fast start (" .. tostring(last()) .. ")")
+local crp = soldier({ mode = 1, stance = 1, wep = "pistol" })
+check(not T.Start(crp, { tag = "move", speed = "tactical" }), "crouched pistol: no rifle crouch start")
+local cov = soldier({ mode = 1 })
+check(not T.Start(cov, { tag = "cover", speed = "tactical" }), "cover moves keep their own MW cover arrivals")
+local function stopper(o, goal)
+	local s = soldier(o)
+	s.tifPath.segs = { goal }
+	return s
+end
+local rs = stopper({ mode = 1, vel = Vector(200, 0, 0) }, Vector(40, 0, 0))
+check(T.Stop(rs, { tag = "maneuver", speed = "sprint", goal = Vector(40, 0, 0) }) and last():find("^mwt_stop_run_[lr]_"), "sprint ending on a bound: AI run stop (" .. tostring(last()) .. ")")
+local cs = stopper({ mode = 1, stance = 1, vel = Vector(70, 0, 0) }, Vector(30, 0, 0))
+check(T.Stop(cs, { tag = "move", speed = "tactical", goal = Vector(30, 0, 0) }) and last():find("^mwt_stop_cwalk_"), "crouched walk ending: crouch stop (" .. tostring(last()) .. ")")
+
+local pn = soldier({ mode = 1 })
+pn.tifProne = { phase = 2 }
+check(not T.Turn(pn, 20), "prone, small turn: no clip")
+check(T.Turn(pn, 90) and last() == "mwp_turn_l" and lastOpts.to and lastOpts.to.yaw == 90, "prone 90 left: MP prone shimmy left onto the wanted yaw (" .. tostring(last()) .. ")")
+pn.tifAct = nil
+check(T.Turn(pn, -110) and last() == "mwp_turn_r" and lastOpts.to.yaw == -110, "prone 110 right: shimmy right")
+pn.tifAct = nil
+check(T.Turn(pn, 170) and last() == "mwp_turn_l" and math.abs(lastOpts.to.yaw) < 140, "prone about-face: one 90 now, the rest next time")
+pn.tifAct = nil
+pn.tifBipod = true
+check(not T.Turn(pn, 90), "prone on the bipod: no shimmy")
 print(string.format("passed %d, failed %d", pass, fail))

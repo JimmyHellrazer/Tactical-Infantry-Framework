@@ -2,7 +2,7 @@
 -- Files are loaded by prefix: sv_ = server only, cl_ = client only, sh_ = both.
 
 TIF = TIF or {}
-TIF.Version = "0.38.54"
+TIF.Version = "0.38.57"
 TIF.Root = "tif/"
 -- The local dev addon (tif_devtools: debug overlays, test / diagnostic commands; not shipped) is loaded after
 -- everything else when it's installed. TIF.Dev tells code that registers a dev-only command in place.
@@ -101,6 +101,7 @@ local MANIFEST = {
 	"npc/sh_foley.lua",
 	"npc/cl_foley.lua",
 	"npc/cl_gunhold.lua",
+	"npc/cl_feet.lua",
 	"npc/cl_flashlight.lua",
 	"npc/sv_rescue.lua",
 

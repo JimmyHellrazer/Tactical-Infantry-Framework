@@ -316,6 +316,21 @@ function ENT:BodyUpdate()
 		end
 		return
 	end
+	local a = self.tifDowned and self.tifAct
+	local ac = a and a.clip
+	if ac and ac.seq then
+		local seq = self:LookupSequence(ac.seq)
+		if seq and seq >= 0 then
+			if self:GetSequence() ~= seq then self:ResetSequence(seq) end
+			local t = (CurTime() - a.t0) * (a.rate or 1)
+			local u = a.loop and (t / math.max(0.05, ac.dur)) % 1 or math.Clamp(t / math.max(0.05, ac.dur), 0, 1)
+			local fixed = self:GetNW2Float("tif_act_cycle", -1)
+			if fixed >= 0 then u = fixed end
+			self:SetCycle(u)
+			self:SetPlaybackRate(0)
+			return
+		end
+	end
 	local m = self.tifMainSeq
 	if m then
 		local want

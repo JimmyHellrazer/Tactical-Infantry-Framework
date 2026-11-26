@@ -19,13 +19,16 @@ T.TURN_MIN = 60          -- degrees off before a turn clip is used (smaller turn
 T.TURN_RESIDUAL = 50     -- at most this much is blended in on top of the clip's own turn
 T.COMBAT_RATE = 1.5      -- turns while fighting play faster
 T.STOP_TAGS = { post = true, patrol = true, investigate = true, search = true, hold = true, advance = true,
-	shift = true, back_off = true }
+	shift = true, back_off = true, maneuver = true, move = true, close = true, flee = true, formation = true }
 T.START_TAGS = { post = true, patrol = true, investigate = true, search = true, hold = true, advance = true,
-	shift = true, back_off = true, formation = true }
+	shift = true, back_off = true, formation = true, maneuver = true, move = true, close = true }
 T.STOP_SLACK = 10        -- start the stop this much before its own travel runs out
 T.STOP_WINDOW = 45       -- ...and at the latest this close (TIF counts a move as arrived within ~37)
 
 local NUMPAD = { [8] = 0, [7] = 45, [4] = 90, [1] = 135, [2] = 180, [3] = -135, [6] = -90, [9] = -45 }
+T.STRAFE_SETS = { walk = true, jog = true, cwalk = true, cfast = true }
+T.PRONE_TURN_MIN = 30
+T.PRONE_TURN_ONE = 135
 
 -- Measured end of a clip's root curve: x, y, yaw.
 local function curve_end(c)
@@ -50,7 +53,7 @@ local function sets(host)
 			local dist = math.sqrt(x * x + y * y)
 			local dir = (dist > 1) and math.deg(math.atan2(y, x)) or (n and NUMPAD[n] or 0)
 			-- (Strafe stops only: calm / alert stops number the turn they end on.)
-			if n and NUMPAD[n] and dist < 45 and kind == "stop" and (set == "walk" or set == "jog") then dir = NUMPAD[n] end
+			if n and NUMPAD[n] and dist < 45 and kind == "stop" and T.STRAFE_SETS[set] then dir = NUMPAD[n] end
 			local e = { name = name, yaw = r, dur = c.dur, dist = dist, dir = dir, n = n }
 			-- Reversals (mwt_rev_<set>_<a>_<b>): from numpad a to b; path following takes over at code_move.
 			if kind == "rev" then
@@ -98,7 +101,12 @@ end
 
 -- The movement set for the current gait.
 local function move_set(npc, speed)
-	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then return nil end
+	if npc:GetTIFStance() == TIF.Anim.STANCE_CROUCH then
+		if pistol(npc) or relaxed(npc) then return nil end
+		if speed == "tactical" or speed == "walk" then return "cwalk" end
+		if speed == "run" or speed == "aimrun" or speed == "sprint" then return "cfast" end
+		return nil
+	end
 	if speed == "walk" and relaxed(npc) then return lit(npc, "calm") end
 	if speed == "alert" then return lit(npc, "alert") end
 	-- Pistol: MW19's AI exposed-pistol starts / stops for its runs (pstljog / pstlrun); its aimed walk has none.
@@ -109,14 +117,17 @@ local function move_set(npc, speed)
 	end
 	if speed == "tactical" then return "walk" end
 	if speed == "run" or speed == "aimrun" then return "jog" end
+	if speed == "sprint" then return "run" end
 	return nil
 end
+T.MoveSet = move_set
 
 local function mark(npc) if npc.tifAct then npc.tifAct.trans = true end end
 
 -- Turn ------------------------------------------------------------------------------------------------------
 -- Returns true if a turn clip started.
 function T.Turn(npc, want)
+	if T.ProneReady and T.ProneReady(npc) then return T.ProneTurn(npc, want) end
 	if not T.Use(npc) or not free(npc) then return false end
 	local cur = npc:GetAngles().y
 	local diff = math.AngleDifference(want, cur)
@@ -206,6 +217,25 @@ local function prone_stop(npc, m, here)
 	if not d then return nil end
 	mark(npc)
 	return d
+end
+
+T.ProneReady = prone_ready
+
+function T.ProneTurn(npc, want)
+	local cur = npc:GetAngles().y
+	local diff = math.AngleDifference(want, cur)
+	if math.abs(diff) < T.PRONE_TURN_MIN or npc.tifBipod then return false end
+	local name = diff > 0 and "mwp_turn_l" or "mwp_turn_r"
+	local c = TIF.GTG.Clip(name, npc.tifHomeHost)
+	if not c then return false end
+	local _, _, r = curve_end(c)
+	if math.abs(r) < 10 then r = diff > 0 and 90 or -90 end
+	local endYaw = math.abs(diff) <= T.PRONE_TURN_ONE and want or (cur + r)
+	local rate = npc.tifAware == TIF.AWARE.ENGAGED and T.COMBAT_RATE or 1
+	local d = Act.Play(npc, name, { root = true, to = { pos = npc:GetPos(), yaw = endYaw }, clear = true, rate = rate })
+	if not d then return false end
+	mark(npc)
+	return true
 end
 
 -- Returns true if a start clip started (path following waits for it).
@@ -330,6 +360,7 @@ local function pick_stop(npc, set, list, travel, faceYaw)
 	local yaw = npc:GetAngles().y
 	local turn = 0
 	local turns = set == "calm" or set == "alert" or set == "calmf" or set == "alertf" or set == "pstljog" or set == "pstlrun"
+		or set == "run"
 	if turns and faceYaw then turn = math.AngleDifference(faceYaw, yaw) end
 	local best, bd
 	for _, e in ipairs(list) do

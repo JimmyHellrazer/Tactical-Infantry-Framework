@@ -955,6 +955,68 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.57: downed soldiers die in their downed pose (2026-11-25, NOT yet seen in game)
+User: "can you fix deaths during downed state putting them in the prone death pose". Killing a downed soldier skips
+the death clip (sv_hits_mw Death: tifDowned), and the corpse is posed from the server's bones. While downed the
+server held the prone idle (BodyUpdate: downed counted as prone for hitboxes), and TIFMakeCorpse's "pose the action
+first" read the bones already built that tick (the melee A-pose cause, 0.38.35): so the ragdoll started from the
+prone idle, not the last stand / downed clip the clients showed.
+- entities/tif_soldier.lua BodyUpdate: downed with an action playing (last stand fall / lie / crawl, the help-up
+  clips, the non-MW downed clip): the server plays that clip's sequence at the same cycle as clients (loop or one-shot;
+  tif_act_cycle when fixed), so its bones are the downed pose when he dies. Hitboxes follow the downed pose too.
+
+### 0.38.56: locomotion pass (MPM comparison), prone shimmy, pistol kick fix (2026-11-25, NOT yet seen in game)
+User: "go ahead with the locomotion fixes, still with my emphasis on performance. one of the pistol fires recoils
+forward and like downish so fix that. and add prone shimey from mp if there arent any sp ones, as the slow glide turn
+is inelligent". Compared with MPM (K:\modern_player_motion): TIF already had root-motion starts / stops / turns,
+reversals, stance clips, a shared speed-synced foot phase, stair / slope sets and prone tilt.
+- Recoil kicks: measured every built kick (right hand motion at its peak); 28 of 227 pushed the gun forward / down
+  (all four pistol bursts' first shot - the gun settling out of the raise - and burst ends of rifle / lean / one
+  shotgun slice). manifest _KICK_SKIP drops them; 199 kicks remain (pistol 10, all back and up).
+- Prone shimmy: no AI / SP prone turns exist; MW19 MP's sdr_mp_prone_turn_90_l / _r (what MPM uses) as mwp_turn_l / _r on
+  the prone pelvis. sv_trans_mw T.ProneTurn: settled prone, 30+ deg off, not on the bipod: the turn clip warped onto
+  the wanted yaw (one clip up to 135, the rest next time), combat rate 1.5. sv_move lets prone soldiers through to
+  T.Turn; cl_body plays mwp_turn_* over the prone set. Below 30 deg the old slow rotation still does it.
+- New transition sets (aimove family): rifle sprint = MW19 AI run starts / stops (sdr_com_exposed_run_exit_<n>,
+  run_arrival_<l|r>_<n>: TIF's sprint loop is the AI run) as mwt_start_run / mwt_stop_run (turning stops like calm /
+  alert); crouched walk / fast = MP crouch strafe starts / stops (TIF's crouch loops are those MP strafes) as
+  mwt_start|stop_cwalk / cfast. move_set: crouched rifle -> cwalk / cfast, rifle sprint -> run.
+- Combat moves get starts / stops: maneuver, move, close (and flee / formation stops; a breaking soldier still bolts
+  with no start). Cover and CQB keep theirs.
+- Stop foot: cl_body Bd.StopFoot swaps the stop clip for its other-foot variant when that's the foot the walk loop
+  plants next (from st.phase; plant data, else the clip's _l / _r name). Start hand-off: Bd.FootHandoff sets the loop's
+  foot phase from the start clip's last plant (was: the loop resumed wherever its phase was).
+- tif_mw_build: one-shot starts / stops without footstep notes get detect_steps plants + Foot tags (were all 0,0;
+  also gives the foley footsteps on them). --only takes comma-separated patterns. PREFER_SOURCE (manifest): a clip's
+  source folder first. Found while checking the feet: many _l / _r stop pairs were byte-identical in the first source
+  the builder found (MW19's run arrivals, MW22 export 2's jog and slow-walk stops), so "both feet" stops were one clip
+  twice. The manifest's _foot_pairs() hashes each mwt_stop_ pair across the source folders and prefers the first where
+  the two differ (10 pairs: run arrivals, jog stops, slow-walk stops). Pairs identical everywhere stay as they were
+  (the stop-foot swap then keeps the clip it has).
+- Foot IK (npc/cl_feet.lua, TIF.Feet): on the host in its bone build, reusing cl_gunhold's two-bone solve
+  (GunHold.SolveTwoBone): ground under each foot (one trace each, every other frame, smoothed), pelvis dropped to the
+  lower foot, legs solved. Only standing / walking (fades out 60-170 u/s), not prone, only with no action or a
+  transition / cover / stance clip, within tif_foot_ik_range (1200), at most tif_foot_ik_max (12) soldiers a frame.
+  tif_foot_ik toggles it.
+- Lean into turns: running (> 120 u/s) soldiers roll into the turn from yaw rate x speed, max 9 deg, smoothed
+  (tif_turn_lean). Same callback, a few multiplies.
+- Harness: trans +13 (run / crouch starts and stops, combat tags, cover excluded, prone shimmy incl. bipod), feet 12
+  (range, speed fade, prone / melee off, transitions on, per-frame cap, lean direction, toggle). All suites pass.
+- To watch: the prone shimmy's pivot (centred on the prone pelvis like the crawls), crouch stops (MP, in place: the
+  warp carries the last <= 45 units), foot IK on stairs (pelvis drop limit 16), the lean amount.
+
+### 0.38.55: woodland Marines are the Marines for relations (2026-11-25, NOT yet seen in game)
+User: "marpat woodland dudes shoot at me, they should be identical to normal us marines". The user's
+tif_player_faction is `operators` (TIF Faction Pack), whose ally list (like the CoD factions') names usmc / pmc but
+not the new usmc_woodland, and 0.38.54 only listed usmc in the woodland faction's own allies.
+- core/sh_factions.lua: TIF.RelationId(id) - the alias's faction, then def.relationsAs if set. FactionRelation compares
+  and looks up ally / neutral lists by it, so a faction with `relationsAs = "usmc"` is the Marines to everyone (allies,
+  neutrals, enemies, the player's faction, other packs' lists) without anyone listing it.
+- usmc_woodland: relationsAs = "usmc" (instead of allies = { usmc }).
+- tactics/sv_cover_mw.lua: the "no frag near friendlies" check counts any non-hostile soldier (was same faction id
+  only), so allied factions don't frag each other either.
+- Harness marpat 33 (+7: woodland vs usmc / operators both ways / usmc's neutrals / enemies / the pmc alias). All pass.
+
 ### 0.38.54: US Marines in MARPAT woodland, a separate faction (2026-11-25, NOT yet seen in game)
 User: "add these usmc marpat woodland as a seperate faction" (Workshop 3466197531, app 222880: an Insurgency retexture
 of the security team).

@@ -575,6 +575,58 @@ local function write_slot(ent, slot, seq, cycle, w)
 	end
 end
 
+local function first_plant(c)
+	local l, r = c.lplant and c.lplant[1], c.rplant and c.rplant[1]
+	if l == 0 and r == 0 then return nil end
+	if l and (not r or l <= r) then return "l" end
+	if r then return "r" end
+	return nil
+end
+
+local function last_plant(c)
+	local frames = math.max(1, (c.frames or 2) - 1)
+	if (c.lplant and c.lplant[1]) == 0 and (c.rplant and c.rplant[1]) == 0 then return nil end
+	local best, foot = -1, nil
+	for _, f in ipairs(c.lplant or {}) do if f <= frames and f > best then best, foot = f, "l" end end
+	for _, f in ipairs(c.rplant or {}) do if f <= frames and f > best then best, foot = f, "r" end end
+	if not foot then return nil end
+	return foot, (frames - best) * c.dur / frames
+end
+
+local STOP_FOOT = { "^(mwt_stop_%a+_)([lr])(_%d)$", "^(mwp_cstop_)([lr])()$" }
+function Bd.StopFoot(ent, st, name)
+	if name == "" or string.sub(name, 5, 8) ~= "stop" and string.sub(name, 5, 9) ~= "cstop" then return name end
+	local t0 = ent:GetNW2Float("tif_act_t", 0)
+	local sw = st.stopFoot
+	if sw and sw.t0 == t0 and sw.from == name then return sw.to end
+	local to = name
+	for _, pat in ipairs(STOP_FOOT) do
+		local a, foot, b = string.match(name, pat)
+		if a then
+			local want = (st.phase % 1) < 0.5 and "r" or "l"
+			local c = G.Clip(name, st.hostId)
+			local have = c and (first_plant(c) or foot)
+			if have and have ~= want then
+				local other = a .. (foot == "l" and "r" or "l") .. b
+				local oc = G.Clip(other, st.hostId)
+				if oc and (first_plant(oc) or (foot == "l" and "r" or "l")) == want then to = other end
+			end
+			break
+		end
+	end
+	st.stopFoot = { t0 = t0, from = name, to = to }
+	return to
+end
+
+function Bd.FootHandoff(st, prev, cur, now)
+	if not prev or prev == "" then return end
+	if string.sub(prev, 1, 10) ~= "mwt_start_" and string.sub(prev, 1, 11) ~= "mwp_cstart_" then return end
+	local c = G.Clip(prev, st.hostId)
+	if not c then return end
+	local foot, since = last_plant(c)
+	if foot then st.footHand = { foot = foot, since = since, at = now } end
+end
+
 local function clip_cycle(st, clip, moving)
 	local fixed = st.legCycle and st.legCycle[clip]
 	if fixed then return fixed end
@@ -807,6 +859,11 @@ local function compose(ent, st, dt, now)
 	-- timed from the server's start time.
 	st.legCycle = st.legCycle or {}
 	local actName = ent:GetNW2String("tif_act", "")
+	if actName ~= (st.footAct or "") then
+		Bd.FootHandoff(st, st.footAct, actName, now)
+		st.footAct = actName
+	end
+	actName = Bd.StopFoot(ent, st, actName)
 	st.actName = actName
 	local actClip = actName ~= "" and G.Clip(actName, st.hostId) or nil
 	if not (actClip and actClip.loop) then st.actLoopT0 = nil end
@@ -865,7 +922,7 @@ local function compose(ent, st, dt, now)
 	-- prone soldier's composition from 0.15.0 to 0.16.3: no get-down / get-up, the gun left floating.)
 	-- (And MW22 / MP crawl starts and stops, mwp_cstart_* / mwp_cstop_*: they play over the prone set too.)
 	local proneAct = actClip and (string.sub(actName, 1, 4) == "mwg_" or actName == "mwp_flash" or string.sub(actName, 1, 8) == "mwp_csta"
-		or string.sub(actName, 1, 8) == "mwp_csto" or string.sub(actName, 1, 9) == "mwp_dive_"
+		or string.sub(actName, 1, 8) == "mwp_csto" or string.sub(actName, 1, 9) == "mwp_dive_" or string.sub(actName, 1, 9) == "mwp_turn_"
 		or string.sub(actName, 1, 12) == "mwz_fire_pr_")
 	local PR = (st.vbProne and not proneAct) and legs.prone or nil
 	if PR then
@@ -1022,6 +1079,13 @@ local function compose(ent, st, dt, now)
 	-- it: a slow walk fading in or out stepped too fast, then froze mid-stride while still sliding (user clip,
 	-- 2026-11-17).)
 	if dom then
+		local h = st.footHand
+		if h then
+			st.footHand = nil
+			if now - h.at < 0.5 then
+				st.phase = math.floor(st.phase) + (h.foot == "l" and 0 or 0.5) + h.since * G.StrideRate(dom)
+			end
+		end
 		st.phase = st.phase + dt * G.StrideRate(dom) * math.Clamp(speed / math.max(1, dom.speed), 0, 2)
 	end
 	local total = 0
@@ -1608,6 +1672,7 @@ local function update(ent, st, dt, now)
 		st.gun:SetNoDraw(st.hideGun == true)
 		-- Onto the sling and back over ~0.3 s.
 		st.slingW = math.Approach(st.slingW or 0, st.slung and 1 or 0, dt * 3.5)
+		if TIF.Feet then TIF.Feet.Prepare(ent, st, now, dt) end
 		if TIF.GunHold then TIF.GunHold.Prepare(ent, st, now) end
 		ent:SetupBones()
 		place_gun_vb(st, ent)
@@ -1698,6 +1763,12 @@ local function muzzle_world(g)
 	if not bm then return nil end
 	local p, a = LocalToWorld(m.pos, m.ang, bm:GetTranslation(), bm:GetAngles())
 	return { Pos = p, Ang = a }
+end
+
+function Bd.MuzzleWorld(ent)
+	local st = States[ent]
+	if not st or not IsValid(st.gun) or ent:IsDormant() then return nil end
+	return muzzle_world(st.gun)
 end
 
 -- Muzzle flash sprites.

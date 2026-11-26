@@ -84,9 +84,16 @@ local function names_it(list, id)
 	return false
 end
 
+function TIF.RelationId(id)
+	local c = TIF.FactionCanon(id)
+	local d = TIF.Factions and TIF.Factions[c]
+	if d and type(d.relationsAs) == "string" and d.relationsAs ~= c then return TIF.FactionCanon(d.relationsAs) end
+	return c
+end
+
 function TIF.FactionRelation(fa, fb)
 	if not fa or not fb or fa == "" or fb == "" then return TIF.REL_NEUTRAL end
-	fa, fb = TIF.FactionCanon(fa), TIF.FactionCanon(fb)
+	fa, fb = TIF.RelationId(fa), TIF.RelationId(fb)
 	if fa == fb then return TIF.REL_ALLY end
 	local def = TIF.Factions[fa]
 	if def then

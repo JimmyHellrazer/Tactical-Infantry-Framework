@@ -48,6 +48,9 @@ local SECTIONS = {
 	} },
 	{ "Bodies", {
 		{ "slider", "tif_corpse_time", "Seconds bodies stay (0 = until cleanup)", 0, 300, 0 },
+		{ "check", "tif_foot_ik", "Feet on the real ground (slopes, steps)" },
+		{ "slider", "tif_foot_ik_range", "Foot IK range", 300, 4000, 0 },
+		{ "check", "tif_turn_lean", "Runners lean into turns" },
 	} },
 }
 -- (The debug overlay's settings only with the local dev addon, which has them: TIF.Dev, 0.38.11.)

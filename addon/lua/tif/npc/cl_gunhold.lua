@@ -358,6 +358,7 @@ local function ik_cb(e)
 	if hold and hold.fingers and w > 0.5 then apply_fingers(e, hold.fingers) end
 end
 M.RotBetween = rot_between
+M.SolveTwoBone = solve_arm
 
 -- Every frame before the host's bones are built (cl_body update): IK weight and its bone callback.
 function M.Prepare(ent, st, now)

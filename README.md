@@ -10,7 +10,9 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
 
 **The soldier**
 - One fully animated body running over 4,200 Modern Warfare (2019 / 2022) animations: walks, runs, strafes, starts,
-  stops and turns, stance changes, prone (diving in, crawling), wading, mantling and vaulting, opening doors on the way.
+  stops and turns (sprinting and crouched too, each stop on the right foot), stance changes, prone (diving in,
+  crawling, shimmying round), wading, mantling and vaulting, opening doors on the way. Feet stand on the real ground
+  and runners lean into turns (close up, cheap).
 - Any ValveBiped player model can be a faction's look: it's bone-merged onto that body, so it gets every animation.
 - 45 baked MW guns with MW sounds (fire, indoor / outdoor tails, reload foley), per-weapon reloads and recoil, sidearm
   switching, magazines that leave the gun, LMG bipods prone and on ledges.

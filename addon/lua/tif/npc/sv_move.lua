@@ -619,7 +619,7 @@ function M.Face(npc, dt)
 	local prone = npc.tifProne
 	if prone and prone.phase ~= 2 then return end -- no turning while getting down or up
 	-- Standing still and facing far off: an MW19 turn-in-place clip instead of spinning on the spot.
-	if not prone and TIF.TransMW and not M.Moving(npc) and loco:GetVelocity():Length2DSqr() < 10 * 10
+	if TIF.TransMW and not M.Moving(npc) and loco:GetVelocity():Length2DSqr() < 10 * 10
 		and TIF.TransMW.Turn(npc, want) then return end
 	local rate = prone and TIF.ProneB.TURN_RATE or npc.tifArch.turnRate
 	local new = math.ApproachAngle(cur, want, rate * dt)

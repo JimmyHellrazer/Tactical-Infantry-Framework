@@ -395,6 +395,18 @@ function W.CoverFiring(npc, now)
 end
 
 local fallCache = setmetatable({}, { __mode = "k" })
+local tracerData = EffectData and EffectData() or nil
+function W.TracerCallback(npc, inner)
+	return function(att, tr, dmg)
+		if inner then inner(att, tr, dmg) end
+		if not tracerData then return end
+		tracerData:SetEntity(npc)
+		tracerData:SetStart(tr.StartPos)
+		tracerData:SetOrigin(tr.HitPos)
+		util.Effect("tif_tracer", tracerData)
+	end
+end
+
 local function falloff_cb(def)
 	local fo = def and def.falloff
 	if not fo then return nil end
@@ -583,11 +595,10 @@ local function fire_one(npc, w, aimPos, now)
 		Dir = ang:Forward(),
 		Spread = vector_origin,
 		Distance = def and def.range or 56756,
-		Tracer = 1,
-		TracerName = "Tracer",
+		Tracer = 0,
 		Force = def and math.min(10, (def.force or 75) / 20) or 3,
 		IgnoreEntity = npc,
-		Callback = falloff_cb(def),
+		Callback = W.TracerCallback(npc, falloff_cb(def)),
 	})
 	shot_sound(npc, w, src)
 	npc:SetTIFShotTime(now)

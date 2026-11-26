@@ -1027,6 +1027,7 @@ def mw22_move_family():
         add(f"mwp_cstart_{d}", f"sdr_mp_prone_strafe_fast_start_{n}", {"loop": False, "center": prone})
     for s in ("l", "r"):
         add(f"mwp_cstop_{s}", f"sdr_mp_prone_strafe_stop_{s}", {"loop": False, "center": prone})
+        add(f"mwp_turn_{s}", f"sdr_mp_prone_turn_90_{s}", {"loop": False, "center": prone})
     for i in (1, 2, 3):
         add(f"mwtr_drop_xl{i}", f"sdr_com_traverse_run_mantle_down0{i}_xlg", {"loop": False, "center": False})
     return out
@@ -1147,6 +1148,13 @@ def ai_move_family():
         for foot in ("l", "r"):
             add(f"mwt_stop_walk_{foot}_{n}", f"sdr_com_strafe_slwalk_stop_{foot}_{n}", mva)
             add(f"mwt_stop_jog_{foot}_{n}", f"sdr_com_strafe_jog_stop_{foot}_{n}", mva)
+            add(f"mwt_stop_run_{foot}_{n}", f"sdr_com_exposed_run_arrival_{foot}_{n}", mv)
+        add(f"mwt_start_run_{n}", f"sdr_com_exposed_run_exit_{n}", mv)
+        c = f"{n}_alt" if str(n) == "3" else n
+        add(f"mwt_start_cwalk_{n}", f"sdr_mp_strafe_crouch_walk_start_{c}", mv)
+        add(f"mwt_stop_cwalk_{n}", f"sdr_mp_strafe_crouch_walk_stop_{c}", mv)
+        add(f"mwt_start_cfast_{n}", f"sdr_mp_strafe_crouch_fast_start_{c}", mv)
+        add(f"mwt_stop_cfast_{n}", f"sdr_mp_strafe_crouch_fast_stop_{c}", mv)
     pairs = (("1", "9"), ("2", "8"), ("3", "7"), ("4", "6"), ("6", "4"), ("7", "3"), ("8", "2"), ("9", "1"))
     for a, b in pairs:
         for st, src in (("walk", "walk"), ("cqbwalk", "walk"), ("jog", "fast"), ("cqbfast", "fast")):
@@ -1363,6 +1371,36 @@ _KICK = {
     # (0.36.1) lying down (also the LMG on its prone bipod, scaled down in cl_body)
     ("prone", "pr"): [f"hm_grnd_red_prone_burst_0{i}_ar" for i in range(3, 7)] + ["hm_grnd_red_prone_fire01_ar"],
 }
+_KICK_SKIP = {
+    ("hm_grnd_org_cover_right_crouch_lean_fire_ar", 0),
+    ("hm_grnd_org_cover_right_crouch_lean_fire_semi2_ar", 0),
+    ("hm_grnd_org_cover_right_crouch_lean_fire_semi3_ar", 0),
+    ("hm_grnd_org_cover_right_crouch_lean_fire_semi4_ar", 0),
+    ("hm_grnd_org_cover_right_crouch_lean_fire_semi5_ar", 0),
+    ("sdr_com_cover_left_crouch_lean_fire_burst4", 9),
+    ("sdr_com_cover_left_crouch_lean_fire_burst5", 12),
+    ("sdr_com_cover_left_crouch_lean_fire_burst6", 15),
+    ("sdr_com_cover_left_stand_lean_fire_burst4", 9),
+    ("sdr_com_cover_left_stand_lean_fire_burst5", 12),
+    ("sdr_com_cover_left_stand_lean_fire_semi4", 24),
+    ("sdr_com_cover_right_stand_lean_fire_burst2", 3),
+    ("sdr_com_cover_right_stand_lean_fire_burst4", 9),
+    ("sdr_com_cover_right_stand_lean_fire_burst5", 12),
+    ("sdr_com_cover_right_stand_lean_fire_burst6", 6),
+    ("sdr_com_cover_right_stand_lean_fire_semi3", 17),
+    ("sdr_com_cover_right_stand_lean_fire_semi4", 23),
+    ("sdr_com_exposed_burst_02", 9),
+    ("sdr_com_exposed_burst_03", 9),
+    ("sdr_com_exposed_crouch_burst_04", 13),
+    ("sdr_com_exposed_crouch_burst_05", 15),
+    ("sdr_com_exposed_crouch_shoot_auto_02", 35),
+    ("sdr_com_exposed_shoot_auto_02", 16),
+    ("sdr_com_exposed_stand_pstl_burst_02", 0),
+    ("sdr_com_exposed_stand_pstl_burst_03", 0),
+    ("sdr_com_exposed_stand_pstl_burst_04", 0),
+    ("sdr_com_exposed_stand_pstl_burst_05", 0),
+    ("sdr_com_exposed_stand_shotgun_fire02", 1),
+}
 KICK_MAX, KICK_BACK = 6, 5
 
 
@@ -1376,6 +1414,8 @@ def recoil_family():
             a = _prep.read_seanim(f"{_SRC}/{clip}.seanim")
             fires = sorted(fr for fr, t in (a.get("notes") or []) if "fire" in t.lower())
             for k, n in enumerate(fires):
+                if (clip, n) in _KICK_SKIP:
+                    continue
                 if kind == "shotgun":
                     w = a["frames"] - 1 - n          # the shot and the pump
                 else:
@@ -1578,3 +1618,36 @@ def shield_family():
 
 
 FAMILIES["shield"] = shield_family()
+
+
+def _foot_pairs():
+    import hashlib
+    dirs = [SOURCE] + list(EXTRA_SOURCES)
+
+    def digest(d, n):
+        p = f"{d}/{n}.seanim"
+        if not _os.path.exists(p):
+            return None
+        with open(p, "rb") as fh:
+            data = fh.read()
+        return hashlib.md5(data).hexdigest() if data[:6] == b"SEAnim" else None
+
+    srcs = set()
+    for fam in FAMILIES.values():
+        for e in fam:
+            if e[0].startswith("mwt_stop_") and isinstance(e[1], str) and ("_stop_l_" in e[1] or "_arrival_l_" in e[1]):
+                srcs.add(e[1])
+    out = {}
+    for left in sorted(srcs):
+        right = left.replace("_stop_l_", "_stop_r_").replace("_arrival_l_", "_arrival_r_")
+        found = [d for d in dirs if digest(d, left) and digest(d, right)]
+        if not found or digest(found[0], left) != digest(found[0], right):
+            continue
+        for d in found[1:]:
+            if digest(d, left) != digest(d, right):
+                out[left], out[right] = d, d
+                break
+    return out
+
+
+PREFER_SOURCE = _foot_pairs()

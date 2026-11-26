@@ -113,6 +113,7 @@ local function pack()
         models = { "models/my/soldier_01.mdl", "models/my/soldier_02.mdl" },
         voices = { "my_voices" },                    -- each soldier gets one for life
         allies = { insurgents = true },              -- faction ids; everyone else is hostile
+        -- relationsAs = "usmc",                     -- or: count as another faction for every relation (a camo variant)
         loadouts = {                                 -- by archetype, "default" for the rest
             default = { primary = { "weapon_tifmw_akm" }, secondary = { "weapon_tifmw_m19" } },
             support = { primary = { "weapon_tifmw_pkm" } },

@@ -122,7 +122,7 @@ do
 		side = "ally",
 		models = { INS2 .. "marpat_light.mdl", INS2 .. "marpat_standard.mdl", INS2 .. "marpat_heavy.mdl" },
 		voices = { "bf3marine", "specops" },
-		allies = { usmc = true },
+		relationsAs = "usmc",
 		weapons = table.Copy(usmc.weapons),
 		loadouts = table.Copy(usmc.loadouts),
 	})

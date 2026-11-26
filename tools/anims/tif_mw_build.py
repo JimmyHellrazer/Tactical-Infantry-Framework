@@ -70,7 +70,8 @@ def is_seanim(p):
 def src_path(m, name):
     """A clip's SEAnim: SOURCE first (MW19), then EXTRA_SOURCES in order (MW22 adds clips MW19 lacks; shared names
     keep the MW19 version, which the TIF gun hold is calibrated on)."""
-    for d in [m["SOURCE"]] + list(m.get("EXTRA_SOURCES", [])):
+    pref = m.get("PREFER_SOURCE", {}).get(name)
+    for d in ([pref] if pref else []) + [m["SOURCE"]] + list(m.get("EXTRA_SOURCES", [])):
         p = os.path.join(d, name + ".seanim")
         if os.path.exists(p) and is_seanim(p):
             return p
@@ -688,7 +689,7 @@ def main():
                 return dict(seq_done[key])
         smd = os.path.join(build, family, key + ".smd")
         os.makedirs(os.path.dirname(smd), exist_ok=True)
-        need = not args.only or fnmatch.fnmatch(role, args.only) or not os.path.exists(smd)
+        need = not args.only or any(fnmatch.fnmatch(role, pat) for pat in args.only.split(",")) or not os.path.exists(smd)
         shift = (0.0, 0.0)
         if opts.get("shot") is not None:
             # Recoil kick (TIF 0.36.0): the shot's frames off the baked clip, eased back to the note pose, no root
@@ -730,7 +731,8 @@ def main():
             # retargeted hand: ~36 deg up walking forward. With the aimed idle's arms and gun bone laid over, the
             # gun bone is right, so the gun follows it (2026-11-18).
             e["from"] = key
-        if loop and not lp and not rp and e["speed"] > 15:
+        step_shot = not loop and role.startswith(("mwt_start_", "mwt_stop_", "mwp_cstart_", "mwp_cstop_"))
+        if (step_shot or loop and e["speed"] > 15) and not lp and not rp:
             # a moving loop with no footstep notes: strikes from the feet (foot-synced blending needs them)
             lp, rp = detect_steps(res, frames)
             e["lplant"], e["rplant"] = lp or [0], rp or [0]
