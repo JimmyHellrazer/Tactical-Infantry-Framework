@@ -1,127 +1,136 @@
 local TIF = TIF
 TIF.Props = TIF.Props or {}
-local P = TIF.Props
-P.BLEND = 0.25
+local Props = TIF.Props
+Props.BLEND = 0.25
+Props.CARRY = { tif_sledge = "mwq_br_sledge" }
 
-P.CARRY = { tif_sledge = "mwq_br_sledge" }
-
-local UNTURN = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
-local UNTURN_M = Matrix()
+local UNTURN_MAT = Matrix({ { 0, 1, 0, 0 }, { -1, 0, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } })
+local SCRATCH_MAT = Matrix()
 local function unturn(ang)
-	UNTURN_M:SetAngles(ang)
-	return (UNTURN_M * UNTURN):GetAngles()
+	SCRATCH_MAT:SetAngles(ang)
+	return (SCRATCH_MAT * UNTURN_MAT):GetAngles()
 end
-P.Unturn = unturn
+Props.Unturn = unturn
 
-local function prop_ent(st, model)
-	local e = st.prop
-	if IsValid(e) and e:GetModel() == model then return e end
-	if IsValid(e) then e:Remove() end
-	e = ClientsideModel(model, RENDERGROUP_OPAQUE)
-	if not IsValid(e) then return nil end
-	e:SetNoDraw(true)
-	st.prop = e
-	return e
+local function ensure_prop_entity(state, model)
+	local prop = state.prop
+	if IsValid(prop) and prop:GetModel() == model then return prop end
+	if IsValid(prop) then prop:Remove() end
+	prop = ClientsideModel(model, RENDERGROUP_OPAQUE)
+	if not IsValid(prop) then return nil end
+	prop:SetNoDraw(true)
+	state.prop = prop
+	return prop
 end
 
-function P.Remove(st)
-	if IsValid(st.prop) then st.prop:Remove() end
-	st.prop, st.propFrom, st.propKey = nil, nil, nil
+function Props.Remove(state)
+	if IsValid(state.prop) then state.prop:Remove() end
+	state.prop, state.propFrom, state.propKey = nil, nil, nil
 end
 
 local CopyBone = TIF.CopyBone or function(ent, bone) return bone and ent:GetBoneMatrix(bone) end
-local PROP_M = Matrix()
+local BONE_MAT = Matrix()
 local propBoneCache = {}
-local function bone_world(ent, name)
-	local mdl = ent.GetModel and ent:GetModel() or ""
-	local c = propBoneCache[mdl]
-	if not c then c = {} propBoneCache[mdl] = c end
-	local b = c[name]
-	if b == nil then
-		b = ent:LookupBone(name) or false
-		c[name] = b
+local function bone_world_pose(ent, boneName)
+	local model = ent.GetModel and ent:GetModel() or ""
+	local cache = propBoneCache[model]
+	if not cache then cache = {} propBoneCache[model] = cache end
+	local bone = cache[boneName]
+	if bone == nil then
+		bone = ent:LookupBone(boneName) or false
+		cache[boneName] = bone
 	end
-	local m = b and CopyBone(ent, b, PROP_M)
-	if not m then return nil end
-	return m:GetTranslation(), m:GetAngles()
+	local mat = bone and CopyBone(ent, bone, BONE_MAT)
+	if not mat then return nil end
+	return mat:GetTranslation(), mat:GetAngles()
 end
 
-local VA, VB = Vector(), Vector()
-local AA, AB = Angle(), Angle()
+local VEC_A, VEC_B = Vector(), Vector()
+local ANG_A, ANG_B = Angle(), Angle()
 
-local function clip_pose(ent, def, u)
-	local fr = def.frames
-	local n = #fr
-	local x = math.Clamp(u, 0, 1) * (n - 1) + 1
-	local i = math.min(n, math.floor(x))
-	local a, b = fr[i], fr[math.min(n, i + 1)]
-	local k = x - i
-	if a[1] ~= b[1] then
-		if k >= 0.5 then a = b end
-		k = 0
+local function clip_pose(ent, def, cycle)
+	local frames = def.frames
+	local count = #frames
+	local frameFloat = math.Clamp(cycle, 0, 1) * (count - 1) + 1
+	local idx = math.min(count, math.floor(frameFloat))
+	local frameA, frameB = frames[idx], frames[math.min(count, idx + 1)]
+	local frac = frameFloat - idx
+	if frameA[1] ~= frameB[1] then
+		if frac >= 0.5 then frameA = frameB end
+		frac = 0
 	end
-	local bp, ba = bone_world(ent, def.bones[a[1]])
-	if not bp then return nil end
-	VA.x, VA.y, VA.z = a[2], a[3], a[4]
-	VB.x, VB.y, VB.z = b[2], b[3], b[4]
-	AA.p, AA.y, AA.r = a[5], a[6], a[7]
-	AB.p, AB.y, AB.r = b[5], b[6], b[7]
-	local lp = LerpVector(k, VA, VB)
-	local la = LerpAngle(k, AA, AB)
-	return LocalToWorld(lp, la, bp, ba)
+	local bonePos, boneAng = bone_world_pose(ent, def.bones[frameA[1]])
+	if not bonePos then return nil end
+	VEC_A.x, VEC_A.y, VEC_A.z = frameA[2], frameA[3], frameA[4]
+	VEC_B.x, VEC_B.y, VEC_B.z = frameB[2], frameB[3], frameB[4]
+	ANG_A.p, ANG_A.y, ANG_A.r = frameA[5], frameA[6], frameA[7]
+	ANG_B.p, ANG_B.y, ANG_B.r = frameB[5], frameB[6], frameB[7]
+	local localPos = LerpVector(frac, VEC_A, VEC_B)
+	local localAng = LerpAngle(frac, ANG_A, ANG_B)
+	return LocalToWorld(localPos, localAng, bonePos, boneAng)
 end
 
 local function stow_pose(ent, def)
-	local s = def.stow
-	local bp, ba = bone_world(ent, def.bones[2])
-	if not bp then return nil end
-	VA.x, VA.y, VA.z = s[1], s[2], s[3]
-	AA.p, AA.y, AA.r = s[4], s[5], s[6]
-	return LocalToWorld(VA, AA, bp, ba)
+	local stow = def.stow
+	local bonePos, boneAng = bone_world_pose(ent, def.bones[2])
+	if not bonePos then return nil end
+	VEC_A.x, VEC_A.y, VEC_A.z = stow[1], stow[2], stow[3]
+	ANG_A.p, ANG_A.y, ANG_A.r = stow[4], stow[5], stow[6]
+	return LocalToWorld(VEC_A, ANG_A, bonePos, boneAng)
 end
 
-function P.Update(ent, st, now)
-	local PC = TIF.PropClips
-	if not PC then return end
+function Props.Update(ent, state, now)
+	local propClips = TIF.PropClips
+	if not propClips then return end
 
 	local def, key, pos, ang
-	local clip = st.actClipCur
-	if clip and st.actU then
-		for name, d in pairs(PC) do
-			local c = TIF.GTG and TIF.GTG.Clip(name, st.hostId)
-			if c and c == clip then def, key = d, "clip:" .. name break end
+	local activeClip = state.actClipCur
+	if activeClip and state.actU then
+		for clipName, clipDef in pairs(propClips) do
+			local resolved = TIF.GTG and TIF.GTG.Clip(clipName, state.hostId)
+			if resolved and resolved == activeClip then def, key = clipDef, "clip:" .. clipName break end
 		end
 	end
 	if not def then
-		for flag, name in pairs(P.CARRY) do
-			if ent:GetNW2Bool(flag, false) and PC[name] then def, key = PC[name], "stow:" .. name break end
+		for flag, clipName in pairs(Props.CARRY) do
+			if ent:GetNW2Bool(flag, false) and propClips[clipName] then def, key = propClips[clipName], "stow:" .. clipName break end
 		end
 	end
 
-	if not def or ent:IsDormant() or st.hideGun then
-		if IsValid(st.prop) then st.prop:SetNoDraw(true) end
-		st.propKey = nil
+	if not def or ent:IsDormant() or state.hideGun then
+		if IsValid(state.prop) then state.prop:SetNoDraw(true) end
+		state.propKey = nil
 		return
 	end
-	if string.sub(key, 1, 5) == "clip:" then pos, ang = clip_pose(ent, def, st.actU) else pos, ang = stow_pose(ent, def) end
-	if not pos then return end
-	local e = prop_ent(st, def.model)
-	if not e then return end
-
-	if st.propKey ~= key then
-		if st.propKey and st.propPos then st.propFrom = { pos = st.propPos, ang = st.propAng, t = now } else st.propFrom = nil end
-		st.propKey = key
+	if string.sub(key, 1, 5) == "clip:" then
+		pos, ang = clip_pose(ent, def, state.actU)
+	else
+		pos, ang = stow_pose(ent, def)
 	end
-	local f = st.propFrom
-	if f then
-		local k = (now - f.t) / P.BLEND
-		if k >= 1 then st.propFrom = nil else
-			k = k * k * (3 - 2 * k)
-			pos, ang = LerpVector(k, f.pos, pos), LerpAngle(k, f.ang, ang)
+	if not pos then return end
+	local prop = ensure_prop_entity(state, def.model)
+	if not prop then return end
+
+	if state.propKey ~= key then
+		if state.propKey and state.propPos then
+			state.propFrom = { pos = state.propPos, ang = state.propAng, t = now }
+		else
+			state.propFrom = nil
+		end
+		state.propKey = key
+	end
+	local blendFrom = state.propFrom
+	if blendFrom then
+		local frac = (now - blendFrom.t) / Props.BLEND
+		if frac >= 1 then
+			state.propFrom = nil
+		else
+			frac = frac * frac * (3 - 2 * frac)
+			pos, ang = LerpVector(frac, blendFrom.pos, pos), LerpAngle(frac, blendFrom.ang, ang)
 		end
 	end
-	st.propPos, st.propAng = pos, ang
-	e:SetPos(pos)
-	e:SetAngles(unturn(ang))
-	e:SetNoDraw(false)
+	state.propPos, state.propAng = pos, ang
+	prop:SetPos(pos)
+	prop:SetAngles(unturn(ang))
+	prop:SetNoDraw(false)
 end
