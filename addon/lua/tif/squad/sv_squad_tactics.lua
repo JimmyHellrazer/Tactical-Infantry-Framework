@@ -326,7 +326,7 @@ local function plan(sq, now)
 		if not start_bound(sq, members, threat, now) then return end
 		t = sq.tactic
 		t.goal = advance_goal(sq.groupB, threat, obj)
-		TIF.Say(sq.groupB[1], "moving", 0.6)
+		TIF.Say(sq.groupB[1], obj and "advance" or "moving", 0.6)
 	end
 
 	-- Deaths emptied one group (or new members joined): split again so someone always covers.
@@ -353,7 +353,7 @@ local function plan(sq, now)
 		moving, covering = covering, moving
 		t.goal = advance_goal(moving, threat, obj)
 		SQ.Log(sq, "bound: group ", t.moving, " moves (", #moving, "), ", #covering, " cover; ", math.floor(dist), "u from enemy")
-		if moving[1] then TIF.Say(moving[1], (moving[1].tifSupp or 0) > 0.3 and "cover_me" or "moving", 0.6) end
+		if moving[1] then TIF.Say(moving[1], (moving[1].tifSupp or 0) > 0.3 and "cover_me" or (obj and "advance" or "moving"), 0.6) end
 		if covering[1] then TIF.Say(covering[1], "suppressing", 0.5) end
 	end
 	for _, m in ipairs(covering) do set_role(m, "base", nil) end
@@ -366,6 +366,10 @@ timer.Create("tif_squad_tactics", 1, 0, function()
 	for _, sq in pairs(SQ.List) do
 		local ok, err = pcall(plan, sq, now)
 		if not ok then TIF.Error("Squad tactics error: ", tostring(err)) end
+		if TIF.Chatter then
+			local ok2, err2 = pcall(TIF.Chatter.Tick, sq, now)
+			if not ok2 then TIF.Error("Squad chatter error: ", tostring(err2)) end
+		end
 		local kind = sq.tactic and sq.tactic.kind or ""
 		if kind ~= sq.lastTacticShown then
 			sq.lastTacticShown = kind

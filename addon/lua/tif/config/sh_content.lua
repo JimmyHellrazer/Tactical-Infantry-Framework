@@ -38,14 +38,32 @@ function TIF.WeaponAlias(class)
 	return class
 end
 
--- Primary and secondary weapon classes for a soldier of this faction and archetype.
+local function is_launcher(class)
+	local def = class and TIF.GTG.WeaponDef(TIF.WeaponAlias(class))
+	return def ~= nil and def.projectile ~= nil
+end
+TIF.IsLauncherClass = is_launcher
+
+local function pick_gun(list)
+	local out = {}
+	for _, c in ipairs(list or {}) do if not is_launcher(c) then out[#out + 1] = c end end
+	return pick(out)
+end
+
 function TIF.Loadout(fac, archId)
+	if isstring(fac) then fac = TIF.Factions[fac] or {} end
+	fac = fac or {}
 	local L = fac.loadouts or {}
 	local l = L[archId or ""] or L.default or {}
 	local d = L.default or {}
 	local primary = pick(l.primary) or pick(d.primary) or pick(fac.weapons) or "weapon_tifmw_m4_sof_a"
 	local secondary = pick(l.secondary) or pick(d.secondary)
-	return TIF.WeaponAlias(primary), TIF.WeaponAlias(secondary)
+	local launcher = pick(l.launcher)
+	if is_launcher(primary) then
+		launcher = launcher or primary
+		primary = pick_gun(l.rifle) or pick_gun(d.primary) or pick_gun(fac.weapons) or "weapon_tifmw_m4_sof_a"
+	end
+	return TIF.WeaponAlias(primary), TIF.WeaponAlias(secondary), launcher and TIF.WeaponAlias(launcher) or nil
 end
 
 -- Baked MW guns (tif_guns addon): weapon_tifmw_<roster id>.
@@ -75,7 +93,7 @@ TIF.RegisterFaction("insurgents", {
 		guard = { primary = mw({ "akm", "uzi", "m680_wood" }), secondary = mw({ "m1911" }) },
 		support = { primary = mw({ "pkm", "mg34" }), secondary = mw({ "uzi" }) },
 		marksman = { primary = mw({ "svd", "sks" }), secondary = mw({ "m1911" }) },
-		rpg = { primary = mw({ "rpg7" }), secondary = mw({ "uzi" }) },
+		rpg = { primary = mw({ "akm", "ak74u", "ak_ff" }), secondary = mw({ "m1911" }), launcher = mw({ "rpg7" }) },
 		breacher = { primary = mw({ "m680_wood", "db_full" }), secondary = mw({ "m1911" }) },
 	},
 })
@@ -92,8 +110,34 @@ TIF.RegisterFaction("usmc", {
 		assault = { primary = mw({ "mp5", "m4_sof_b" }), secondary = mw({ "x16" }) },
 		support = { primary = mw({ "m91", "bruen" }), secondary = mw({ "x16" }) },
 		marksman = { primary = mw({ "ebr", "ebr_sup" }), secondary = mw({ "x16" }) },
-		rpg = { primary = mw({ "rpg7" }), secondary = mw({ "mp5" }) },
+		rpg = { primary = mw({ "m4_sof_a", "m4_sof_b" }), secondary = mw({ "x16" }), launcher = mw({ "at4" }) },
 		breacher = { primary = mw({ "m680_breach" }), secondary = mw({ "x16" }) },
+	},
+})
+
+local BF4RU = "models/tif_factions/bf4ru/"
+local function bf4ru(list)
+	local out = {}
+	for i, n in ipairs(list) do out[i] = BF4RU .. n .. ".mdl" end
+	return out
+end
+
+TIF.RegisterFaction("russians", {
+	name = "Russian Ground Forces",
+	side = "enemy",
+	models = bf4ru({ "soldier_a", "soldier_a_balaclava", "soldier_b", "soldier_b_balaclava", "soldier_c",
+		"soldier_c_balaclava", "soldier_baku", "soldier_baku_balaclava", "soldier_aftermath", "soldier_aftermath_balaclava",
+		"soldier_emr", "soldier_emr_balaclava", "recon_a", "recon_b", "recon_b_balaclava" }),
+	voices = { "mercenary" },
+	weapons = mw({ "ak_warsaw_grip", "ak_warsaw_sup", "an94" }),
+	loadouts = {
+		default = { primary = mw({ "ak_warsaw_grip", "ak_warsaw_grip", "ak_warsaw_sup", "an94", "an94" }), secondary = mw({ "sykov" }) },
+		assault = { primary = mw({ "asval", "bizon", "ak_warsaw_grip" }), secondary = mw({ "sykov" }) },
+		guard = { primary = mw({ "ak_warsaw_sup", "bizon" }), secondary = mw({ "sykov" }) },
+		support = { primary = mw({ "pkm_sof" }), secondary = mw({ "bizon" }) },
+		marksman = { primary = mw({ "svd_plague" }), secondary = mw({ "sykov" }) },
+		rpg = { primary = mw({ "ak_warsaw_grip", "an94" }), secondary = mw({ "sykov" }), launcher = mw({ "rpg7" }) },
+		breacher = { primary = mw({ "asval", "bizon" }), secondary = mw({ "sykov" }) },
 	},
 })
 

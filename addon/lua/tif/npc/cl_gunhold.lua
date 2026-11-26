@@ -383,7 +383,30 @@ function M.Prepare(ent, st, now)
 end
 
 -- After the gun is placed (cl_body update): the primary on the sling while the sidearm is out.
+local function post_launcher(ent, st)
+	local cls = ent:GetNW2String("tif_launcher", "")
+	local need = cls ~= "" and cls ~= (st.wclass or "") and not st.hideGun and not st.slung
+	if not need then
+		if IsValid(st.launcherGun) then st.launcherGun:Remove() end
+		st.launcherGun, st.launcherClass = nil, nil
+		return
+	end
+	if st.launcherClass ~= cls or not IsValid(st.launcherGun) then
+		if IsValid(st.launcherGun) then st.launcherGun:Remove() end
+		st.launcherGun, st.launcherClass = Bd.MakeGun(ent, cls, true), cls
+	end
+	local g = st.launcherGun
+	if not IsValid(g) then return end
+	local pos, ang = M.SlingPose(ent, st, Bd.GunInfo(g:GetModel()), cls)
+	if pos then
+		g:SetPos(pos)
+		g:SetAngles(ang)
+		g:InvalidateBoneCache()
+	end
+end
+
 function M.Post(ent, st)
+	post_launcher(ent, st)
 	local primary = ent:GetNW2String("tif_primary", "")
 	-- (Only with another gun in hand: captives, the surrendered and the downed have none, and showed a rifle slung.)
 	local need = primary ~= "" and (st.wclass or "") ~= "" and primary ~= st.wclass and not st.hideGun

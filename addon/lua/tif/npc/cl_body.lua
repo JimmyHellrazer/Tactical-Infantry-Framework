@@ -53,7 +53,9 @@ local function remove_parts(st)
 	if IsValid(st.follower) then st.follower:Remove() end
 	if IsValid(st.gun) then st.gun:Remove() end
 	if IsValid(st.backGun) then st.backGun:Remove() end
+	if IsValid(st.launcherGun) then st.launcherGun:Remove() end
 	st.follower, st.gun, st.backGun, st.backClass = nil, nil, nil, nil
+	st.launcherGun, st.launcherClass = nil, nil
 end
 
 -- For cl_gunhold.lua (left-hand IK runs inside the host's bone build and needs the soldier's state).
@@ -1512,6 +1514,7 @@ local function update(ent, st, dt, now)
 	if IsValid(st.follower) then st.follower:SetNoDraw(dormant or knocked) end
 	if IsValid(st.gun) then st.gun:SetNoDraw(dormant or knocked) end
 	if IsValid(st.backGun) then st.backGun:SetNoDraw(dormant or knocked) end
+	if IsValid(st.launcherGun) then st.launcherGun:SetNoDraw(dormant or knocked) end
 	if knocked then return end
 	if dormant then
 		st.wasDormant = true

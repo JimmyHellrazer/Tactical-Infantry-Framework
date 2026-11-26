@@ -628,6 +628,9 @@ def wclass_family():
     add("mw_reload_rpg", "sdr_com_exposed_stand_rpg_reload", ub)
     add("mw_reload_rpg_cr", "sdr_com_exposed_crouch_rpg_reload", ub)
     add("mw_reload_lmg_cr", "sdr_com_exposed_crouch_lmg_reload01_fixed", ub)
+    add("at4_drop", "sdr_com_exp_stand_rpg_drop_to_exp_stand", ub)
+    add("at4_drop_cr", "sdr_com_exp_crouch_rpg_drop_to_exp_stand", ub)
+    add("at4_drop_pstl", "sdr_com_exp_stand_rpg_drop_to_exp_stand_pstl", ub)
     # (Not built: MW19's shotgun / RPG fire clips are additive recoil layers (pelvis 34 back, feet in the air when
     # read as poses: arms thrown straight up in game), and the LMG "gun down" idle stands feet together with
     # straight legs. User clips 1, 3, 4, 5, 6, 2026-11-11.)

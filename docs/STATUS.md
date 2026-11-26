@@ -955,6 +955,93 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.53: soldiers talk more (2026-11-25, NOT yet seen in game)
+User's friend: talking "doesnt feel like enough". Before: TIF.Say let one line through per faction every 0.9 s and per
+soldier every 2.5 s, at level 80 (under gunfire's 95-150); lines only on moments (first contact, reload, kill, man
+down, grenades, bounds); nothing mid-firefight; advance / contact_mg / contact_sniper / critical / friendly_fire /
+spawn / no_ammo had lines but were never called; "attack" (melee) has no lines in any pack; bf3marine has no moving /
+cover me / clear / advance / negative / retreat lines (half the Marines silent on those).
+- sh_voices.lua: the group gate is per squad (soldiers outside a squad: per faction and entity-index block), 0.5 s;
+  per soldier 1.8 s; level 90 (V.LEVEL / V.SOLDIER_GAP / V.GROUP_GAP). TIF.Say returns the line played.
+  V.FALLBACK: a pack without lines for an event uses a near one (moving -> advance / affirmative, cover_me ->
+  suppressing, clear -> affirmative, retreat -> moving / negative / backup, attack -> swear, no_ammo -> reloading,
+  critical -> pain, contact_mg / sniper / rpg -> contact, friendly_fire -> swear, spawn -> affirmative / advance...).
+- squad/sv_chatter.lua (TIF.Chatter, from the 1 s squad timer): an engaged squad has someone talk every 4-8 s (C.GAP),
+  never within 2.5 s of another line from that squad; the line by state (C.WEIGHTS: contact by what he's fighting,
+  suppressing, swears; pinned -> cover me / swear; moving -> moving / advance). A new squad sometimes calls in (spawn,
+  50%, 1-3 s after forming, only out of a fight).
+- Wired: first contact names the threat (C.ContactEvent: LMG -> contact_mg, marksman -> contact_sniper, launcher ->
+  contact_rpg; players by weapon class); squad pushes on an objective and range-closing say "advance"; hurt below 30%
+  health -> "critical" once; hit by an ally -> "friendly_fire"; reloading an empty gun -> "no_ammo" (BF3's own lines,
+  else reloading).
+- Harness voices 33 (+22: fallbacks for every bf3 gap, the squad gate, level, contact kinds, chatter cadence over 2
+  minutes, no chatter out of a fight). All suites pass.
+- To tune after a test: C.GAP (4-8 s), C.WEIGHTS, V.GROUP_GAP / V.SOLDIER_GAP, V.LEVEL.
+
+### 0.38.52: RPG rework (launcher as a utility) + disposable AT4 for the Marines (2026-11-25, NOT yet seen in game)
+User: friend found RPGs "a bit oppressive", "them keeping it as a primary that slings so often isnt the super best";
+wanted the launcher "more as a utility ... can whip out the rpg when it counts and not too uncommonly but ... not enough
+to lay constant hate"; then "a disposable at4 ... the usmc will use one", model from SandSWEP Launchers, "optimize it
+... oriented correctly and handed off correctly ... properly spent when let go".
+- Third weapon slot (npc/sv_weapon.lua): W.Init(npc, primary, secondary, launcher); loadouts take `launcher = {...}`.
+  TIF.Loadout returns it; any loadout (faction packs, editor, API) that still lists a launcher as the primary moves it
+  to the launcher slot and gets a rifle (the role's `rifle` list, else the faction's default primaries). The AT gunner
+  fights with his rifle; the launcher rides on his back (NW2 tif_launcher, cl_gunhold back pose) until he draws it.
+- tactics/sv_launcher.lua (TIF.Launcher): when it counts only. Checks every 1.5 s from engage, before cover:
+  vehicle / helicopter; 3+ enemies within 250 of the target; a target he's shot at for 8 s without hurting it (dug in);
+  a lone exposed soldier at tif_rpg_lone_chance (0.1) per 4 s. Needs 500-2600 range, outdoors (sky over him), a clear
+  line, no friendly within 320 of the impact, not in CQB / prone / bipod / melee / shield / shaken.
+  Limiters: 4-10 s after first contact; 25-40 s between his rockets; 15 s per squad; 20 s per target (not vehicles).
+  Rockets: tif_rpg_rockets (2) for reusable launchers, 1 for disposables; out of rockets = rifleman.
+  Flow: leaves cover, draws (switch clip), says "cover me", the nearest enemy who can see him shouts "RPG!" (every
+  pack's alertrpg), settles 0.9-1.3 s, fires, holds 0.6 s, stows. Gives up without firing if the target is lost 2 s
+  or after ~8 s. RPG-7: back onto his back (next draw reloads). AT4: MW19's rpg_drop clip (new manifest clips at4_drop
+  / at4_drop_cr / at4_drop_pstl, the pistol one when the rifle is dry): the tube leaves the hand on the clip's dropgun
+  notetrack, empty hands until pistol_pickup, rifle up at start_aim.
+- Archetype "rpg" (AT Gunner) is a rifleman now: rifle bursts, range 450-2200, cover fire 0.3, no 500-unit sidearm swap.
+- Loadouts: Insurgents AKM / AK-74u / worn AK + M1911 + RPG-7; Marines M4 SOF a / b + X16 + AT4; Russians War Saw grip /
+  AN-94 + Sykov + RPG-7.
+- tif_rocket_radius default 300 -> 250 (archived values stay). Settings > Combat: rockets, lone chance, blast radius.
+- AT4 (weapon_tifmw_at4): SandSWEP Launchers' AT4 (at4_tube mesh) rebuilt by `tools/guns/at4_build.py` into TIF's
+  baked-gun frame (right wrist at the origin, the RPG-7's axis): front grip 8.5 ahead of the wrist under the right hand
+  (SandSWEP's world model holds it 8.8 ahead of the hand bone; the RPG-7's trigger grip is 8), the RPG-7's hold and
+  left-wrist spot (palm on the tube ahead of the grip). 24,349 -> 3,034 triangles; textures 2048x1024 -> 1024x512 DXT5
+  (13.5 MB -> 2.1 MB). at4_spent.mdl: the same mesh with a 12-sided physics hull, mass 7. Sounds: SandSWEP's AT4
+  shots / tails (sound/tif/at4, TIF_AT4.Fire / TailOut / TailIn).
+- Spent: TIFDropWeapon(which) drops def.spentModel for an empty disposable, tossed out to his right and down, debris
+  collision, launcher drop foley, removed with the corpse timer; it leaves his back for good.
+- tools/anims now carries cod_anim_prep.py, cod_to_breen.py, cod_bone_mapping.py (the builder's helpers, from
+  K:\mods map pics\smh_cod_anim_baker\tools, where TIF's anim pipeline lives) so the repo copy builds on its own.
+- Harness: launcher.lua 52 (loadout migration, rockets, every trigger and limiter, draw / settle / fire / stow, AT4
+  drop clip, assets on disk); guns 236 (45 guns, sound.Add stub); russians 94 (launcher slot). All suites pass.
+- To watch in game: the AT4's hold on the MW RPG set (grip under the right hand, left palm on the tube), the dropped
+  tube's pose leaving the hand, the back carry for both launchers, whether 2 rockets / 25-40 s feels right.
+
+### 0.38.51: third starter faction, Russian Ground Forces (2026-11-25, NOT yet seen in game)
+User: "third faction, Russian ground forces ... optimize these other models, i dont want the blue variants ... scrambled
+messy compile bugged headgear varaints near the end of their headgear options ... removed ... prevent them spawning
+completly without a headgear", "russians will use russian sof weapon category".
+- Source: MadIvan18's BF4 Russian Ground Forces (Workshop 1444174239, 20 models, already ValveBiped + quad / knee
+  helpers). New generator codport `tools\sets\make_bf4ru.py` (repo `tools/factions/`): decompile, merge, rebuild on
+  rig_tifhost like make_ins2 (exact host skeleton, horde zombies' infected male ragdoll, 5 face skins kept, head flexes
+  dropped), then lod_pack (LOD1-3 + shadow LOD).
+- Blue = the "sib" Siberian camo: Soldier D and Recon C not built. 15 models in `models/tif_factions/bf4ru/`: soldier
+  a (flora), b (green), c (khaki), baku, aftermath, emr (+ balaclava each), recon a / b / b balaclava.
+- Headgear: the decompiled headgear meshes are all clean (on Head1, no stretched triangles; the VTX bone tables match the
+  VVD), so the scramble was in the original compile. The soldier models' trailing recon-set extras (beanie, beanie +
+  headset, cap, gas mask, gas mask + headset; in Baku the only options past vertex 65536) are dropped; soldiers keep
+  their helmets (6B47, Altyn, 6B27). Rebuilt from clean SMDs, nothing of the old compile is left.
+- Never bare-headed: HeadWear / Mask groups compiled without a blank option (recon B's bandana keeps its blank).
+- Materials `materials/models/tif/bf4ru/` (1024 px DXT, 119 MB); 35 unused files (sib VMTs, tanker kit, spare eye
+  textures) moved to `K:\jimmyproject\bf4ru_src\_pruned_materials`.
+- Faction `russians` "Russian Ground Forces" (config/sh_content.lua): side enemy, no allies (Insurgents, Marines and
+  Russians all fight each other). Guns: the roster's ru_sof tier only: War Saw grip / sup, AN-94 (default), AS VAL /
+  Bizon (assault, breacher), PKM SOF (support), Plague SVD (marksman), RPG-7, Sykov. Voices: mercenary (no Russian
+  pack yet).
+- Harness: new russians.lua (90: models + ragdolls on disk, no sib, every role's guns are ru_sof and exist, every ru_sof
+  gun used). All suites pass (civ_anim / civ_body are old scripts for an earlier runner).
+- Repo: build/bf4ru holds the QCs + character tomls (meshes are rebuilt from the Workshop pack, not stored).
+
 ### 0.38.50: morale back on, surrender off (2026-11-25, NOT yet seen in game)
 User: "put it back but just disable surrenderring".
 - tactics/sv_morale.lua: MO.OFF = false (shaken / broken, morale withdrawals and radio lines are back; tif_morale works

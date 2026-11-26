@@ -16,6 +16,7 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 [*][b]Morale.[/b] Losing friends, getting hit and being outnumbered wears them down: shaken soldiers shoot worse and stop pushing, broken ones run and hide, and a squad that loses heart pulls back.
 [*][b]Grenades.[/b] Frags over cover at enemies they can't see, flashbangs into rooms, dodges and dives away from live grenades.
 [*][b]Weapons.[/b] 45 baked MW guns with MW sounds (fire, indoor / outdoor tails, reload foley), per-weapon reload and recoil animations, sidearm switching, LMG bipods prone and on ledges, magazines that actually leave the gun.
+[*][b]Launchers as a tool, not a habit.[/b] AT gunners fight with their rifles and only shoulder the launcher when it counts: vehicles, bunched-up groups, dug-in positions, now and then an exposed soldier. A couple of rockets each, with cooldowns per gunner, squad and target, and the other side shouts "RPG!" when one goes up. The Marines' AT4 is disposable: fire, drop the spent tube, back on the rifle.
 [*][b]Close quarters.[/b] Rifle-butt strikes, and paired melee fights between soldiers who end up face to face.
 [*][b]Prone, crouch and stance changes[/b], all animated, including diving to prone on the run.
 [/list]
@@ -67,7 +68,7 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 
 [h2]Factions and setup[/h2]
 [list]
-[*]Two starter factions out of the box: [b]Insurgents[/b] and [b]US Marines[/b] (Insurgency characters by MadIvan18, used with permission), each with light / standard / heavy outfits, randomised gear and several voice packs.
+[*]Three starter factions out of the box: [b]Insurgents[/b] and [b]US Marines[/b] (Insurgency characters by MadIvan18, used with permission), each with light / standard / heavy outfits, randomised gear and several voice packs, and the [b]Russian Ground Forces[/b] (MadIvan18's Battlefield 4 Russians: flora, khaki, EMR, Baku, Aftermath and recon kits) carrying Russian special forces guns. All three fight each other.
 [*]Faction editor ([i]tif_factions[/i]): sides, models, voices, weapons by role.
 [*]Modular factions: soldiers assembled from body, head and headgear parts.
 [*]HL2 and other NPCs are recognised: rebels side with players, Combine and monsters don't.
@@ -116,6 +117,7 @@ local function pack()
             default = { primary = { "weapon_tifmw_akm" }, secondary = { "weapon_tifmw_m19" } },
             support = { primary = { "weapon_tifmw_pkm" } },
             marksman = { primary = { "weapon_tifmw_svd" } },
+            rpg = { primary = { "weapon_tifmw_akm" }, launcher = { "weapon_tifmw_rpg7" } },  -- drawn when it counts
         },
     })
 end

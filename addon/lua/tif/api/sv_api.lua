@@ -186,8 +186,8 @@ function API.SetCaptive(npc, on)
 		npc:SetNW2Float("tif_act_cycle", -1)
 		npc.tifKneelLoopAt = nil
 		Act.Clear(npc)
-		local primary, secondary = TIF.Loadout(npc:GetTIFFaction(), npc.tifArchId)
-		TIF.Weapon.Init(npc, primary, secondary)
+		local primary, secondary, launcher = TIF.Loadout(npc:GetTIFFaction(), npc.tifArchId)
+		TIF.Weapon.Init(npc, primary, secondary, launcher)
 	end
 end
 

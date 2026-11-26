@@ -14,7 +14,7 @@ local MODEL = "models/weapons/w_missile_closed.mdl"
 
 if SERVER then
 	local cvDamage = CreateConVar("tif_rocket_damage", "200", FCVAR_ARCHIVE, "TIF launcher rocket damage at the centre")
-	local cvRadius = CreateConVar("tif_rocket_radius", "300", FCVAR_ARCHIVE, "TIF launcher rocket blast radius")
+	local cvRadius = CreateConVar("tif_rocket_radius", "250", FCVAR_ARCHIVE, "TIF launcher rocket blast radius")
 
 	-- p: the weapon's projectile table; dir: unit direction; owner: the soldier (no collision with him).
 	function ENT:Setup(p, dir, owner)

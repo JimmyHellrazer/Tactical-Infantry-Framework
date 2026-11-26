@@ -181,8 +181,9 @@ function ENT:Initialize()
 	self.tifSlots = {}
 	self:TIFRefreshSlots()
 
-	local primary, secondary = TIF.Loadout(fac, self.tifArchId)
-	TIF.Weapon.Init(self, self.tifWeaponOverride or primary, self.tifSecondaryOverride or secondary)
+	local primary, secondary, launcher = TIF.Loadout(fac, self.tifArchId)
+	TIF.Weapon.Init(self, self.tifWeaponOverride or primary, self.tifSecondaryOverride or secondary,
+		self.tifLauncherOverride or launcher)
 	TIF.Perception.Init(self)
 	TIF.Move.Init(self)
 	TIF.Brain.Init(self)
@@ -401,7 +402,13 @@ function ENT:OnInjured(dmg)
 	TIF.Perception.OnHurt(self, att)
 	TIF.Supp.Add(self, 0.35, IsValid(att) and att:GetPos() or nil, att)
 	if TIF.Morale then TIF.Morale.OnHurt(self, dmg:GetDamage()) end
-	TIF.Say(self, "pain", 0.7)
+	local friendly = IsValid(att) and att ~= self and (att.TIFSoldier or att:IsPlayer()) and TIF.Relation(self, att) == TIF.REL_ALLY
+	local crit = TIF.Chatter and self:Health() > 0 and self:Health() < self:GetMaxHealth() * TIF.Chatter.CRITICAL
+	if friendly then TIF.Say(self, "friendly_fire", 0.9)
+	elseif crit and not self.tifSaidCritical then
+		self.tifSaidCritical = true
+		TIF.Say(self, "critical", 0.9)
+	else TIF.Say(self, "pain", 0.7) end
 	local dir = dmg:GetDamageForce()
 	if dir:LengthSqr() < 1 and IsValid(att) then dir = self:GetPos() - att:GetPos() end
 	dir:Normalize()
@@ -687,10 +694,13 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	return rag
 end
 
-function ENT:TIFDropWeapon()
-	local w = self.tifWep
+function ENT:TIFDropWeapon(which)
+	local w = which or self.tifWep
 	local stored = w and TIF.GTG.Stored(w.class)
 	local model = stored and stored.WorldModel
+	local def = w and w.def
+	local spent = def and def.disposable and def.spentModel and (w.rockets or 0) <= 0
+	if spent then model = def.spentModel end
 	if not model or model == "" then return end
 	local hand = self:LookupBone("PH_R_Hand") or self:LookupBone("ValveBiped.Bip01_R_Hand")
 	local m = hand and self:GetBoneMatrix(hand)
@@ -709,7 +719,13 @@ function ENT:TIFDropWeapon()
 		prop:Remove()
 		return
 	end
-	prop:GetPhysicsObject():SetVelocity(self.loco:GetVelocity())
+	local po = prop:GetPhysicsObject()
+	po:SetVelocity(self.loco:GetVelocity())
+	if spent then
+		prop.tifSpent = true
+		po:SetVelocity(self.loco:GetVelocity() + self:GetRight() * 45 - Vector(0, 0, 30))
+		po:AddAngleVelocity(Vector(math.Rand(-60, 60), math.Rand(-60, 60), math.Rand(-120, 120)))
+	end
 	-- (MW19 weapon-drop sounds as it lands, sh_foley)
 	if TIF.Foley and TIF.Foley.GunDropSounds then TIF.Foley.GunDropSounds(prop, TIF.GTG.WeaponKind(w.class)) end
 	local t = cvCorpse:GetFloat()

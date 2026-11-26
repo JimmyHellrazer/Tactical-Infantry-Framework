@@ -54,28 +54,58 @@ local function make(class, fallback)
 	return { class = class, def = def, clip = clip, ammo = clip, nextShot = 0, burstLeft = 0, reloadEnd = 0 }
 end
 
--- primary and (optional) secondary weapon classes. Each keeps its own magazine.
-function W.Init(npc, primary, secondary)
+function W.IsLauncher(class)
+	local def = class and TIF.GTG.WeaponDef(class)
+	return def ~= nil and def.projectile ~= nil
+end
+
+function W.LauncherRifle(npc)
+	local fac = TIF.Factions and npc.GetTIFFaction and TIF.Factions[npc:GetTIFFaction()]
+	local L = fac and fac.loadouts or {}
+	local pool = {}
+	for _, list in ipairs({ L.default and L.default.primary, L.rifleman and L.rifleman.primary, fac and fac.weapons }) do
+		for _, c in ipairs(list or {}) do
+			if not W.IsLauncher(c) then pool[#pool + 1] = c end
+		end
+		if #pool > 0 then break end
+	end
+	local c = pool[1] and pool[math.random(#pool)] or FALLBACK_CLASS
+	return TIF.WeaponAlias and TIF.WeaponAlias(c) or c
+end
+
+function W.Init(npc, primary, secondary, launcher)
 	-- Every way in (loadouts, TIF.API from DTW / GOPS / SWAT, spawn overrides, debug) gets the GTA gun's baked MW
 	-- counterpart when tif_guns is installed (until 0.19.4 only TIF.Loadout did: API soldiers kept GTA guns).
 	local alias = TIF.WeaponAlias
 	if alias then
 		primary = primary and alias(primary) or primary
 		secondary = secondary and alias(secondary) or secondary
+		launcher = launcher and alias(launcher) or launcher
+	end
+	if primary and W.IsLauncher(primary) then
+		launcher = launcher or primary
+		primary = W.LauncherRifle(npc)
 	end
 	npc.tifArms = { primary = make(primary, true), secondary = make(secondary, false) }
+	local lw = launcher and W.IsLauncher(launcher) and make(launcher, false)
+	if lw then
+		lw.rockets = TIF.Launcher and TIF.Launcher.Rockets(lw.def) or 1
+		npc.tifArms.launcher = lw
+	end
 	npc.tifSlot = "primary"
 	npc.tifWep = npc.tifArms.primary
 	npc.tifFire = { want = false }
+	npc.tifLaunch = nil
 	npc:SetTIFWeapon(npc.tifWep.class)
 	-- Clients show the primary slung while the sidearm is out (cl_gunhold.lua).
 	npc:SetNW2String("tif_primary", npc.tifArms.primary.class)
+	npc:SetNW2String("tif_launcher", lw and lw.class or "")
 end
 
 W.SWITCH_TIME = 0.65   -- whole switch; the gun changes halfway
 
 -- Start switching to "primary" or "secondary". No shooting until it's done.
-function W.Switch(npc, slot, now)
+function W.Switch(npc, slot, now, opts)
 	local arms = npc.tifArms
 	if not arms or not arms[slot] or npc.tifSlot == slot or npc.tifSwitch then return false end
 	local w = npc.tifWep
@@ -84,21 +114,33 @@ function W.Switch(npc, slot, now)
 		npc:SetTIFReloadStart(0)
 	end
 	w.burstLeft = 0
-	npc.tifSwitch = { to = slot, swapAt = now + W.SWITCH_TIME * 0.5, done = now + W.SWITCH_TIME }
+	npc.tifSwitch = { to = slot, swapAt = now + W.SWITCH_TIME * 0.5, done = now + W.SWITCH_TIME,
+		drop = opts and opts.drop or nil }
 	-- MW19 body: the draw / put-away clip (upper body, played by clients) sets the timing: the gun changes on
 	-- its pistol_pickup / pistol_putaway notetrack and shooting starts at start_aim.
 	local home = npc.tifHomeHost
 	if home and npc.tifHostId == home and TIF.GTG.IsVB(home) then
-		local name = (slot == "secondary" and "mw_draw_pistol" or "mw_draw_rifle") .. (npc.tifStance == 1 and "_cr" or "")
-		local c = TIF.GTG.Clip(name, home) or TIF.GTG.Clip(slot == "secondary" and "mw_draw_pistol" or "mw_draw_rifle", home)
+		local base = slot == "secondary" and "mw_draw_pistol" or "mw_draw_rifle"
+		local name = base .. (npc.tifStance == 1 and "_cr" or "")
+		local c
+		if opts and opts.clip then
+			c = TIF.GTG.Clip(opts.clip, home)
+			if c then name = opts.clip end
+		end
+		if not c then
+			c = TIF.GTG.Clip(name, home)
+			if not c then c, name = TIF.GTG.Clip(base, home), base end
+		end
 		if c then
-			local swapU, readyU = 0.45, 0.75
+			local swapU, readyU, dropU = 0.45, 0.75, nil
 			for _, t in ipairs(c.tags or {}) do
 				local ev = istable(t[4]) and t[4].MoveEvent
 				if ev == "pistol_pickup" or ev == "pistol_putaway" then swapU = t[2] end
 				if ev == "start_aim" then readyU = t[2] end
+				if ev == "dropgun" then dropU = t[2] end
 			end
 			npc.tifSwitch.swapAt, npc.tifSwitch.done = now + c.dur * swapU, now + c.dur * readyU
+			if npc.tifSwitch.drop and dropU then npc.tifSwitch.dropAt = now + c.dur * dropU end
 			npc:SetNW2String("tif_switch_clip", c.name or name)
 			npc:SetNW2Float("tif_switch_t", now)
 		end
@@ -132,7 +174,12 @@ end
 -- opts.secondary: use the secondary if there is one (drive-by, room clearing with a long gun).
 function W.Choose(npc, dist, now, opts)
 	local arms = npc.tifArms
-	if not arms or not arms.secondary or npc.tifSwitch then return end
+	if not arms or npc.tifSwitch or npc.tifLaunch then return end
+	if npc.tifSlot == "launcher" then
+		W.Switch(npc, "primary", now)
+		return
+	end
+	if not arms.secondary then return end
 	if now < (npc.tifNextSwitch or 0) then return end
 	local arch = npc.tifArch
 	local below = arch.secondaryBelow
@@ -162,6 +209,13 @@ end
 
 local function switch_tick(npc, now)
 	local s = npc.tifSwitch
+	if s.drop and not s.dropped and now >= (s.dropAt or s.swapAt) and npc.tifArms.launcher then
+		s.dropped = true
+		if npc.TIFDropWeapon then pcall(npc.TIFDropWeapon, npc, npc.tifArms.launcher) end
+		npc.tifArms.launcher = nil
+		npc:SetNW2String("tif_launcher", "")
+		if not s.swapped then npc:SetTIFWeapon("") end
+	end
 	if not s.swapped and now >= s.swapAt then
 		s.swapped = true
 		npc.tifSlot = s.to
@@ -179,11 +233,12 @@ end
 function W.StartReload(npc)
 	local w = npc.tifWep
 	if not w or w.reloadEnd > 0 or w.ammo >= w.clip then return end
+	if w.rockets and w.rockets <= w.ammo then return end
 	local now = CurTime()
 	w.reloadEnd = now + ((w.def and w.def.reload_time) or 2.2)
 	w.burstLeft = 0
 	npc:SetTIFReloadStart(now)
-	TIF.Say(npc, "reloading", 0.65)
+	if w.ammo <= 0 and not w.rockets then TIF.Say(npc, "no_ammo", 0.7) else TIF.Say(npc, "reloading", 0.65) end
 	-- Baked MW guns: the gun's own reload foley, its MW timing stretched over this reload (empty reload when
 	-- dry). Dropped if the reload is cut short (weapon switch, death).
 	local mw = w.def and w.def.mw
@@ -515,6 +570,8 @@ local function fire_one(npc, w, aimPos, now)
 		shot_sound(npc, w, src)
 		npc:SetTIFShotTime(now)
 		w.ammo = w.ammo - 1
+		if w.rockets then w.rockets = math.max(0, w.rockets - 1) end
+		if TIF.Launcher and npc.tifLaunch then TIF.Launcher.Fired(npc, now) end
 		return
 	end
 	npc:FireBullets({
@@ -573,6 +630,7 @@ function W.Think(npc, now)
 		if IsValid(t) and TIF.Perception.Engage(npc, t) ~= "fight" then w.burstLeft = 0 return end
 	end
 	if w.ammo <= 0 then W.StartReload(npc) return end
+	if npc.tifSlot == "launcher" and not (TIF.Launcher and TIF.Launcher.Ready(npc, now)) then return end
 	if now < (npc.tifReactUntil or 0) then return end
 	if now < (npc.tifLowReadyUntil or 0) then return end
 

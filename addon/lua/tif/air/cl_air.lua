@@ -16,6 +16,7 @@ timer.Create("tif_air_rider_shadows", 0.2, 0, function()
 				if IsValid(st.follower) then st.follower:DrawShadow(not off) end
 				if IsValid(st.gun) then st.gun:DrawShadow(not off) end
 				if IsValid(st.backGun) then st.backGun:DrawShadow(not off) end
+				if IsValid(st.launcherGun) then st.launcherGun:DrawShadow(not off) end
 			end
 		end
 	end

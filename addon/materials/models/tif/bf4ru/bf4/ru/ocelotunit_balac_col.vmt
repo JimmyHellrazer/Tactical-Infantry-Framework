@@ -1,0 +1,15 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models/tif/bf4ru/bf4/ru/ocelotunit_balac_col"
+	"$bumpmap"    "models/tif/bf4ru/bf4/ru/ocelotunit_balac_nml"
+	
+	"$phong"	"1"
+"$nocull"	"1"
+	"$phongexponent"	"6"
+	"$phongalbedotint"	"1"
+	"$phongboost"	"0.10"
+	"$phongfresnelranges"	"[5 7 8]"
+    "$lightwarptexture" 	"models/tif/bf4ru/clothes_wrp"
+	"$phongexponenttexture" "models/tif/bf4ru/exp"
+}
+

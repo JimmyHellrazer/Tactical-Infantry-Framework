@@ -74,9 +74,8 @@ TIF.RegisterArchetype("marksman", {
 })
 
 TIF.RegisterArchetype("rpg", {
-	label = "AT Gunner", burst = { 1, 1 }, burstPause = { 2.5, 4 }, spread = 1.2, firstShots = 1.2,
-	prefRange = { 500, 2600 }, aggression = 0.35, crouchChance = 0.5, coverUse = 0.9, coverPause = { 1.5, 3 },
-	suppressResist = 0.45, secondaryBelow = 500, coverFire = 0,
+	label = "AT Gunner", prefRange = { 450, 2200 }, aggression = 0.35, crouchChance = 0.5, coverUse = 0.8,
+	coverPause = { 1.2, 2.8 }, suppressResist = 0.45, coverFire = 0.3,
 })
 
 TIF.RegisterArchetype("leader", {

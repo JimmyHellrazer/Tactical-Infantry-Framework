@@ -7,6 +7,9 @@ table.Copy = table.Copy or function(t)
 	return cp(t)
 end
 TIFG = { Data = { U = 39.3701 }, Weapons = {} }
+CHAN_WEAPON, CHAN_AUTO = 1, 0
+local sounds = {}
+sound = { Add = function(s) sounds[s.name] = s end }
 function TIFG.RegisterWeaponDef(s) TIFG.Weapons[s.ClassName] = s end
 local dir = ROOT .. "tif/gta/weapons/"
 local files = {}
@@ -29,7 +32,7 @@ for class, s in pairs(TIFG.Weapons) do
 	check(s.Primary and s.Primary.ClipSize and s.Primary.ClipSize > 0, class .. " has a magazine")
 	check(not (s.WorldModel or ""):find("gta") and not (g.mag or ""):find("gta"), class .. " names no GTA asset")
 end
-check(n == 44, "44 MW guns registered (" .. n .. ")")
+check(n == 45, "45 MW guns registered (44 baked + the AT4) (" .. n .. ")")
 local rpg = TIFG.Weapons.weapon_tifmw_rpg7
 check(rpg and rpg.GTG.projectile and rpg.GTG.projectile.entity == "tif_rocket", "RPG-7 fires TIF's rocket")
 check(rpg and not rpg.GTG.projectile.model:find("gta"), "rocket model isn't a GTA asset")

@@ -173,7 +173,7 @@ local function update_awareness(npc, c, now)
 			if st ~= AW.ENGAGED then
 				npc.tifReactUntil = now + math.Rand(arch.reaction[1], arch.reaction[2]) * TIF.ReactionScale()
 				npc.tifEngagedAt = now
-				TIF.Say(npc, "contact", 0.9)
+				TIF.Say(npc, TIF.Chatter and TIF.Chatter.ContactEvent(c.ent) or "contact", 0.9)
 				Per.Share(npc, c)
 			elseif c.reacquired and c.reacquired > (npc.tifLastReacq or 0) then
 				npc.tifLastReacq = c.reacquired
@@ -382,6 +382,7 @@ local function engage(npc, c, now)
 	if TIF.MeleeMW and dist < 200 and TIF.MeleeMW.Try(npc, c, now) then return end
 	-- (0.38.20) a civilian between him and the enemy: sometimes grabbed as a human shield (TIF.Shield)
 	if TIF.Shield and TIF.Shield.Try(npc, c, now) then return end
+	if TIF.Launcher and TIF.Launcher.Consider(npc, c, now) then return end
 	local Pr = TIF.ProneB
 	local supp = npc.tifSupp or 0
 
@@ -442,7 +443,7 @@ local function engage(npc, c, now)
 		npc.tifEngageMove = em
 		if em and em.kind == "advance" and not TIF.Morale.Shaken(npc) then
 			npc.tifAction = "advance"
-			if not Move.Moving(npc) then TIF.Say(npc, "moving", 0.25) end
+			if not Move.Moving(npc) then TIF.Say(npc, "advance", 0.3) end
 			local sp = gait(npc, "advance", dist, now)
 			if sp == "run" or sp == "sprint" then
 				-- Running to close the distance: no shooting on the move, face the way it's going.
@@ -802,6 +803,7 @@ function B.Think(npc, dt)
 		npc.tifFire.want = false
 	elseif TIF.ProneB.Is(npc) and not fighting then
 		npc.tifFire.want = false
+	elseif npc.tifLaunch and TIF.Launcher and TIF.Launcher.Think(npc, c, now) then
 	elseif npc.tifMedic and TIF.Casualty.MedicThink(npc, c, now) then
 		-- Going to / treating a downed squadmate.
 	elseif TIF.Morale.BrokenThink(npc, c, now) then

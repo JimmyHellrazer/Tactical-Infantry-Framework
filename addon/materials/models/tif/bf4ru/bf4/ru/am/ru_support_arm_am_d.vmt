@@ -1,0 +1,15 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models/tif/bf4ru/bf4/ru/am/ru_support_arm_am_d"
+	"$bumpmap" "models/tif/bf4ru/bf4/ru/ru_support_arm_n"
+"$phong"	"1"
+"$nocull"	"1"
+	"$phongexponent"	"5"
+	"$phongalbedotint"	"1"
+	"$phongboost"	"0.05"
+	"$phongfresnelranges"	"[5 7 8]"
+    "$lightwarptexture" 	"models/tif/bf4ru/clothes_wrp"
+	"$phongexponenttexture" "models/tif/bf4ru/exp"
+}
+
+

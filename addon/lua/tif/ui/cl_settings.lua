@@ -24,6 +24,9 @@ local SECTIONS = {
 		{ "slider", "tif_gunfire_radius", "How far gunfire is heard", 500, 8000, 0 },
 		{ "slider", "tif_recoil_scale", "Recoil kick strength (0 = off)", 0, 2, 2 },
 		{ "slider", "tif_flash_friendly", "Friendly flashbangs on their own side (0 = no effect)", 0, 1, 2 },
+		{ "slider", "tif_rpg_rockets", "Rockets per AT gunner (reusable launchers)", 0, 6, 0 },
+		{ "slider", "tif_rpg_lone_chance", "Chance an AT gunner rockets a lone soldier", 0, 1, 2 },
+		{ "slider", "tif_rocket_radius", "Rocket blast radius", 100, 500, 0 },
 	} },
 	{ "Morale and casualties", {
 		{ "check", "tif_morale", "Morale (soldiers get shaken and break)" },

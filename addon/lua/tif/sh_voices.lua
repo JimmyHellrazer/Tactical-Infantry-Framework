@@ -179,10 +179,34 @@ function V.Get(packId)
 	return V.Sets[packId] or V.Build(packId)
 end
 
--- Pick a line for an event, avoiding the last one played from the same list.
+V.FALLBACK = {
+	moving = { "advance", "affirmative" },
+	advance = { "moving", "affirmative" },
+	cover_me = { "suppressing", "moving" },
+	clear = { "affirmative" },
+	negative = { "swear" },
+	retreat = { "moving", "negative", "backup" },
+	attack = { "swear" },
+	no_ammo = { "reloading" },
+	critical = { "pain" },
+	contact_mg = { "contact" },
+	contact_sniper = { "contact" },
+	contact_rpg = { "contact" },
+	friendly_fire = { "swear" },
+	spawn = { "affirmative", "advance" },
+	backup = { "cover_me", "contact" },
+	suppressing = { "cover_me" },
+}
+
 function V.Pick(packId, event)
 	local set = V.Get(packId)
 	local list = set and set.events[event]
+	if not list then
+		for _, alt in ipairs(V.FALLBACK[event] or {}) do
+			list = set and set.events[alt]
+			if list then event = alt break end
+		end
+	end
 	if not list then return nil end
 	if #list == 1 then return list[1] end
 	local last = set.last and set.last[event]
@@ -197,27 +221,36 @@ function V.Pick(packId, event)
 end
 
 if SERVER then
+	V.LEVEL = 90
+	V.SOLDIER_GAP = 1.8
+	V.GROUP_GAP = 0.5
+
 	function V.Play(ent, packId, event, level)
 		local snd = V.Pick(packId, event)
 		if not snd or not IsValid(ent) then return nil end
-		ent:EmitSound(snd, level or 80, math.random(97, 103), 1, CHAN_VOICE)
+		ent:EmitSound(snd, level or V.LEVEL, math.random(97, 103), 1, CHAN_VOICE)
 		return snd
 	end
 
-	-- Soldier speech with cooldowns: per soldier, and per faction so a whole group
-	-- doesn't shout the same line at once.
 	local cvVoice = CreateConVar("tif_voice", "1", FCVAR_ARCHIVE, "Soldier voice lines on/off")
-	local factionNext = {}
-	local SOLDIER_COOLDOWN, FACTION_COOLDOWN = 2.5, 0.9
+	local groupNext = setmetatable({}, { __mode = "k" })
+	local loneNext = {}
 	local FORCE = { death = true, pain = true }
+
+	local function group_of(npc)
+		local sq = npc.tifSquad
+		if sq then return groupNext, sq end
+		return loneNext, npc:GetTIFFaction() .. "#" .. math.floor(npc:EntIndex() / 4)
+	end
 
 	function TIF.Say(npc, event, chance)
 		if not cvVoice:GetBool() or not IsValid(npc) then return end
 		if chance and math.random() > chance then return end
 		local now = CurTime()
 		local fac = npc:GetTIFFaction()
+		local gt, gk = group_of(npc)
 		if not FORCE[event] then
-			if (npc.tifNextSay or 0) > now or (factionNext[fac] or 0) > now then return end
+			if (npc.tifNextSay or 0) > now or (gt[gk] or 0) > now then return end
 		elseif event == "pain" and (npc.tifNextSay or 0) > now then
 			return
 		end
@@ -230,9 +263,13 @@ if SERVER then
 		end
 		local snd = npc.tifVoice and V.Play(npc, npc.tifVoice, event)
 		if snd then
-			npc.tifNextSay = now + SOLDIER_COOLDOWN
-			factionNext[fac] = now + FACTION_COOLDOWN
+			npc.tifNextSay = now + V.SOLDIER_GAP
+			gt[gk] = now + V.GROUP_GAP
+			npc.tifSaidAt = now
+			local sq = npc.tifSquad
+			if sq then sq.tifSaidAt = now end
 		end
+		return snd
 	end
 
 	-- (tif_voice_test: the local dev addon since 0.38.11)
