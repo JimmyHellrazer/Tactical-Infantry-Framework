@@ -25,6 +25,8 @@ Put `addon/` in `garrysmod/addons` (rename it `tactical_infantry_framework` if y
   fighting from beside cover before palming back in.
 - Suppression (pinned down, pushed into cover or flat on the ground), grenades over cover and in the open, flashbang
   reactions, dodging live grenades.
+- Morale: losses, wounds and being outnumbered wear soldiers down. Shaken ones shoot worse and stop pushing, broken
+  ones run and hide, and a squad that loses heart withdraws (`tif_morale`).
 - Close quarters: rifle-butt strikes and paired melee fights between soldiers who end up face to face.
 - Awareness: unaware / suspicious / searching / engaged, with MW's own reactions (startles, pointing out contacts,
   looking around after losing you).

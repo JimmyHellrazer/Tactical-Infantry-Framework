@@ -40,7 +40,7 @@ MODELS = ["insurgent_light", "insurgent_standard", "insurgent_heavy", "security_
           "security_heavy", "civilian_vip_insurgent", "civilian_vip_security"]
 MAT_ROOT = "models/tif/ins2"
 HOST = os.path.join(ADDON, "models", "tif_mw", "mw_male.mdl")
-VB_PHY = r"K:\SteamLibrary\steamapps\common\GarrysMod\garrysmod\addons\tif_faction_pack\models\player\rus_rebel\male_02.phy"
+VB_PHY = r"K:\SteamLibrary\steamapps\common\GarrysMod\garrysmod\addons\horde_zombies\models\hordez\citizens\male_02.phy"
 RIG_QCI = os.path.join(CODPORT, "shared", "rig_tifhost.qci")
 RIG_REF = os.path.join(CODPORT, "shared", "anims", "reference_tifhost.smd")
 

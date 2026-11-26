@@ -22,14 +22,12 @@ local Move = TIF.Move
 TIF.Morale = TIF.Morale or {}
 local MO = TIF.Morale
 
-local cvOn = CreateConVar("tif_morale", "1", FCVAR_ARCHIVE, "Soldiers get shaken, break and surrender (1/0)")
+local cvOn = CreateConVar("tif_morale", "1", FCVAR_ARCHIVE, "Soldiers get shaken and break (1/0)")
 
 MO.SHAKEN, MO.BROKEN, MO.RECOVER = 0.45, 0.2, 0.35
 
--- (2026-11-25, user: "remove like morale for now. it can come back later but i dont want it for release as its a
--- little buggy") Off for the release whatever tif_morale says: no shaken / broken / surrender, no morale withdrawals
--- or radio lines; the code stays. MO.OFF = false brings it back (and the settings checkbox, ui/cl_settings.lua).
-MO.OFF = true
+MO.OFF = false
+MO.SURRENDER = false
 function MO.Enabled() return not MO.OFF and cvOn:GetBool() end
 
 local function base_of(npc)
@@ -214,7 +212,7 @@ function MO.BrokenThink(npc, c, now)
 	f.want = false
 	local threat = c and c.pos
 	-- Surrender: an enemy close, and nobody near to help (or badly hurt).
-	if c and c.visible and npc:GetPos():DistToSqr(c.pos) < 500 * 500 then
+	if MO.SURRENDER and c and c.visible and npc:GetPos():DistToSqr(c.pos) < 500 * 500 then
 		local helpers = 0
 		for _, o in ipairs(TIF.Soldiers) do
 			if o ~= npc and IsValid(o) and not o.tifDead and not o.tifSurrendered and o:GetTIFFaction() == npc:GetTIFFaction()

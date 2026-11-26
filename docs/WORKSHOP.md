@@ -13,6 +13,7 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 [list]
 [*][b]Real cover.[/b] Corner cover (standing and crouched), low walls and chest-high walls. They run into it with directional arrivals, peek, lean out and fire with a proper aim blend, blindfire under heavy suppression, reload behind it, shuffle along walls, switch corners, and sometimes fight crouched from beside the cover before palming back in.
 [*][b]Suppression.[/b] Incoming fire pins them, rushes them into cover or flat on the ground.
+[*][b]Morale.[/b] Losing friends, getting hit and being outnumbered wears them down: shaken soldiers shoot worse and stop pushing, broken ones run and hide, and a squad that loses heart pulls back.
 [*][b]Grenades.[/b] Frags over cover at enemies they can't see, flashbangs into rooms, dodges and dives away from live grenades.
 [*][b]Weapons.[/b] 45 baked MW guns with MW sounds (fire, indoor / outdoor tails, reload foley), per-weapon reload and recoil animations, sidearm switching, LMG bipods prone and on ledges, magazines that actually leave the gun.
 [*][b]Close quarters.[/b] Rifle-butt strikes, and paired melee fights between soldiers who end up face to face.

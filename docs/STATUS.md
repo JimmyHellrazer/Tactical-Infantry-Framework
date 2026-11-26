@@ -955,6 +955,20 @@ Known limits:
 - Prone aim and prone flash reactions aren't wired (mwp_flash is built).
 - Arrivals use a linear blend to the node (Act `to`), not each clip's own curve.
 
+### 0.38.50: morale back on, surrender off (2026-11-25, NOT yet seen in game)
+User: "put it back but just disable surrenderring".
+- tactics/sv_morale.lua: MO.OFF = false (shaken / broken, morale withdrawals and radio lines are back; tif_morale works
+  again and its settings checkbox is restored). New MO.SURRENDER = false: BrokenThink skips the surrender roll, so a
+  broken soldier only runs and hides. MO.SURRENDER = true brings it back. Mission captives (TIF.API kneel) unaffected.
+- Harness: new morale.lua (7: broken, alone, hurt, enemy at 200 never surrenders across 50 rolls; holds fire; runs
+  away; the flag restores surrender). run.py now points at the repo's addon/. All suites pass.
+
+### Starter factions: horde zombies' infected male ragdoll (2026-11-25, NOT yet seen in game)
+- All 8 INS2 models (`models/tif_factions/ins2/*.phy`) now use horde_zombies' `hordez/citizens/male_02.phy` (the body 7
+  of the 10 infected males share; user: "a loose cod style phys i rlly like"). 19 solids, every bone present,
+  checksums restamped. `make_ins2.py` VB_PHY points at it, so rebuilds keep it. Old phys (rus_rebel male_02) backed
+  up in `K:\jimmyproject\_addon_backups\2026-11-25\ins2_phy_rusrebel`.
+
 ### 0.38.49: morale off for the release; prone soldiers no longer slide at walk / run speed (2026-11-25)
 
 User: "remove like morale for now. it can come back later but i dont want it for release as its a little buggy,

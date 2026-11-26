@@ -26,8 +26,7 @@ local SECTIONS = {
 		{ "slider", "tif_flash_friendly", "Friendly flashbangs on their own side (0 = no effect)", 0, 1, 2 },
 	} },
 	{ "Morale and casualties", {
-		-- (morale is off for the release: tactics/sv_morale.lua MO.OFF)
-		-- { "check", "tif_morale", "Morale (soldiers get shaken, break, surrender)" },
+		{ "check", "tif_morale", "Morale (soldiers get shaken and break)" },
 		{ "check", "tif_downed", "Wounded soldiers go down instead of dying" },
 		{ "slider", "tif_downed_chance", "Chance a killing hit downs instead", 0, 1, 2 },
 		{ "slider", "tif_bleedout", "Seconds until a downed soldier bleeds out", 10, 120, 0 },
