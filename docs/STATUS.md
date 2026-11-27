@@ -1505,6 +1505,24 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
 - To check in game: the 8v8 on Construct (fewer approach deaths, leapfrogging with covering fire), alone vs an
   Insurgent squad (they still charge), a survival wave (they still come).
 
+### 0.38.86: attack point (2026-11-27, NOT yet seen in game)
+- User: "add a simple attack point, you assign a faction to it, and said faction will rush it like an assault order,
+  give it like a little radio or model ... no collision so it doesnt interrupt fights. and said assaulters should know
+  enemies are located there and not be surprised by their presence with a spot animation" -> "remake it, that one's
+  bad" (tif_sandbox's tif_sb_point, left as it is).
+- New entities/tif_attack_point.lua (Spawn Menu > Entities > Tactical Infantry, admin): HL2 citizen radio, solid bbox
+  on COLLISION_GROUP_WORLD (players / soldiers pass through), Edit Properties: Active, Attacking faction (dropdown of
+  real factions), Radius (100-3000, ring + label shown with the physgun / toolgun out).
+- Every second: each AI-led squad of that faction (aliases count: militia -> insurgents) gets API.SquadAdvance(pos,
+  pace rush) once and is claimed (sq.tifAttack). An advance order is exempt from 0.38.85's careful-advance rules, so
+  they rush. When the leader is within 60% of the radius the squad gets one hold order on the point and fights there.
+  Skipped: player-led squads, static / garrisoned squads (tifBase), director / survival squads (tifHunter / tifPress),
+  squads claimed by another active point. Switching it off or removing it frees its squads (order free).
+- Every 3 s: hostile live combatants (soldiers, players, NPCs) within the radius become squad knowledge and a confirmed
+  contact on every assaulter (source "objective"), and the assaulters get tifExpectEnemy for 8 s. sv_passive_mw
+  OnAware returns early for them: no startle, no "new enemy close", no pointing out contacts on first sight.
+- Harness attackpoint 19 (new). All suites pass. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\sv_passive_mw.lua.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

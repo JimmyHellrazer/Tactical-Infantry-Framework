@@ -333,6 +333,11 @@ function P.OnAware(npc, old, new, now)
 		return
 	end
 
+	if (npc.tifExpectEnemy or 0) > now and new ~= AW.UNAWARE then
+		npc.tifPendingReact = nil
+		return
+	end
+
 	if npc.tifActivity then return end
 	if npc.tifPassiveBusy then return end
 
