@@ -1354,6 +1354,28 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   "Random hostile", then every faction with models / variants that isn't hidden, labelled "Name (id)" like the settings
   panel. Harness director 78 (+8). All suites pass.
 
+### 0.38.79: GTA-era dead branches and subclass entities removed (2026-11-27, NOT yet seen in game)
+- User: "just remove the dead branches, unused entities". Every soldier runs on the one ValveBiped host (mw_male:
+  HostFor always returns it, it's the only registered character, no other addon registers one), so these never ran:
+  - Host swapping: ENT:TIFSetHost, the Think block that swapped back after a GTA-only action, the Action.Play / Clip
+    fallback to the home host, the prone and MW22-react host checks.
+  - IsVB / tifHostId == tifHomeHost terms in 15 server checks (cover, hits, bipod, door, melee, passive, prone, search,
+    shield, transitions, traversal, run-and-gun, weapon draw, squad hand signals, corpse ragdoll). The checks keep their
+    clip-exists tests.
+  - TIF.VisualUsable / UsableVisuals / VisualCheck (sh_packs: the GTA bone-map test, always true on the VB host) and the
+    8 s map-load check; the faction model lists are used as they are. tif_devtools cl_visual_check / tif_visual_check
+    removed with it. The client still swaps in another faction model when one fails to create.
+  - cl_body: the st.vb flag and every non-VB path: GTA weapon sets (st.wset, A.WeaponSet, A.PitchPose, gtg_aim_pitch /
+    gtg_hold_gait poses), ub_targets' GTA half, flinch(), the GTA prone path (prone_enter / prone_exit / prone_update,
+    PRONE_SEQ), the bonemerged gun (make_gun's vb arg, measure_gun_offset, gunOff / gunGripInv), the host-change reset
+    in ensure_parts. cl_feet drops state.vb.
+- tif_soldier_militia / tif_soldier_pmc removed: "militia" / "pmc" are hidden aliases of insurgents / usmc and both
+  spawn paths fall back to tif_soldier with the faction set. Old saves / dupes with those classes paste as tif_soldier
+  (sv_save registers S.OLD_CLASSES and falls back when the class is gone).
+- 28 files, -571 / +109 lines. Backup of the whole lua folder and the devtools files:
+  K:\jimmyproject\_addon_backups\2026-11-27_deadcode. Harness animlod / trans checks for the removed paths updated;
+  all suites pass, every changed file parses.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

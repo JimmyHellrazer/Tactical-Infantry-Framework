@@ -27,7 +27,6 @@ local function free(npc)
 		end
 
 	if not (TIF.HitsMW and TIF.HitsMW.Use(npc)) then return false end
-	if npc.tifHostId ~= npc.tifHomeHost then return false end
 
 	local a = npc.tifAct
 

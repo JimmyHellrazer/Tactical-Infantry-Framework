@@ -368,13 +368,3 @@ function A.Speeds(hostId)
 		alert = L.alert and L.alert.walkSpeed or L.aim.walkSpeed,
 	}
 end
-
-local weaponCache = setmetatable({}, { __mode = "k" })
-
-function A.WeaponSet()
-	return nil
-end
-
-function A.PitchPose()
-	return 0
-end

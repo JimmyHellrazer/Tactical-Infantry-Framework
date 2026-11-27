@@ -3,7 +3,7 @@
 --   overlays:  tif_debug, tif_debug_cover, tif_debug_paths (sv_debug / cl_debug, cl_cqb, cl_base, cl_vehicle)
 --   soldiers:  tif_give, tif_reveal, tif_forget, tif_noise, tif_doors, tif_cover_scan, tif_suppress, tif_prone,
 --              tif_cover_test, tif_cover_course, tif_info, tif_aimwhy (sv_commands)
---   bodies:    tif_stickwhy, tif_stickwatch (cl_stick); tif_visual_check (cl_visual_check); tif_modular_debug (in
+--   bodies:    tif_stickwhy, tif_stickwatch (cl_stick); tif_modular_debug (in
 --              TIF's config/sh_modular.lua, registered only with this addon)
 --   deaths:    tif_deaths_recent, tif_death_ban, tif_death_unban (sv_deaths; the saved ban list is read by TIF itself)
 --   vehicles:  tif_vehicle, tif_mount, tif_drive, tif_vpatrol, tif_dismount, tif_convoy*, tif_roads
@@ -16,7 +16,7 @@ local FILES = {
 	"sv_bench.lua", "cl_bench.lua",
 	"cl_base.lua", "cl_cqb.lua",
 	"sv_vehicle_commands.lua", "cl_vehicle.lua",
-	"sv_heli.lua", "sv_deaths.lua", "sv_voice_test.lua", "cl_visual_check.lua",
+	"sv_heli.lua", "sv_deaths.lua", "sv_voice_test.lua",
 	"sv_mw_view.lua",
 }
 

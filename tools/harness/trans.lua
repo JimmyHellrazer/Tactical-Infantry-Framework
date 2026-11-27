@@ -147,8 +147,6 @@ a.tifAct = nil
 a.tifCov = {}
 check(not T.Turn(a, 90), "not in cover")
 a.tifCov = nil
-a.tifHostId = "gta"
-check(not T.Turn(a, 90), "not on the GTA body")
 
 -- Starts
 local b = soldier({ mode = 0, segs = { Vector(0, 300, 0) } })

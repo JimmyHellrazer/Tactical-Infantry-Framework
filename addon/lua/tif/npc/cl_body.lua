@@ -158,7 +158,7 @@ local function make_follower(parent, model, skin, bodygroups, vb)
 	return f
 end
 
-local function make_gun(ent, class, vb)
+local function make_gun(ent, class)
 	local stored = TIF.GTG.Stored(class)
 	local wm = stored and stored.WorldModel
 	if not wm or wm == "" then return nil end
@@ -171,11 +171,6 @@ local function make_gun(ent, class, vb)
 	end
 
 	g.tifHold = stored.TIFBaked and stored.TIFBaked.hold or nil
-	if vb or g.tifFree then return g end
-
-	g:SetParent(ent)
-	g:AddEffects(EF_BONEMERGE)
-	g:AddEffects(EF_BONEMERGE_FASTCULL)
 	return g
 end
 
@@ -209,28 +204,7 @@ local function ensure_parts(ent, st)
 	local byModel = TIFG and TIFG.ByModel and TIFG.ByModel[string.lower(ent:GetModel() or "")]
 	local hostId = byModel or (host and host.host) or G.DEFAULT_HOST
 
-	if st.hostId and st.hostId ~= hostId then
-		remove_parts(st)
-		st.vis, st.wclass, st.legs, st.wset, st.mwReload = nil, nil, nil, nil, nil
-		st.legW, st.ubW, st.legCycle, st.ubCycle = {}, {}, {}, {}
-		st.proneOn, st.vbSpine2, st.vbSpine4, st.spine, st.pitch = false, nil, nil, nil, 0
-		st.vbPelvis, st.vbSp0, st.vbSp1, st.eyeHead = nil, nil, nil, nil
-		st.lastB2P, st.lastB2Y, st.lastB4Y = nil, nil, nil
-
-		for i = 0, ent:GetBoneCount() - 1 do
-			ent:ManipulateBoneAngles(i, angle_zero)
-		end
-
-		if st.tiltOn then
-			ent:SetRenderAngles(nil)
-		end
-
-		st.tiltOn, st.tiltP, st.tiltR = false, 0, 0
-		Bd.Stats.hostSwaps = (Bd.Stats.hostSwaps or 0) + 1
-	end
-
 	st.hostId = hostId
-	st.vb = G.IsVB(hostId)
 	local vis = cvRetarget:GetBool() and ent:GetTIFVisual() or ""
 
 	if st.visFrom and st.visFrom ~= vis then
@@ -253,11 +227,11 @@ local function ensure_parts(ent, st)
 			st.vis = nil
 			st.visFails = (st.visFails or 0) + 1
 
-			if st.visFails >= 2 and not st.visAlt and host and TIF.UsableVisuals then
-				local list = TIF.UsableVisuals(host, host.models or {})
-				local alt = list[math.random(#list)]
+			if st.visFails >= 2 and not st.visAlt and host then
+				local list = host.models or {}
+				local alt = list[math.random(math.max(1, #list))]
 
-				if alt and alt ~= vis and TIF.VisualUsable(host.host, alt) then
+				if alt and alt ~= vis then
 					st.visFrom, st.visAlt = vis, alt
 					Bd.VisAlt = Bd.VisAlt or {}
 					Bd.VisAlt[vis] = alt
@@ -277,11 +251,10 @@ local function ensure_parts(ent, st)
 			st.follower:Remove()
 		end
 
-		local plain = st.vb and not (TIF.Modular and TIF.Modular.NeedsRetarget(vis))
+		local plain = not (TIF.Modular and TIF.Modular.NeedsRetarget(vis))
 		st.follower = vis ~= "" and make_follower(ent, vis, ent:GetTIFSkin(), ent:GetTIFBodygroups(), plain) or nil
 		st.vis = vis
 		st.look = nil
-		st.proneOn = false
 
 		ent:DrawShadow(not IsValid(st.follower))
 	end
@@ -302,22 +275,14 @@ local function ensure_parts(ent, st)
 			st.gun:Remove()
 		end
 
-		st.gun = class ~= "" and make_gun(ent, class, st.vb) or nil
+		st.gun = class ~= "" and make_gun(ent, class) or nil
 		st.wclass = class
 		st.gunDropped = nil
 
-		if st.vb then
-			st.wset = nil
-			st.wkind, st.mwReload, st.mwReloadCr, st.mwReloadTime, st.mwFire, st.mwFireCr = mw_weapon(st.hostId, class)
-			st.pistol = st.wkind == "pistol"
-		else
-			st.wkind, st.pistol, st.mwFire, st.mwFireCr, st.fireClip = nil, G.WeaponKind(class) == "pistol", nil, nil, nil
-			st.wset = A.WeaponSet(st.hostId, G.WeaponDef(class))
-		end
+		st.wkind, st.mwReload, st.mwReloadCr, st.mwReloadTime, st.mwFire, st.mwFireCr = mw_weapon(st.hostId, class)
+		st.pistol = st.wkind == "pistol"
 
 		st.muzzle = nil
-		st.gunOff, st.gunGripInv = nil, nil
-		st.proneOn = false
 	end
 
 	if not st.legs then
@@ -592,129 +557,65 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 end
 
 local function ub_targets(ent, st, mode, speed, now)
-	local W = st.wset
 	local T = clear_table(UB_TGT)
 
-	if st.vb then
-		local shot = ent:GetTIFShotTime()
-		local crouched = ent:GetTIFStance() == 1
+	local shot = ent:GetTIFShotTime()
+	local crouched = ent:GetTIFStance() == 1
 
-		if shot ~= st.lastShot then
-			st.lastShot, st.flashAt = shot, now
+	if shot ~= st.lastShot then
+		st.lastShot, st.flashAt = shot, now
 
-			local list = crouched and st.mwFireCr or st.mwFire
-			st.fireClip = list and list[math.random(#list)] or nil
-		end
-
-		local sw = ent:GetNW2String("tif_switch_clip", "")
-		if sw ~= "" and not st.fullBody then
-			local S = G.Clip(sw, st.hostId)
-			local u = S and (now - ent:GetNW2Float("tif_switch_t", 0)) / math.max(0.1, S.dur)
-
-			if S and u >= 0 and u < 1 then
-				st.ubCycle[S] = u
-				st.switchClip, st.switchU = S, u
-				add(T, S, 1)
-				return T, UB_RATE * 3
-			end
-		end
-
-		local rs = ent:GetTIFReloadStart()
-
-		local R = crouched and st.mwReloadCr or st.mwReload
-
-		if rs > 0 and R and not st.fullBody then
-			local u = (now - rs) / math.max(0.3, st.mwReloadTime or 2.2)
-			if u < 1 then
-				st.ubCycle[R] = math.Clamp(u, 0, 1)
-				st.magClip, st.magU, st.magKey = R, st.ubCycle[R], rs
-				add(T, R, 1)
-				return T, UB_RATE * 2
-			end
-		end
-
-		local F = st.fireClip
-		if F and not st.fullBody and st.flashAt then
-			local u = (now - st.flashAt) / math.max(0.05, F.dur)
-			if u < 1 then
-				st.ubCycle[F] = u
-				add(T, F, 1)
-				return T, UB_RATE * 4
-			end
-		end
-
-		if mode == 1 and not st.fullBody and not st.pistol and st.wkind ~= "rpg" and ent:GetNW2Bool("tif_lowready", false) then
-			local LR = (st.cqbMode and G.Clip("lowready_cqb", st.hostId)) or G.Clip("lowready", st.hostId)
-			if LR then
-				st.ubCycle[LR] = (st.idleT / LR.dur) % 1
-				add(T, LR, 1)
-				return T, UB_RATE * 1.2
-			end
-		end
-
-		return T, UB_RATE * 2
+		local list = crouched and st.mwFireCr or st.mwFire
+		st.fireClip = list and list[math.random(#list)] or nil
 	end
 
-	if st.ubAct then
-		st.ubCycle[st.ubAct] = st.ubActCycle
-		add(T, st.ubAct, 1)
-		return T, UB_RATE * 2
-	end
+	local sw = ent:GetNW2String("tif_switch_clip", "")
+	if sw ~= "" and not st.fullBody then
+		local S = G.Clip(sw, st.hostId)
+		local u = S and (now - ent:GetNW2Float("tif_switch_t", 0)) / math.max(0.1, S.dur)
 
-	if not W then return T, nil end
-
-	if st.fullBody then
-		local shot = ent:GetTIFShotTime()
-		if shot ~= st.lastShot then
-			st.lastShot, st.flashAt = shot, now
+		if S and u >= 0 and u < 1 then
+			st.ubCycle[S] = u
+			st.switchClip, st.switchU = S, u
+			add(T, S, 1)
+			return T, UB_RATE * 3
 		end
-
-		return T, UB_RATE * 1.5
 	end
 
 	local rs = ent:GetTIFReloadStart()
-	if rs > 0 and W.reload and now - rs < W.reload.dur then
-		st.ubCycle[W.reload] = math.Clamp((now - rs) / W.reload.dur, 0, 1)
-		add(T, W.reload, 1)
-		return T, UB_RATE * 2
+
+	local R = crouched and st.mwReloadCr or st.mwReload
+
+	if rs > 0 and R and not st.fullBody then
+		local u = (now - rs) / math.max(0.3, st.mwReloadTime or 2.2)
+		if u < 1 then
+			st.ubCycle[R] = math.Clamp(u, 0, 1)
+			st.magClip, st.magU, st.magKey = R, st.ubCycle[R], rs
+			add(T, R, 1)
+			return T, UB_RATE * 2
+		end
 	end
 
-	if mode == 1 then
-		local shot = ent:GetTIFShotTime()
-		if shot ~= st.lastShot then
-			if not st.lastShot or shot - st.lastShot > W.rate * 2.5 then
-				st.burstStart = shot
-			end
-
-			st.lastShot = shot
-			st.flashAt = now
+	local F = st.fireClip
+	if F and not st.fullBody and st.flashAt then
+		local u = (now - st.flashAt) / math.max(0.05, F.dur)
+		if u < 1 then
+			st.ubCycle[F] = u
+			add(T, F, 1)
+			return T, UB_RATE * 4
 		end
-
-		local since = st.lastShot and (now - st.lastShot) or 99
-		if W.fire and since < math.max(W.rate * 1.6, 0.12) then
-			st.ubCycle[W.fire] = ((now - (st.burstStart or now)) / W.fire.dur) % 1
-			add(T, W.fire, 1)
-			return T, FIRE_RATE
-		end
-
-		if W.settle and since < W.settle.dur then
-			st.ubCycle[W.settle] = math.Clamp(since / W.settle.dur, 0, 1)
-			add(T, W.settle, 1)
-			return T, UB_RATE
-		end
-
-		st.ubCycle[W.aim] = 0
-		add(T, W.aim, 1)
-		return T, UB_RATE
 	end
 
-	local legs = st.legs.relaxed
-	local moveK = math.Clamp(speed / (legs.walkSpeed * 0.6), 0, 1)
-	local rk = math.Clamp((speed - legs.walkSpeed) / math.max(1, legs.runSpeed - legs.walkSpeed), 0, 1)
-	add(T, W.holdIdle or W.aim, 1 - moveK)
-	add(T, W.holdWalk or W.holdIdle, moveK * (1 - rk))
-	add(T, W.holdRun or W.holdWalk, moveK * rk)
-	return T, UB_RATE
+	if mode == 1 and not st.fullBody and not st.pistol and st.wkind ~= "rpg" and ent:GetNW2Bool("tif_lowready", false) then
+		local LR = (st.cqbMode and G.Clip("lowready_cqb", st.hostId)) or G.Clip("lowready", st.hostId)
+		if LR then
+			st.ubCycle[LR] = (st.idleT / LR.dur) % 1
+			add(T, LR, 1)
+			return T, UB_RATE * 1.2
+		end
+	end
+
+	return T, UB_RATE * 2
 end
 
 local function write_slot(ent, slot, seq, cycle, w)
@@ -882,7 +783,7 @@ end
 Bd.KickPool = kick_pool
 
 local function recoil_kicks(ent, st, legs, now)
-	if not (st.vb and (legs.kicks or legs.whizby)) then return end
+	if not (legs.kicks or legs.whizby) then return end
 
 	local K = legs.kicks
 	st.kicks = st.kicks or {}
@@ -957,34 +858,6 @@ end
 
 local SCRATCH_ANG = Angle(0, 0, 0)
 local SCRATCH_ANG2 = Angle(0, 0, 0)
-
-local function flinch(ent, st, now)
-	local ht = ent:GetTIFHitTime()
-	if ht ~= st.hitTime then
-		st.hitTime = ht
-	end
-
-	local bone = st.spine
-	if bone == nil then
-		bone = ent:LookupBone("ValveBiped.Bip01_Spine2") or false
-		st.spine = bone
-	end
-
-	if not bone then return end
-
-	local k = ht > 0 and 1 - (now - ht) / FLINCH_TIME or 0
-	if k > 0 then
-		local d = ent:GetTIFHitDir()
-		local push = d:Dot(ent:GetForward())
-		local side = d:Dot(ent:GetRight())
-		SCRATCH_ANG.p, SCRATCH_ANG.y, SCRATCH_ANG.r = side * 9 * k, 0, push * -12 * k
-		ent:ManipulateBoneAngles(bone, SCRATCH_ANG)
-		st.flinching = true
-	elseif st.flinching then
-		ent:ManipulateBoneAngles(bone, angle_zero)
-		st.flinching = false
-	end
-end
 
 local cvTrim = CreateClientConVar("tif_aim_trim", "1.2", true, false, "MW19 body: degrees the aimed upper body is tipped down (gun level at ~1.2)")
 Bd.AIM_TRIM = 1.2
@@ -1165,24 +1038,24 @@ local function compose(ent, st, dt, now)
 	st.aim9 = actClip and actClip.aim9 or nil
 
 	local aware = ent:GetTIFAware()
-	st.cqbMode = st.vb and ent:GetNW2Bool("tif_cqb", false)
+	st.cqbMode = ent:GetNW2Bool("tif_cqb", false)
 
-	st.light = st.vb and ent:GetNW2Bool("tif_light", false)
-	st.wade = st.vb and ent:GetNW2Int("tif_wade", 0) or 0
-	local rgs = st.vb and ent:GetNW2String("tif_rungun", "") or ""
+	st.light = ent:GetNW2Bool("tif_light", false)
+	st.wade = ent:GetNW2Int("tif_wade", 0)
+	local rgs = ent:GetNW2String("tif_rungun", "")
 	st.runGun = rgs ~= "" and rgs or nil
 	st.handLight = false
-	st.alertPosture = st.vb and not st.cqbMode and (aware == 0 or aware == 1 or aware == 4)
+	st.alertPosture = not st.cqbMode and (aware == 0 or aware == 1 or aware == 4)
 
 	local mwxAct = string.match(actName, "^mwx_(%a+)_")
-	local slingAct = st.vb and ((mwxAct == "smoke" or mwxAct == "phone" or mwxAct == "water") or string.find(actName, "_grenade", 1, true) ~= nil
+	local slingAct = (mwxAct == "smoke" or mwxAct == "phone" or mwxAct == "water") or string.find(actName, "_grenade", 1, true) ~= nil
 		or string.sub(actName, 1, 4) == "mwg_" or string.sub(actName, 1, 10) == "mwls_help_" or string.sub(actName, 1, 5) == "mwbr_"
-		or (string.sub(actName, 1, 8) == "mws_sit_" and string.sub(actName, 1, 11) ~= "mws_sit_gun"))
+		or (string.sub(actName, 1, 8) == "mws_sit_" and string.sub(actName, 1, 11) ~= "mws_sit_gun")
 
 	local carried = IsValid(st.gun) and (st.gun.tifHold or st.gun.tifFree) and actClip ~= nil and Bd.ClipCarriesGun(actClip)
 	st.slung = (slingAct and not carried) or false
 
-	st.hideGun = st.vb and ent:GetNW2Bool("tif_dying", false)
+	st.hideGun = ent:GetNW2Bool("tif_dying", false)
 
 	if st.wasFullBody and not st.fullBody then
 		st.ubFastUntil = now + 0.4
@@ -1371,8 +1244,7 @@ local function compose(ent, st, dt, now)
 			mode = 1
 		end
 	else
-		local legMode = (st.slotsOk == false and st.wset) and 1 or mode
-		LT = leg_targets(st, legs, legMode, stance, speed, relAng)
+		LT = leg_targets(st, legs, mode, stance, speed, relAng)
 	end
 
 	st.loopStart = st.loopStart or {}
@@ -1572,23 +1444,13 @@ local function compose(ent, st, dt, now)
 
 	st.rikW = 0
 
-	if st.wset then
-		local want = mode == 1 and A.PitchPose(st.wset, ent:GetTIFAimPitch()) or 0
-		st.pitch = approach(st.pitch, want, 4, dt)
-		ent:SetPoseParameter("gtg_aim_pitch", st.pitch)
-	end
-
-	ent:SetPoseParameter("gtg_hold_gait", 0)
-
-	if st.vb then
-		local a9 = st.aim9
-		local yaw = a9 and math.Clamp(ent:GetNW2Float("tif_aim_yaw", 0), -a9.yaw, a9.yaw) or 0
-		local pitch = a9 and math.Clamp(ent:GetTIFAimPitch(), -a9.pitch, a9.pitch) or 0
-		st.a9y = approach(st.a9y or 0, yaw, 180, dt)
-		st.a9p = approach(st.a9p or 0, pitch, 180, dt)
-		ent:SetPoseParameter("mw_aim_yaw", st.a9y)
-		ent:SetPoseParameter("mw_aim_pitch", st.a9p)
-	end
+	local a9 = st.aim9
+	local yaw = a9 and math.Clamp(ent:GetNW2Float("tif_aim_yaw", 0), -a9.yaw, a9.yaw) or 0
+	local pitch = a9 and math.Clamp(ent:GetTIFAimPitch(), -a9.pitch, a9.pitch) or 0
+	st.a9y = approach(st.a9y or 0, yaw, 180, dt)
+	st.a9p = approach(st.a9p or 0, pitch, 180, dt)
+	ent:SetPoseParameter("mw_aim_yaw", st.a9y)
+	ent:SetPoseParameter("mw_aim_pitch", st.a9p)
 
 	Bd.Stats.composed = Bd.Stats.composed + 1
 end
@@ -1608,34 +1470,7 @@ local function attach(part, ent, force)
 	end
 end
 
-local PRONE_SEQ = { [1] = "pronedown_stand", [3] = "proneup_stand" }
-local PRONE_IDLE, PRONE_CRAWL = "prone_ar2", "prone_walktwohand"
 local R_HAND, PH_HAND = "ValveBiped.Bip01_R_Hand", "PH_R_Hand"
-
-local function measure_gun_offset(ent, st)
-	if st.gunOff or not IsValid(st.gun) or st.idleT < 0.5 then return end
-
-	local f = st.follower
-	local pb = ent:LookupBone(PH_HAND)
-	local pm = pb and ent:GetBoneMatrix(pb)
-	local hm
-
-	if IsValid(f) then
-		local fb = f:LookupBone(R_HAND)
-		hm = fb and f:GetBoneMatrix(fb)
-	else
-		local rb = ent:LookupBone(R_HAND)
-		hm = rb and ent:GetBoneMatrix(rb)
-	end
-
-	if not (hm and pm) then return end
-
-	local p, a = WorldToLocal(pm:GetTranslation(), pm:GetAngles(), hm:GetTranslation(), hm:GetAngles())
-
-	if p:Length() > 20 then return end
-
-	st.gunOff = { pos = p, ang = a }
-end
 
 local GRIP_IN = 3.2
 local gunInfo = {}
@@ -1852,111 +1687,6 @@ local function place_gun_vb(st, src)
 	g:InvalidateBoneCache()
 end
 
-local function prone_enter(ent, st)
-	if st.proneOn then return end
-
-	st.proneOn = true
-	local f, g = st.follower, st.gun
-
-	if IsValid(f) then
-		f:RemoveEffects(EF_BONEMERGE)
-		f:RemoveEffects(EF_BONEMERGE_FASTCULL)
-		local map = f.tifMap
-		f.tifSavedMap, f.tifMap = map, nil
-
-		for _, m in ipairs(map and map.MAN or {}) do
-			f:ManipulateBoneAngles(m.b, angle_zero)
-			f:ManipulateBonePosition(m.b, vector_origin)
-		end
-
-		f:SetParent(ent)
-		f:SetLocalPos(vector_origin)
-		f:SetLocalAngles(angle_zero)
-	end
-
-	if IsValid(g) then
-		g:RemoveEffects(EF_BONEMERGE)
-		g:SetParent(nil)
-
-		g:SetupBones()
-		local gb = g:LookupBone(PH_HAND) or g:LookupBone(R_HAND)
-		local gm = gb and g:GetBoneMatrix(gb)
-
-		if gm then
-			local lp, la = WorldToLocal(gm:GetTranslation(), gm:GetAngles(), g:GetPos(), g:GetAngles())
-			local ip, ia = WorldToLocal(vector_origin, angle_zero, lp, la)
-			st.gunGripInv = { pos = ip, ang = ia }
-		end
-	end
-end
-
-local function prone_exit(ent, st)
-	if not st.proneOn then return end
-
-	st.proneOn = false
-	local f = st.follower
-
-	if IsValid(f) then
-		f.tifMap = f.tifSavedMap
-
-		for _, m in ipairs(f.tifMap and f.tifMap.MAN or {}) do
-			f:ManipulateBoneAngles(m.b, m.angle)
-			f:ManipulateBonePosition(m.b, m.vector)
-		end
-
-		f:SetPoseParameter("body_pitch", 0)
-		f:SetPoseParameter("body_yaw", 0)
-		rest_pose(f)
-		f:InvalidateBoneCache()
-	end
-
-	attach(st.follower, ent, true)
-
-	if not st.vb and not (IsValid(st.gun) and st.gun.tifFree) then
-		attach(st.gun, ent, true)
-	end
-end
-
-local function prone_update(ent, st, phase, now)
-	local f = st.follower
-	if not IsValid(f) then return end
-
-	local t0 = ent:GetNW2Float("tif_prone_t", now)
-	local moving = st.vel and st.vel:Length2D() > 5
-	local name = PRONE_SEQ[phase] or (moving and PRONE_CRAWL or PRONE_IDLE)
-	local seq = f:LookupSequence(name)
-	if not seq or seq < 0 then return end
-
-	if f:GetSequence() ~= seq then
-		f:ResetSequence(seq)
-	end
-
-	local dur = math.max(0.05, f:SequenceDuration(seq))
-	local cyc = PRONE_SEQ[phase] and math.Clamp((now - t0) / dur, 0, 1) or ((st.idleT % dur) / dur)
-	f:SetCycle(cyc)
-	f:SetPlaybackRate(0)
-	f:SetPoseParameter("body_pitch", math.Clamp(-ent:GetTIFAimPitch(), -10, 50))
-	f:SetPoseParameter("body_yaw", 0)
-	f:InvalidateBoneCache()
-	local g = st.gun
-
-	if st.vb or (IsValid(g) and not (st.gunOff and st.gunGripInv)) then
-		f:SetupBones()
-		place_gun_vb(st, f)
-	elseif IsValid(g) and st.gunOff and st.gunGripInv then
-		f:SetupBones()
-		local hb = f:LookupBone(R_HAND)
-		local hm = hb and f:GetBoneMatrix(hb)
-
-		if hm then
-			local gp, ga = LocalToWorld(st.gunOff.pos, st.gunOff.ang, hm:GetTranslation(), hm:GetAngles())
-			local op, oa = LocalToWorld(st.gunGripInv.pos, st.gunGripInv.ang, gp, ga)
-			g:SetPos(op)
-			g:SetAngles(oa)
-		end
-	end
-end
-
 local TILT_MAX = 35
 local tiltStart, tiltEnd, tiltOut = Vector(), Vector(), {}
 local tiltTrace = { start = tiltStart, endpos = tiltEnd, mask = MASK_SOLID_BRUSHONLY, output = tiltOut }
@@ -2045,40 +1775,7 @@ local function update(ent, st, dt, now)
 	st.wasDormant = false
 	local prone = ent:GetNW2Int("tif_prone", 0)
 
-	st.vbProne = st.vb and prone > 0 and st.legs and st.legs.prone and prone or nil
-
-	if prone > 0 and not st.vbProne then
-		prone_enter(ent, st)
-		st.idleT = st.idleT + dt
-		local pos = ent:GetPos()
-		local vel = st.lastPos and (pos - st.lastPos) / math.max(dt, 0.001) or Vector()
-		st.lastPos = pos
-		st.vel = vel:LengthSqr() < 640000 and vel or Vector()
-		st.want0 = nil
-
-		if woke and IsValid(st.follower) then
-			st.follower:SetParent(nil)
-			st.follower:SetParent(ent)
-			st.follower:SetLocalPos(vector_origin)
-			st.follower:SetLocalAngles(angle_zero)
-		end
-
-		prone_update(ent, st, prone, now)
-
-		local pt = now - ent:GetNW2Float("tif_prone_t", now)
-		local w = prone == 2 and 1 or (prone == 1 and math.Clamp(pt / 1.4, 0, 1) or 1 - math.Clamp(pt / 1.6, 0, 1))
-		prone_tilt(ent, st, dt, now, w, st.follower)
-
-		if ent:GetTIFShotTime() ~= st.lastShot then
-			st.lastShot, st.flashAt = ent:GetTIFShotTime(), now
-		end
-
-		return
-	end
-
-	if st.proneOn then
-		prone_exit(ent, st)
-	end
+	st.vbProne = prone > 0 and st.legs and st.legs.prone and prone or nil
 
 	local f = st.follower
 	if IsValid(f) and f.tifRestSeq and now >= (st.restCheck or 0) then
@@ -2092,12 +1789,6 @@ local function update(ent, st, dt, now)
 	end
 
 	attach(st.follower, ent, woke)
-	local freeGun = IsValid(st.gun) and st.gun.tifFree
-
-	if not st.vb and not freeGun then
-		attach(st.gun, ent, woke)
-		measure_gun_offset(ent, st)
-	end
 
 	if woke then
 		st.lastPos, st.vel = nil, nil
@@ -2105,7 +1796,7 @@ local function update(ent, st, dt, now)
 	end
 
 	local L = Bd.LOD
-	local off = st.vb and L.on and not L.OnScreen(ent, st) and not ent:GetNW2Bool("tif_light", false)
+	local off = L.on and not L.OnScreen(ent, st) and not ent:GetNW2Bool("tif_light", false)
 
 	if off then
 		st.lodN = (st.lodN or 0) + 1
@@ -2130,7 +1821,7 @@ local function update(ent, st, dt, now)
 
 	Prof.Begin("cl_foley")
 
-	if st.vb and TIF.FoleyCL then
+	if TIF.FoleyCL then
 		TIF.FoleyCL.Update(ent, st, now)
 	end
 
@@ -2146,13 +1837,9 @@ local function update(ent, st, dt, now)
 		end
 	end
 
-	if st.vb then
-		vb_pose(ent, st, now, dt)
-	else
-		flinch(ent, st, now)
-	end
+	vb_pose(ent, st, now, dt)
 
-	if st.vb and (st.vbProne or st.tiltOn) then
+	if st.vbProne or st.tiltOn then
 		local w = 0
 		local PR = st.vbProne and st.legs and st.legs.prone
 
@@ -2182,12 +1869,7 @@ local function update(ent, st, dt, now)
 
 	Prof.Begin("cl_bones")
 
-	if not st.vb and freeGun and IsValid(st.follower) then
-		st.follower:SetupBones()
-		place_gun_vb(st, st.follower)
-	end
-
-	if st.vb and IsValid(st.gun) then
+	if IsValid(st.gun) then
 		st.gun:SetNoDraw(st.hideGun == true)
 
 		st.slingW = math.Approach(st.slingW or 0, st.slung and 1 or 0, dt * 3.5)
@@ -2216,7 +1898,7 @@ local function update(ent, st, dt, now)
 		end
 	end
 
-	if st.vb and TIF.Props then
+	if TIF.Props then
 		if not (IsValid(st.gun)) then
 			ent:SetupBones()
 		end
@@ -2491,7 +2173,7 @@ timer.Create("tif_body_rags", 0.25, 0, function()
 	end
 end)
 
-for _, class in ipairs({ "tif_soldier", "tif_soldier_militia", "tif_soldier_pmc" }) do
+for _, class in ipairs({ "tif_soldier" }) do
 	killicon.AddAlias(class, "weapon_ar2")
 end
 

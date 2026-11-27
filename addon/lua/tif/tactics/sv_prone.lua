@@ -37,7 +37,7 @@ end
 
 local function mw_durs(npc)
 	local id = npc.tifHomeHost
-	if not (id and TIF.GTG.IsVB(id)) then return nil end
+	if not id then return nil end
 
 	local d, u = TIF.GTG.Clip("mwp_down", id), TIF.GTG.Clip("mwp_up", id)
 	if not (d and u) then return nil end
@@ -77,7 +77,7 @@ local diveHull = { mins = DIVE_MIN, maxs = DIVE_MAX, mask = MASK_NPCSOLID, outpu
 
 local function dive(npc)
 	local id = npc.tifHomeHost
-	if not (id and TIF.GTG.IsVB(id)) then return nil end
+	if not id then return nil end
 
 	local v = npc.loco:GetVelocity()
 	v.z = 0
@@ -144,10 +144,6 @@ function P.GoDown(npc, reason)
 
 	if TIF.CoverBehave.In(npc) then
 		TIF.CoverBehave.Leave(npc, "going prone")
-	end
-
-	if mw_durs(npc) and npc.tifHostId ~= npc.tifHomeHost and npc.TIFSetHost then
-		npc:TIFSetHost(npc.tifHomeHost)
 	end
 
 	local d = durations_of(npc)

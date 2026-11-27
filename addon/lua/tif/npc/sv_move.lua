@@ -312,7 +312,7 @@ M.SPRINT_RAMP = 1.5
 local RG_DIRS = { { "f", 0 }, { "l", 90 }, { "r", -90 }, { "bl", 135 }, { "br", -135 } }
 function M.RunGunDir(npc)
 	local host = npc.tifHomeHost
-	if not (host and TIF.GTG.IsVB(host) and TIF.GTG.Clip("mwrg_f", host)) then
+	if not (host and TIF.GTG.Clip("mwrg_f", host)) then
 		return ""
 	end
 

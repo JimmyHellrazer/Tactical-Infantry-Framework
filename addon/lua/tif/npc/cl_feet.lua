@@ -219,7 +219,7 @@ function Feet.Prepare(ent, state, now, dt)
 	local speed = state.speed2d or 0
 	local range = cvRange:GetFloat()
 	local near = ent:GetPos():DistToSqr(EyePos()) < range * range
-	local allowed = near and state.vb and not state.vbProne and is_action_allowed(state.actName) and frameUsed < cvMax:GetInt()
+	local allowed = near and not state.vbProne and is_action_allowed(state.actName) and frameUsed < cvMax:GetInt()
 	local wantFoot = (allowed and cvIK:GetBool()) and math.Clamp(1 - (speed - Feet.SPEED_FULL) / (Feet.SPEED_OFF - Feet.SPEED_FULL), 0, 1) or 0
 	state.footW = math.Approach(state.footW or 0, wantFoot, dt * 6)
 	local yaw = ent:GetAngles().y

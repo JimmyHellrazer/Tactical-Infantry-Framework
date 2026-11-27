@@ -33,7 +33,7 @@ end
 
 function MW.Use(npc)
 	local home = npc.tifHomeHost
-	if not home or not TIF.GTG.IsVB(home) then return false end
+	if not home then return false end
 
 	if npc.tifMwCover == nil then
 		npc.tifMwCover = clip_on_body(npc, "mwc_ls_hide") ~= nil

@@ -30,8 +30,7 @@ local function lmg(npc)
 end
 
 function B.Use(npc)
-	return npc.tifHomeHost ~= nil and npc.tifHostId == npc.tifHomeHost and TIF.GTG.IsVB(npc.tifHostId)
-		and lmg(npc) and TIF.GTG.Clip("mwb_stand_aim", npc.tifHomeHost) ~= nil
+	return npc.tifHomeHost ~= nil and lmg(npc) and TIF.GTG.Clip("mwb_stand_aim", npc.tifHomeHost) ~= nil
 end
 
 function B.Set(npc, now)

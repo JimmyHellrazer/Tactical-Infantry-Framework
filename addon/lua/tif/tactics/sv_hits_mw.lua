@@ -85,7 +85,7 @@ end
 H.Pools = pools
 
 function H.Use(npc)
-	return npc.tifHostId and TIF.GTG.IsVB(npc.tifHostId) or false
+	return npc.tifHostId ~= nil
 end
 
 local REGION = { [HITGROUP_HEAD or 1] = "head", [HITGROUP_LEFTLEG or 6] = "legs", [HITGROUP_RIGHTLEG or 7] = "legs" }

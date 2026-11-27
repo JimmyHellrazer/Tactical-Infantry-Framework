@@ -312,24 +312,6 @@ function ENT:TIFPickMainSequences(host)
 	}
 end
 
-function ENT:TIFSetHost(id)
-	if not id or id == self.tifHostId then return end
-
-	local model = TIF.GTG.HostModel(id)
-	if not model then return end
-
-	self:SetModel(model)
-	self.tifHostId = id
-	self:SetNW2String("tif_host", id)
-	local idleClip = TIF.GTG.Clip("idle", id)
-	local idle = self:LookupSequence(idleClip and idleClip.seq or "") or 0
-	self.tifIdleSeq = idle >= 0 and idle or 0
-	self:TIFPickMainSequences(id)
-	self:TIFRefreshSlots(true)
-	self:TIFApplyStance()
-	TIF.Prof.Count("host_swaps", 1)
-end
-
 local SLIM_MIN, SLIM_MAX, SLIM_CROUCH = Vector(-7, -7, 0), Vector(7, 7, 72), Vector(7, 7, 46)
 
 function ENT:TIFApplyStance()
@@ -453,19 +435,6 @@ function ENT:Think()
 	if not self.tifDead and not TIF.AIDisabled() then
 		TIF.Prof.Begin("tick")
 		TIF.Action.Tick(self, now)
-
-		if self.tifHostId ~= self.tifHomeHost then
-			if self.tifAct or self.tifVeh or self.tifBoard then
-				self.tifNoActSince = nil
-			else
-				self.tifNoActSince = self.tifNoActSince or now
-
-				if now - self.tifNoActSince > 0.6 then
-					self.tifNoActSince = nil
-					self:TIFSetHost(self.tifHomeHost)
-				end
-			end
-		end
 
 		TIF.Move.Face(self, dt)
 		local face = self.tifFace or self.tifAimAt
@@ -741,10 +710,9 @@ function ENT:TIFMakeCorpse(hit, boneVel)
 	if not IsValid(rag) then return end
 
 	local vis = self:GetTIFVisual()
-	local vbHost = TIF.GTG.IsVB(self.tifHostId)
-	local own = vbHost and vis ~= "" and util.IsValidRagdoll(vis)
+	local own = vis ~= "" and util.IsValidRagdoll(vis)
 
-	local stand = vbHost and not own and fallback_ragdoll() or nil
+	local stand = not own and fallback_ragdoll() or nil
 	if stand and not warnedNoRag[vis] then
 		warnedNoRag[vis] = true
 		TIF.Warn("Faction model has no ragdoll physics, its corpses use a stand-in ragdoll: ", tostring(vis))

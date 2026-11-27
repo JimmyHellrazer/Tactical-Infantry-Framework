@@ -53,7 +53,7 @@ function D.Check(npc, m, now)
 	if now < (npc.tifNextDoorCheck or 0) then return false end
 
 	local host = npc.tifHomeHost
-	local canClip = not npc.tifAct and not npc.tifProne and host and npc.tifHostId == host and TIF.GTG.IsVB(host)
+	local canClip = not npc.tifAct and not npc.tifProne and host
 		and npc:GetTIFStance() ~= TIF.Anim.STANCE_CROUCH
 	npc.tifNextDoorCheck = now + D.CHECK_EVERY
 	local v = npc.loco:GetVelocity()

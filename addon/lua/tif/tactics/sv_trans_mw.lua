@@ -119,7 +119,7 @@ end
 T.Sets = sets
 
 function T.Use(npc)
-	return npc.tifHomeHost ~= nil and npc.tifHostId == npc.tifHomeHost and TIF.GTG.IsVB(npc.tifHostId)
+	return npc.tifHomeHost ~= nil
 end
 
 local function pistol(npc)

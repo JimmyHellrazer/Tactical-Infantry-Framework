@@ -31,7 +31,7 @@ end
 
 function P.Use(npc)
 	local home = npc.tifHomeHost
-	if not home or not TIF.GTG.IsVB(home) then return false end
+	if not home then return false end
 
 	if npc.tifMwPassive == nil then
 		npc.tifMwPassive = has(npc, "mwa_idle")

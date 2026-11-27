@@ -114,7 +114,7 @@ end
 local function captor_ok(npc, variant)
 	local v = SH.VARIANTS[variant or "mw19"]
 	return IsValid(npc) and npc.TIFSoldier and not npc.tifDead and not npc.tifDying and npc.tifHomeHost
-		and TIF.GTG.IsVB(npc.tifHomeHost) and v ~= nil and Act.Clip(npc, v.phases[v.held].att) ~= nil
+		and v ~= nil and Act.Clip(npc, v.phases[v.held].att) ~= nil
 end
 
 local function free(npc)

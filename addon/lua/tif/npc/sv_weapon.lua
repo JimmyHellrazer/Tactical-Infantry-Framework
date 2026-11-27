@@ -136,7 +136,7 @@ function W.Switch(npc, slot, now, opts)
 		drop = opts and opts.drop or nil }
 
 	local home = npc.tifHomeHost
-	if home and npc.tifHostId == home and TIF.GTG.IsVB(home) then
+	if home then
 		local base = slot == "secondary" and "mw_draw_pistol" or "mw_draw_rifle"
 		local name = base .. (npc.tifStance == 1 and "_cr" or "")
 		local c

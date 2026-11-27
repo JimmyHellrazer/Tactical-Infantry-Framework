@@ -77,6 +77,10 @@ function S.Create(ply, data)
 		return
 	end
 	local ent = ents.Create(data.Class or "tif_soldier")
+	if not IsValid(ent) then
+		ent = ents.Create("tif_soldier")
+	end
+
 	if not IsValid(ent) then return end
 	ent.tifSpawnFaction = fac
 	ent.tifArchId = rec.arch
@@ -104,7 +108,6 @@ end
 function S.ApplyLook(ent, rec)
 	if not (isstring(rec.vis) and rec.vis ~= "" and util.IsValidModel(rec.vis)) then return end
 	local fac = TIF.Factions[ent:GetTIFFaction()]
-	if TIF.VisualUsable and ent.tifHomeHost and not TIF.VisualUsable(ent.tifHomeHost, rec.vis) then return end
 	if fac and fac.models and not fac.modular then
 		local known = false
 		for _, m in ipairs(fac.models) do
@@ -173,8 +176,15 @@ function S.Register(class)
 	duplicator.RegisterEntityClass(class, S.Create, "Data")
 end
 
+S.OLD_CLASSES = { "tif_soldier_militia", "tif_soldier_pmc" }
+
 function S.RegisterAll()
 	S.Register("tif_soldier")
+
+	for _, class in ipairs(S.OLD_CLASSES) do
+		S.Register(class)
+	end
+
 	for class, t in pairs(scripted_ents.GetList()) do
 		local tt = t.t or t
 		if class ~= "tif_soldier" and (tt.Base == "tif_soldier" or tt.TIFSoldier) then S.Register(class) end

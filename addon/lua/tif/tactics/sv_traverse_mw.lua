@@ -27,8 +27,7 @@ local function trace(a, b, skip)
 end
 
 function T.Use(npc)
-	return npc.tifHomeHost ~= nil and npc.tifHostId == npc.tifHomeHost and TIF.GTG.IsVB(npc.tifHostId)
-		and TIF.GTG.Clip("mwtr_mantle_sm", npc.tifHomeHost) ~= nil
+	return npc.tifHomeHost ~= nil and TIF.GTG.Clip("mwtr_mantle_sm", npc.tifHomeHost) ~= nil
 end
 
 local function tag_u(c, name)

@@ -32,20 +32,13 @@ local function host_of(npc)
 end
 
 function Action.Clip(npc, name)
-	return GTG.Clip(name, host_of(npc)) or (npc.tifHomeHost and GTG.Clip(name, npc.tifHomeHost))
+	return GTG.Clip(name, host_of(npc))
 end
 
 function Action.Play(npc, name, opts)
 	if npc.tifActLock and not (opts and opts.lockOK) then return nil end
 
 	local clip = GTG.Clip(name, host_of(npc))
-	if not clip and npc.tifHomeHost and npc.tifHomeHost ~= host_of(npc) then
-		clip = GTG.Clip(name, npc.tifHomeHost)
-
-		if clip and npc.TIFSetHost then
-			npc:TIFSetHost(npc.tifHomeHost)
-		end
-	end
 
 	if not clip then
 		TIF.Warn("Action clip missing: ", tostring(name))

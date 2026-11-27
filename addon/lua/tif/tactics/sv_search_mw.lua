@@ -20,8 +20,7 @@ local function trace(a, b, skip)
 end
 
 function S.Use(npc)
-	return npc.tifHomeHost ~= nil and npc.tifHostId == npc.tifHomeHost and TIF.GTG.IsVB(npc.tifHostId)
-		and TIF.GTG.Clip("mwl_around_loop", npc.tifHomeHost) ~= nil
+	return npc.tifHomeHost ~= nil and TIF.GTG.Clip("mwl_around_loop", npc.tifHomeHost) ~= nil
 end
 
 local function has(npc, kind)

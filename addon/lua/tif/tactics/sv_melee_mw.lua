@@ -32,7 +32,7 @@ local cvFights = cvar("tif_melee_fights", "1", "MW19 soldiers wrestle enemy sold
 
 local function body_ok(npc)
 	return IsValid(npc) and npc.TIFSoldier and not npc.tifDead and not npc.tifDying and npc.tifHomeHost
-		and TIF.GTG.IsVB(npc.tifHomeHost) and Act.Clip(npc, "mwm_melee_1") ~= nil
+		and Act.Clip(npc, "mwm_melee_1") ~= nil
 end
 
 local function free(npc, anyStance)

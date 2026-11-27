@@ -204,7 +204,7 @@ function SQ.Signal(sq, kind)
 		return
 	end
 
-	if not (L.tifHomeHost and TIF.GTG.IsVB(L.tifHomeHost)) or math.random() > SQ.SIGNAL_CHANCE then
+	if not L.tifHomeHost or math.random() > SQ.SIGNAL_CHANCE then
 		return
 	end
 

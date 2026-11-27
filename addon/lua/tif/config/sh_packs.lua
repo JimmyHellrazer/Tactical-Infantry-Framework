@@ -96,88 +96,6 @@ function TIF.CamoChoices(id)
 	return out
 end
 
-local usable, usableRetry, warnedModel = {}, {}, {}
-function TIF.VisualUsable(hostId, model)
-	local G = TIF.GTG
-	if not (G and G.MapFor and G.HostModel) then return true end
-
-	if G.IsVB and G.IsVB(hostId) then return true end
-
-	local host = G.HostModel(hostId or G.DEFAULT_HOST)
-	if not host then return true end
-
-	local key = host .. "|" .. string.lower(model)
-	local v = usable[key]
-
-	if v == false and CurTime() >= (usableRetry[key] or 0) then
-		v = nil
-	end
-
-	if v == nil then
-		v = G.MapFor(host, model) ~= nil
-		usable[key] = v
-
-		if not v then
-			usableRetry[key] = CurTime() + 60
-		end
-	end
-
-	if v then return true end
-
-	local why = G.Skeleton and not G.Skeleton(model) and "its skeleton couldn't be read (missing file or not a ValveBiped skeleton)"
-		or "its bones don't match the GTA body"
-	return false, why
-end
-
-local function usable_of(def, list)
-	local out = {}
-	for _, m in ipairs(list) do
-		local ok, why = TIF.VisualUsable(def.host, m)
-		if ok then
-			out[#out + 1] = m
-		elseif not warnedModel[m] then
-			warnedModel[m] = true
-			TIF.Warn("Faction ", tostring(def.id or def.name), ": model ", m, " isn't used: ", why)
-		end
-	end
-
-	return #out > 0 and out or list
-end
-
-TIF.UsableVisuals = usable_of
-
-local function check_all(print_ok)
-	local bad = 0
-	for id, def in SortedPairs(TIF.Factions or {}) do
-		for _, m in ipairs(def.models or {}) do
-			local ok, why = TIF.VisualUsable(def.host, m)
-			if not ok then
-				bad = bad + 1
-				MsgC(Color(255, 160, 80), "[TIF] ", id, ": ", m, ": ", why, "\n")
-			end
-		end
-	end
-
-	if bad == 0 and print_ok then
-		MsgN("[TIF] Every faction model can dress the soldier body.")
-	end
-
-	return bad
-end
-
-if SERVER then
-	hook.Add("InitPostEntity", "tif_visual_check", function()
-		timer.Simple(8, function()
-			local n = check_all(false)
-			if n > 0 then
-				TIF.Warn(n, " faction model(s) can't dress the soldier body; soldiers get the faction's other models instead")
-			end
-		end)
-	end)
-end
-
-TIF.VisualCheck = check_all
-
 TIF.VARIETY_WINDOW = 8
 TIF.VarietyBags = TIF.VarietyBags or {}
 
@@ -220,7 +138,7 @@ end
 function TIF.PickVisual(def, ent)
 	local vars = def.variants
 	if not (istable(vars) and #vars > 0) then
-		local list = usable_of(def, def.models)
+		local list = def.models
 		return TIF.VarietyPick(def.id, "model", list) or list[math.random(#list)]
 	end
 
@@ -244,7 +162,7 @@ function TIF.PickVisual(def, ent)
 		end
 	end
 
-	local models = usable_of(def, v and v.models or def.models)
+	local models = v and v.models or def.models
 	if IsValid(ent) then
 		ent.tifVariantId = v and v.id or nil
 	end
