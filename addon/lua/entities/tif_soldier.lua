@@ -566,6 +566,10 @@ function ENT:OnInjured(dmg)
 	end
 end
 
+function ENT:OnEntityCopyTableFinish(data)
+	TIF.Save.Strip(self, data)
+end
+
 local CLIP_DEATH_HOLD = 0.2
 function ENT:OnKilled(dmg)
 	if self.tifDead then return end

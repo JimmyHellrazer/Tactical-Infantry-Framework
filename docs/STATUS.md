@@ -1185,6 +1185,59 @@ parts 11, slots + pose 12 ms/s; arm IK 53 us a solve (was 74-99).
   in the squad's wedge slots (TIF.Squad.SlotOffset, TIF.FORMATION_SPACING 90) behind him on the far side, navmesh-snapped
   and room-checked, all facing the player with one shared yaw. tif_spawn_squad defaults to it (face "me"; "away" /
   "random" keep the old scatter) and its hold order faces the player too. Harness spawnform 9 (new).
+
+### 0.38.67: soldier director and survival director (2026-11-26, NOT yet seen in game)
+User: "copy its director and survival director for our mod, just a rlly simple like thing to dynamically spawn
+soldiers ... replicate how left 4 deads zombies work but for soldiers (after fighting in an area the ... next area can be
+chill) ... survival ones are self explanatory. but make sure they rlly come for ya". Ported from Horde Zombies'
+hz_director / hz_survival onto TIF squads. New tif/director/sv_director.lua (TIF.Director) plus two admin spawnables
+under Tactical Infantry, settings in the context-menu Edit Properties:
+- Shared: spawns are navmesh area centres in a distance window from the nearest player, out of every player's sight
+  (within ~0.6 x min distance counts as seen; otherwise a 0.25 view cone with a clear line), preferring the player's
+  movement heading. Squads spawn in TIF.FormationPoints facing the player, role mix leader / rifleman / assault /
+  support / marksman / rpg. Faction "auto" = the insurgents (else the first faction) hostile to the player's faction;
+  "random" or any faction id works too.
+- Intensity (L4D's stress): + damage soldiers do to players, + 8 per soldier a player kills, + 3 a second per engaged
+  soldier within 700; x 0.93 - 1 each second.
+- Hunting ("rlly come for ya"): every 3 s each hunting squad is given the nearest player as a confirmed contact on every
+  member (like a callout, P.Contact + Stimulus) plus squad knowledge, and an advance order on him at the rush pace (run
+  until ~700 out, then the aimed walk). Re-routed only when he has moved 250+ and the squad hasn't been in contact for 4 s,
+  so fights aren't interrupted.
+- Recycling: soldiers far past the spawn window (not engaged) and hunters with no progress for 25 s are removed when
+  out of sight (in survival they go back into the wave).
+- tif_director (Soldier Director): buildup keeps up to N ambient squads ahead of the players (60% get a patrol route) and
+  sends 1..N assault squads that hunt every 60-120 s; intensity >= peak (120) -> peak, no spawns; below relax (25) ->
+  relax for 40 s, no spawns; then buildup again but calm: the next ambient squads stand guard (no patrols) until the next
+  assault. Max alive 24. Removing it or unticking Active removes its soldiers.
+- tif_survival (Soldier Survival): 10 s lead-in, then waves of hunting squads: wave n = start size x (1 + growth%)^(n-1)
+  (6, +25%), up to max alive at once, squads from different spots; a cleared wave starts the break (25 s). HUD top right:
+  WAVE n, run clock, next-wave timer. All players dead for 6 s resets the run.
+- Harness director 48 (new). The bladew0rks formatting pass had left 15 suites failing on exact-text checks (code
+  split over lines, comments removed, Act -> Action): run.py now retries a failed plain find on source text with
+  whitespace collapsed (_ws.lua; `--strict` skips it), and recoil / vehclass / trans / hl2npc / hips checks updated to the
+  new code. All suites pass.
+
+### 0.38.68: soldiers survive saves (2026-11-26, NOT yet seen in game)
+User: "do they respond well to being saved ... any spawned soldiers". They didn't: GMod's save (gmsave -> duplicator)
+merges a SENT's whole Lua table into the save (contacts, squad, action, cover, path) and JSONs it, then on load
+spawns a fresh soldier (new look rolled) and pastes that stale table and the network vars (stance, awareness) back over
+it: lost squads, dead references, odd states. Same path for the Duplicator tool / AdvDupe.
+- New core/sv_save.lua (TIF.Save). tif_soldier:OnEntityCopyTableFinish -> S.Strip: drops the live table, DT,
+  host bodygroups / skin / flex / bone manips; keeps position, class, physics; adds a plain record (TIFSave):
+  faction, role, look (visual, parts, skin, bodygroups), health / max, primary / secondary / launcher + rockets left,
+  post + yaw, squad id, leader flag, player-led flag, squad order (free / hold / follow / regroup / advance / patrol
+  with pos, yaw, pace, route).
+- Dead, dying, downed, surrendered / captive and seated (tifVeh) soldiers are saved as skip records and not pasted.
+- duplicator.RegisterEntityClass for tif_soldier and every SENT based on it (at InitPostEntity / OnReloaded): S.Create
+  spawns him clean with the saved role / guns, then puts the saved look back (only if the model is valid, usable on the
+  host and still one of the faction's models; modular factions keep their assembled model), health, rockets, post.
+  0.3 s after the paste, S.Rebuild re-forms squads by saved id with the same leader and order (patrols keep their
+  route); squads that followed a player join the loading player's squad and follow him. Soldiers saved without a squad
+  auto-join as usual. Faction pack gone: skipped with a warning.
+- Saves made before this load as fresh soldiers of the same faction and role (the stale table is ignored).
+- Not kept: the fight itself (contacts, awareness, cover, reloads, actions), which starts over.
+- Harness savegame 53 (new). All suites pass.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

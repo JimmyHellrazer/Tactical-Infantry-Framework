@@ -1,5 +1,5 @@
 TIF = TIF or {}
-TIF.Version = "0.38.66"
+TIF.Version = "0.38.68"
 TIF.Root = "tif/"
 
 TIF.Dev = file.Exists("tif_dev/sh_init.lua", "LUA")
@@ -41,6 +41,7 @@ local MANIFEST = {
 	"core/sv_precache.lua",
 
 	"core/sv_spawn.lua",
+	"core/sv_save.lua",
 
 	"npc/sh_anim.lua",
 	"npc/sv_perception.lua",
@@ -108,6 +109,7 @@ local MANIFEST = {
 	"vehicle/sv_dvroads.lua",
 
 	"api/sv_api.lua",
+	"director/sv_director.lua",
 
 	"air/sh_air.lua",
 	"air/sv_air.lua",
