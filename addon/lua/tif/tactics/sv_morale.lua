@@ -54,6 +54,10 @@ end
 function MO.Add(npc, amount)
 	if not IsValid(npc) or not npc.tifMorale or npc.tifDead then return end
 
+	if amount < 0 and npc.tifMoraleScale then
+		amount = amount * npc.tifMoraleScale
+	end
+
 	npc.tifMorale = math.Clamp(npc.tifMorale + amount, 0, 1)
 end
 
@@ -121,9 +125,10 @@ local function drift(npc, now)
 	local supp = npc.tifSupp or 0
 	local resist = npc.tifArch.suppressResist or 0.3
 	local m = npc.tifMorale
+	local loss = npc.tifMoraleScale or 1
 
 	if supp > 0.4 then
-		m = m - (supp - 0.4) * 0.06 * (1 - resist)
+		m = m - (supp - 0.4) * 0.06 * (1 - resist) * loss
 	end
 
 	local sq = npc.tifSquad
@@ -137,7 +142,7 @@ local function drift(npc, now)
 
 		local mine = #TIF.Squad.Members(sq)
 		if enemies > mine * 1.5 then
-			m = m - 0.012
+			m = m - 0.012 * loss
 		end
 	end
 

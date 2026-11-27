@@ -292,6 +292,10 @@ function P.Primary(npc, now)
 				score = score + 150
 			end
 
+			if npc.tifPreferPlayers and IsValid(e) and e:IsPlayer() then
+				score = score + npc.tifPreferPlayers
+			end
+
 			if not bestScore or score > bestScore then
 				best, bestScore = c, score
 			end

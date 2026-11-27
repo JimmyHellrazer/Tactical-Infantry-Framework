@@ -1,5 +1,5 @@
 TIF = TIF or {}
-TIF.Version = "0.38.68"
+TIF.Version = "0.38.69"
 TIF.Root = "tif/"
 
 TIF.Dev = file.Exists("tif_dev/sh_init.lua", "LUA")

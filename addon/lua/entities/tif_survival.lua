@@ -12,6 +12,7 @@ ENT.RenderGroup = RENDERGROUP_BOTH
 function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "Active", { KeyName = "active", Edit = { type = "Boolean", order = 1 } })
 	self:NetworkVar("Bool", 1, "ShowHUD", { KeyName = "showhud", Edit = { type = "Boolean", order = 2 } })
+	self:NetworkVar("Bool", 2, "Onslaught", { KeyName = "onslaught", Edit = { type = "Boolean", order = 3 } })
 	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Generic", order = 3 } })
 	self:NetworkVar("Int", 0, "StartSize", { KeyName = "startsize", Edit = { type = "Int", min = 1, max = 60, order = 4 } })
 	self:NetworkVar("Int", 1, "Growth", { KeyName = "growth", Edit = { type = "Int", min = 0, max = 100, order = 5 } })
@@ -22,12 +23,14 @@ function ENT:SetupDataTables()
 	self:NetworkVar("Int", 6, "SpawnMin", { KeyName = "spawnmin", Edit = { type = "Int", min = 300, max = 6000, order = 10 } })
 	self:NetworkVar("Int", 7, "SpawnMax", { KeyName = "spawnmax", Edit = { type = "Int", min = 600, max = 10000, order = 11 } })
 	self:NetworkVar("Int", 8, "Wave")
+	self:NetworkVar("Int", 9, "Heat")
 	self:NetworkVar("Float", 0, "RunStart")
 	self:NetworkVar("Float", 1, "BreakEnd")
 
 	if SERVER then
 		self:SetActive(true)
 		self:SetShowHUD(true)
+		self:SetOnslaught(false)
 		self:SetFaction("auto")
 		self:SetStartSize(6)
 		self:SetGrowth(25)
@@ -68,11 +71,11 @@ if CLIENT then
 		local dir = current
 		if not IsValid(dir) or not dir:GetShowHUD() or dir:GetRunStart() <= 0 then return end
 		local x, y = ScrW() - 24, 20
-		draw.SimpleTextOutlined("WAVE " .. math.max(dir:GetWave(), 1), "tif_surv_big", x, y, Color(230, 60, 40),
-			TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 2, color_black)
+		local title = dir:GetOnslaught() and ("ONSLAUGHT " .. math.max(dir:GetHeat(), 1)) or ("WAVE " .. math.max(dir:GetWave(), 1))
+		draw.SimpleTextOutlined(title, "tif_surv_big", x, y, Color(230, 60, 40), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 2, color_black)
 		draw.SimpleTextOutlined(clock(now - dir:GetRunStart()), "tif_surv_small", x, y + 38, Color(235, 235, 235),
 			TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 2, color_black)
-		if dir:GetBreakEnd() > now then
+		if not dir:GetOnslaught() and dir:GetBreakEnd() > now then
 			draw.SimpleTextOutlined("next wave " .. clock(dir:GetBreakEnd() - now + 0.99), "tif_surv_small", x, y + 62,
 				Color(170, 170, 170), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 2, color_black)
 		end

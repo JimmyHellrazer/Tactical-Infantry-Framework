@@ -9,6 +9,8 @@ D.INTENSITY_DECAY, D.INTENSITY_DROP = 0.93, 1
 D.KILL_INTENSITY = 8
 D.CLOSE_INTENSITY = 3
 D.CLOSE_RANGE = 700
+D.SURV_MORALE = 0.4
+D.SURV_PREFER_PLAYERS = 800
 D.SQUAD_ROLES = { "leader", "rifleman", "assault", "support", "rifleman", "marksman", "rpg", "assault" }
 D.Intensity = D.Intensity or 0
 
@@ -352,10 +354,70 @@ function D.DirectorClear(ent)
 	ent.tifDir = nil
 end
 
+D.ONSLAUGHT = {
+	BANK0 = 2, RATE0 = 0.15, RAMP = 0.08, RATE_MAX = 1.2, BANK_MAX = 8,
+	HEAT_STEP = 90, CROWD0 = 0.25, CROWD_FULL = 8, CROWD_GROW = 0.1, CROWD_MAX = 2,
+	HEALTH = 0.02, HEALTH_MAX = 0.5, SURGE_EVERY = 75, SURGE_MIN = 40, SURGE_SIZE = 4, SURGE_PER_LEVEL = 2,
+}
+
+function D.OnslaughtMinutes(ent, now)
+	local t0 = ent:GetRunStart()
+	if t0 <= 0 then return 0 end
+	return math.max(now - t0, 0) / 60
+end
+
+function D.OnslaughtCap(ent, now)
+	local O = D.ONSLAUGHT
+	local cap = ent:GetMaxAlive()
+	local m = D.OnslaughtMinutes(ent, now)
+	local grown = O.CROWD0 + (1 - O.CROWD0) * math.min(m / O.CROWD_FULL, 1)
+	grown = math.min(grown + math.max(m - O.CROWD_FULL, 0) * O.CROWD_GROW, O.CROWD_MAX)
+	return math.max(math.floor(cap * grown), math.min(cap, ent:GetSquadMax()))
+end
+
+local function surv_start(ent, st, now)
+	ent:SetRunStart(now)
+	ent:SetWave(0)
+	ent:SetHeat(0)
+	st.mode = ent:GetOnslaught() and "onslaught" or "waves"
+	if st.mode == "onslaught" then
+		ent:SetBreakEnd(0)
+		ent:SetHeat(1)
+		st.bank = D.ONSLAUGHT.BANK0
+		st.nextSurge = now + D.ONSLAUGHT.SURGE_EVERY
+	else
+		ent:SetBreakEnd(now + math.min(ent:GetBreakTime(), 10))
+	end
+end
+
+local function surv_spawn(ent, st, faction, size, now, players, health)
+	local pos = D.FindSpawn(ent:GetSpawnMin(), ent:GetSpawnMax(), { avoid = st.sources, avoidR = 400 })
+	if not pos or size <= 0 then return 0 end
+	local ply = D.Nearest(pos, players)
+	local sq, out = D.SpawnSquad(faction, pos, size, IsValid(ply) and ply:GetPos() or nil)
+	if not sq then return 0 end
+	for _, e in ipairs(out) do
+		e.tifHunter = true
+		e.tifMoraleScale = D.SURV_MORALE
+		e.tifPreferPlayers = D.SURV_PREFER_PLAYERS
+		st.owned[#st.owned + 1] = e
+		if health and health > 1 and IsValid(e) then
+			local hp = math.max(1, math.floor(e:GetMaxHealth() * health))
+			e:SetMaxHealth(hp)
+			e:SetHealth(hp)
+		end
+	end
+	st.squads[sq] = sq
+	st.sources[#st.sources + 1] = pos
+	if #st.sources > 3 then table.remove(st.sources, 1) end
+	D.Hunt(sq, now, players)
+	return #out
+end
+
 function D.SurvivalThink(ent, now)
 	local st = ent.tifSurv
 	if not st then
-		st = { owned = {}, squads = {}, left = 0 }
+		st = { owned = {}, squads = {}, sources = {}, left = 0, bank = 0 }
 		ent.tifSurv = st
 	end
 	local players = D.Players()
@@ -368,19 +430,49 @@ function D.SurvivalThink(ent, now)
 	end
 	st.deadSince = nil
 	if ent:GetRunStart() <= 0 then
-		ent:SetRunStart(now)
-		ent:SetWave(0)
-		ent:SetBreakEnd(now + math.min(ent:GetBreakTime(), 10))
+		surv_start(ent, st, now)
+		return
+	end
+	if st.mode ~= (ent:GetOnslaught() and "onslaught" or "waves") then
+		D.SurvivalReset(ent)
+		st = { owned = {}, squads = {}, sources = {}, left = 0, bank = 0 }
+		ent.tifSurv = st
+		surv_start(ent, st, now)
 		return
 	end
 	local faction = D.HostileFaction(ent:GetFaction())
 	if not faction then return end
+	local onslaught = st.mode == "onslaught"
 	if now >= (st.nextRecycle or 0) then
 		st.nextRecycle = now + D.RECYCLE_EVERY
-		D.Recycle(st.owned, now, ent:GetSpawnMax() * 1.8, function(e, stuck) st.left = st.left + 1 end, players)
+		D.Recycle(st.owned, now, ent:GetSpawnMax() * 1.8, function()
+			if onslaught then st.bank = st.bank + 1 else st.left = st.left + 1 end
+		end, players)
 	end
 	D.Alive(st.owned)
-	if ent:GetBreakEnd() > 0 then
+	if onslaught then
+		local O = D.ONSLAUGHT
+		local m = D.OnslaughtMinutes(ent, now)
+		local level = 1 + math.floor(m * 60 / O.HEAT_STEP)
+		if level ~= ent:GetHeat() then ent:SetHeat(level) end
+		local dt = math.min(now - (st.lastT or now), 2)
+		st.lastT = now
+		local bankMax = O.BANK_MAX
+		if now >= (st.nextSurge or 0) then
+			st.nextSurge = now + math.max(O.SURGE_EVERY - m * 2, O.SURGE_MIN)
+			st.bank = st.bank + O.SURGE_SIZE + level * O.SURGE_PER_LEVEL
+		end
+		local rate = math.min(O.RATE0 + O.RAMP * m, O.RATE_MAX)
+		st.bank = math.min(st.bank + rate * dt, math.max(bankMax, st.bank))
+		local cap = D.OnslaughtCap(ent, now)
+		local room = cap - #st.owned
+		local want = math.min(math.floor(st.bank), pick_size(ent:GetSquadMin(), ent:GetSquadMax()), room)
+		if now >= (st.nextSpawn or 0) and want >= math.min(ent:GetSquadMin(), math.max(1, room)) and want > 0 then
+			st.nextSpawn = now + 2
+			local health = 1 + math.min(m * O.HEALTH, O.HEALTH_MAX)
+			st.bank = st.bank - surv_spawn(ent, st, faction, want, now, players, health)
+		end
+	elseif ent:GetBreakEnd() > 0 then
 		if now >= ent:GetBreakEnd() then
 			local wave = ent:GetWave() + 1
 			ent:SetWave(wave)
@@ -389,26 +481,10 @@ function D.SurvivalThink(ent, now)
 			st.sources = {}
 		end
 		return
-	end
-	if st.left > 0 and now >= (st.nextSpawn or 0) and #st.owned < ent:GetMaxAlive() then
+	elseif st.left > 0 and now >= (st.nextSpawn or 0) and #st.owned < ent:GetMaxAlive() then
 		st.nextSpawn = now + 2
 		local size = math.min(st.left, pick_size(ent:GetSquadMin(), ent:GetSquadMax()), ent:GetMaxAlive() - #st.owned)
-		local pos = D.FindSpawn(ent:GetSpawnMin(), ent:GetSpawnMax(), { avoid = st.sources, avoidR = 400 })
-		if pos and size > 0 then
-			local ply = D.Nearest(pos, players)
-			local sq, out = D.SpawnSquad(faction, pos, size, IsValid(ply) and ply:GetPos() or nil)
-			if sq then
-				st.left = st.left - #out
-				for _, e in ipairs(out) do
-					e.tifHunter = true
-					st.owned[#st.owned + 1] = e
-				end
-				st.squads[sq] = sq
-				st.sources[#st.sources + 1] = pos
-				if #st.sources > 3 then table.remove(st.sources, 1) end
-				D.Hunt(sq, now, players)
-			end
-		end
+		st.left = st.left - surv_spawn(ent, st, faction, size, now, players)
 	elseif st.left <= 0 and #st.owned == 0 then
 		ent:SetBreakEnd(now + math.max(ent:GetBreakTime(), 1))
 	end
@@ -429,4 +505,5 @@ function D.SurvivalReset(ent)
 	ent:SetRunStart(0)
 	ent:SetWave(0)
 	ent:SetBreakEnd(0)
+	ent:SetHeat(0)
 end

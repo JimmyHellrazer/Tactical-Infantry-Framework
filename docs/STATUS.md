@@ -1238,6 +1238,22 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
 - Not kept: the fight itself (contacts, awareness, cover, reloads, actions), which starts over.
 - Harness savegame 53 (new). All suites pass.
 
+### 0.38.69: Onslaught survival mode; survival soldiers harder to break, go for players (2026-11-26, NOT yet seen in game)
+- User: "add horde zombies "hell" mode as "onslaught" and let it follow the same premise". tif_survival gets an
+  Onslaught toggle (Edit Properties); toggling it mid-run restarts the run. Ported from hz_survival's hell mode onto
+  squads (D.ONSLAUGHT): no waves, no breaks, a spawn bank instead. Starts with 2 in the bank and fills at
+  0.15/s + 0.08/s per minute (max 1.2/s, banked up to 8). A squad (squad min-max, capped by room) spawns from it every 2 s
+  once it can afford one. Max alive at once ramps 25% -> 100% of MaxAlive over 8 minutes, then +10%/min up to 2x.
+  Heat level every 90 s (HUD: ONSLAUGHT n plus the run clock). Surges every 75 s (2 s sooner per minute, floor 40 s) add
+  4 + 2 x heat to the bank. Soldiers spawn with +2% health per minute (cap +50%). Recycled soldiers go back into the bank.
+  Same hunt as waves (confirmed contact on the player every 3 s, rush advance).
+- User: "survival soldiers should get less morale factors. and prioritize engaging you". npc.tifMoraleScale scales
+  morale LOSSES (MO.Add negatives: casualties, hurt; drift: suppression, outnumbered) - gains and recovery unchanged.
+  npc.tifPreferPlayers adds to a player's score in P.Primary (visible +1000, age, distance, current +150). Survival /
+  onslaught soldiers get D.SURV_MORALE 0.4 and D.SURV_PREFER_PLAYERS 800: a visible player always beats a visible NPC; a
+  player only heard recently still loses to an NPC shooting at them in plain view. Director squads unchanged.
+- Harness director 66 (+18). All suites pass.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like
