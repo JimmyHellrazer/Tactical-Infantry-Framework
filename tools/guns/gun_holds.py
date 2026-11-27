@@ -33,7 +33,17 @@ SRC22 = ("K:/mw22 anims 2/xanims", "K:/mw22 anims")
 BUILD = r"K:\jimmyproject\tif_mw\build"
 OUT = r"K:\jimmyproject\tif_guns\build"
 # (TIF 0.37.0: the MW anims live in the base addon)
-CLIPS_LUA = os.path.join(ADDONS, r"tactical_infantry_framework\lua\tif\gta\clips\mw_male.lua")
+CLIPS_DIR = os.path.join(ADDONS, r"tactical_infantry_framework\lua\tif\gta\clips")
+CLIPS_LUA = os.path.join(CLIPS_DIR, "mw_male.lua")
+
+
+def read_clips():
+    names = sorted(f for f in os.listdir(CLIPS_DIR) if f.startswith("mw_male_p") and f.endswith(".lua"))
+    if not names:
+        return open(CLIPS_LUA, encoding="utf-8").read()
+    return "\n".join(open(os.path.join(CLIPS_DIR, n), encoding="utf-8").read() for n in names)
+
+
 JGUN_LUA = os.path.join(ADDONS, r"tactical_infantry_framework\lua\tif\gta\clips\zz_jgun.lua")
 C = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], float)
 L_FINGERS = ["ValveBiped.Bip01_L_Finger0", "ValveBiped.Bip01_L_Finger01", "ValveBiped.Bip01_L_Finger02",
@@ -82,7 +92,7 @@ def chain_gun_world(a, w, idx, fr):
 
 
 def classify():
-    text = open(CLIPS_LUA, encoding="utf-8").read()
+    text = read_clips()
     froms = sorted(set(re.findall(r'from = "([^"]+)"', text)))
     undriven = []
     for name in froms:
@@ -217,7 +227,7 @@ def trim_ends():
     """source clip -> last frame, for clips baked with end=N (their clip-table seq ends in _e<N>)."""
     global _trim_ends
     if _trim_ends is None:
-        text = open(CLIPS_LUA, encoding="utf-8").read()
+        text = read_clips()
         _trim_ends = {m.group(2): int(m.group(3)) for m in
                       re.finditer(r'seq = "((\w+?)_e(\d+))", from = "\2"', text)}
     return _trim_ends
@@ -525,7 +535,7 @@ GUNLOW_ROLES = re.compile(r"^mwt_(?:stop|start)_")
 
 
 def gun_low():
-    text = open(CLIPS_LUA, encoding="utf-8").read()
+    text = read_clips()
     rows = re.findall(r'\["([^"]+)"\] = \{ seq = "[^"]*", (?:ub = "[^"]*", )?from = "([^"]+)"', text)
     out = {}
     for role, src in rows:

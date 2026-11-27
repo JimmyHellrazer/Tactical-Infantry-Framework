@@ -6,3 +6,4 @@ compile.log
 studiomdl.log
 __pycache__/
 *.pyc
+tools/harness/_mw_male_all.lua

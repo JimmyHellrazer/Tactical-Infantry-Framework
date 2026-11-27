@@ -481,23 +481,45 @@ function TIFG.MissingPacks(char)
 	return out
 end
 
+TIFG.ClipMerged = TIFG.ClipMerged or {}
+
 local function merge_parts(pack, part, clips, meta)
 	local parts = TIFG.ClipParts[pack] or {}
 	TIFG.ClipParts[pack] = parts
+	local again = parts[part] ~= nil
 	parts[part] = clips
 
 	if part == 1 or not TIFG.ClipMeta[pack] then
 		TIFG.ClipMeta[pack] = meta
 	end
 
-	local merged = {}
-	for i = 1, tonumber(TIFG.ClipMeta[pack].parts) or table.maxn(parts) do
-		for name, clip in pairs(parts[i] or {}) do
+	local total = tonumber(TIFG.ClipMeta[pack].parts) or table.maxn(parts)
+	local merged = TIFG.ClipMerged[pack]
+
+	if again or not merged then
+		merged = {}
+		for i = 1, total do
+			for name, clip in pairs(parts[i] or {}) do
+				merged[name] = clip
+			end
+		end
+	else
+		for name, clip in pairs(clips) do
 			merged[name] = clip
 		end
 	end
 
-	return merged
+	TIFG.ClipMerged[pack] = merged
+
+	local complete = true
+	for i = 1, total do
+		if not parts[i] then
+			complete = false
+			break
+		end
+	end
+
+	return merged, complete
 end
 
 function TIFG.RegisterClips(pack, clips, meta)
@@ -514,9 +536,16 @@ function TIFG.RegisterClips(pack, clips, meta)
 	local part = meta and tonumber(meta.part)
 
 	if part then
-		clips = merge_parts(pack, part, clips, meta)
+		local complete
+		clips, complete = merge_parts(pack, part, clips, meta)
+
+		if not complete then
+			TIFG.Clips[pack] = clips
+			return clips
+		end
 	else
 		TIFG.ClipParts[pack] = nil
+		TIFG.ClipMerged[pack] = nil
 		TIFG.ClipMeta[pack] = meta
 	end
 

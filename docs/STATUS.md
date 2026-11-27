@@ -1259,6 +1259,30 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   broadcasts tif_surv_cue; tif_survival clients play it 2D (surface.PlaySound) on each new wave, the onslaught start and
   every surge. Harness director 70 (+4).
 
+### 0.38.70: MW clip table split so soldiers animate in multiplayer (2026-11-26, NOT yet seen in game)
+- User: "soldier anims bugged in mp". On a friend's p2p server the client logged "datapack file entry has no data!
+  (addons/addon/lua/tif/gta/clips/mw_male.lua)" and "Couldn't include file 'tif\gta\clips\mw_male.lua' - File not
+  found or is empty" on every join: the 5.4 MB clip table is too big for GMod's server -> client Lua send, so clients
+  had no MW clip data (singleplayer reads it from disk, so it only broke in MP). The next biggest TIF Lua file is 150 KB.
+- tif_mw_build write_clip_parts: the table goes out as mw_male_p01..pNN.lua, each <= ~120 KB and <= 600 roles, each a
+  RegisterClips part ({ part = i, parts = N }, merged by sh_core merge_parts as before); a rebuild deletes the old
+  single file and stale parts. The current table was split with it: 46 files, 4332 clips, checked identical to the old
+  table in LuaJIT. read_clip_lua / gun_holds read_clips / car_seat_harness read the parts; the harness runner joins them
+  into _mw_male_all.lua (git-ignored) for CLIPS. SMH baker copy of tif_mw_build synced. Backup of the old file and the
+  old SMH copy: K:\jimmyproject\_addon_backups6-11-26_mwmale_split.
+- The server you join must run this version: its own copy is what clients download.
+- Harness luasize 98 (new): no addon Lua file over 200 KB, parts numbered and complete, all 4332 clips. All suites pass.
+
+### 0.38.71: clip parts merge once (2026-11-26, NOT yet seen in game)
+- User: "do it and keep a backup". With 46 parts, every RegisterClips part re-merged all parts so far and rebuilt and
+  sorted the clip list plus every clip set: 46 list builds of up to 4332 names at load. sh_core merge_parts now adds only
+  the new part into TIFG.ClipMerged[pack]; the list and sets are built once, when the last part is in. A part that
+  registers again (Lua refresh) re-merges from scratch, so clips it dropped go away. An incomplete pack keeps its clips
+  but has no list yet and counts as missing (MissingPacks), as before.
+- Offline (LuaJIT, all 46 parts, parse included): 276 ms -> 156 ms; same names, order, network indexes, clip data and sets
+  as the old code. Backup of the old sh_core.lua: K:\jimmyproject\_addon_backups\2026-11-26_mwmale_split\sh_core.lua.
+- Harness clipmerge 12 (new). All suites pass.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

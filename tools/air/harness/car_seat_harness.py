@@ -44,7 +44,8 @@ TIF = { Action = {
 data = os.path.join(ADDON, "tif_mw_cars", "data")
 for f in sorted(glob.glob(os.path.join(data, "*.lua"))):
     lua.execute(open(f, encoding="utf-8").read())
-clips = open(os.path.join(ADDON, "..", "..", "tactical_infantry_framework", "lua", "tif", "gta", "clips", "mw_male.lua"), encoding="utf-8").read()
+clip_dir = os.path.join(ADDON, "..", "..", "tactical_infantry_framework", "lua", "tif", "gta", "clips")
+clips = "\n".join(open(f, encoding="utf-8").read() for f in sorted(glob.glob(os.path.join(clip_dir, "mw_male_p*.lua"))))
 roles = set(re.findall(r'\["(mw[a-z]{2}_s\d_[a-z0-9_]+)"\]', clips))
 for r in roles:
     lua.execute('known["%s"] = true' % r)
