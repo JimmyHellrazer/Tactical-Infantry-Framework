@@ -38,7 +38,9 @@ local function mkply(pos, aim)
 end
 player = { Iterator = function() local i = 0 return function() i = i + 1 if players[i] then return i, players[i] end end end }
 local blocked = false
-util = { TraceLine = function(t) return { Hit = blocked } end }
+local cues = 0
+util = { TraceLine = function(t) return { Hit = blocked } end, AddNetworkString = function() end }
+net = { Start = function() end, WriteString = function(x) lastCue = x end, Broadcast = function() cues = cues + 1 end }
 
 local areas = {}
 local function mkarea(pos)
@@ -223,6 +225,7 @@ check(surv.nv.RunStart == now and surv.nv.BreakEnd == now + 10, "survival starts
 now = now + 11
 D.SurvivalThink(surv, now)
 check(surv.nv.Wave == 1 and surv.tifSurv.left == 6, "wave 1 is the start size")
+check(cues == 1 and lastCue == "tif/director/walla_alert.ogg", "a new wave plays the alert walla")
 D.SurvivalThink(surv, now)
 check(#squads == 1 and surv.tifSurv.left == 3, "waves spawn as squads")
 check(advances[#advances].sq == squads[1], "survival squads hunt the player straight away")
@@ -257,6 +260,7 @@ ons.nv = { Faction = "auto", Onslaught = true, StartSize = 6, Growth = 25, MaxAl
 now = 5000
 D.SurvivalThink(ons, now)
 check(ons.nv.RunStart == now and ons.nv.BreakEnd == 0 and ons.nv.Heat == 1, "onslaught starts at once: no lead-in break, heat 1")
+local cuesOn = cues
 check(D.OnslaughtCap(ons, now) == 6, "the crowd starts at a quarter of max alive")
 now = now + 0.5
 D.SurvivalThink(ons, now)
@@ -276,6 +280,7 @@ ons.tifSurv.lastT = now
 ons.tifSurv.nextSpawn = now + 99
 D.SurvivalThink(ons, now)
 check(ons.tifSurv.bank >= bank0 + D.ONSLAUGHT.SURGE_SIZE + D.ONSLAUGHT.SURGE_PER_LEVEL, "a surge dumps a burst into the bank")
+check(cues == cuesOn + 1, "and plays the walla")
 check(ons.tifSurv.nextSurge < now + 75, "surges come a little sooner as it goes on")
 now = 5000 + 91
 D.SurvivalThink(ons, now)
@@ -312,4 +317,9 @@ for _, f in ipairs({ "entities/tif_director.lua", "entities/tif_survival.lua" })
 	check(s:find("ENT.Spawnable = true", 1, true) and s:find("ENT.AdminOnly = true", 1, true), f .. " is an admin spawnable")
 end
 math.random = realRandom
+
+local sv = io.open(ROOT .. "entities/tif_survival.lua"):read("*a")
+check(sv:find('net.Receive("tif_surv_cue"', 1, true) and sv:find("surface.PlaySound(snd)", 1, true), "clients play the cue")
+local f = io.open(ROOT .. "../sound/tif/director/walla_alert.ogg", "rb")
+check(f and f:read(4) == "OggS", "the cue is a real ogg in the addon")
 print(string.format("passed %d, failed %d", pass, fail))

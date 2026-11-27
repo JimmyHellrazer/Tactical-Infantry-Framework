@@ -13,6 +13,15 @@ D.SURV_MORALE = 0.4
 D.SURV_PREFER_PLAYERS = 800
 D.SQUAD_ROLES = { "leader", "rifleman", "assault", "support", "rifleman", "marksman", "rpg", "assault" }
 D.Intensity = D.Intensity or 0
+D.CUE_SOUND = "tif/director/walla_alert.ogg"
+
+util.AddNetworkString("tif_surv_cue")
+
+function D.Cue()
+	net.Start("tif_surv_cue")
+	net.WriteString(D.CUE_SOUND)
+	net.Broadcast()
+end
 
 local up56 = Vector(0, 0, 56)
 local seenOut = {}
@@ -385,6 +394,7 @@ local function surv_start(ent, st, now)
 		ent:SetHeat(1)
 		st.bank = D.ONSLAUGHT.BANK0
 		st.nextSurge = now + D.ONSLAUGHT.SURGE_EVERY
+		D.Cue()
 	else
 		ent:SetBreakEnd(now + math.min(ent:GetBreakTime(), 10))
 	end
@@ -461,6 +471,7 @@ function D.SurvivalThink(ent, now)
 		if now >= (st.nextSurge or 0) then
 			st.nextSurge = now + math.max(O.SURGE_EVERY - m * 2, O.SURGE_MIN)
 			st.bank = st.bank + O.SURGE_SIZE + level * O.SURGE_PER_LEVEL
+			D.Cue()
 		end
 		local rate = math.min(O.RATE0 + O.RAMP * m, O.RATE_MAX)
 		st.bank = math.min(st.bank + rate * dt, math.max(bankMax, st.bank))
@@ -479,6 +490,7 @@ function D.SurvivalThink(ent, now)
 			ent:SetBreakEnd(0)
 			st.left = math.max(1, math.Round(ent:GetStartSize() * (1 + ent:GetGrowth() / 100) ^ (wave - 1)))
 			st.sources = {}
+			D.Cue()
 		end
 		return
 	elseif st.left > 0 and now >= (st.nextSpawn or 0) and #st.owned < ent:GetMaxAlive() then

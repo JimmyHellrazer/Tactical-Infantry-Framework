@@ -1253,6 +1253,11 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   onslaught soldiers get D.SURV_MORALE 0.4 and D.SURV_PREFER_PLAYERS 800: a visible player always beats a visible NPC; a
   player only heard recently still loses to an NPC shooting at them in plain view. Director squads unchanged.
 - Harness director 66 (+18). All suites pass.
+- Round cue (user: "make this the round noise/onslaught noise (its a sound of like soldiers getting ready and yelling
+  over each other the next block over)", "make sure its ogg"): sound/tif/director/walla_alert.ogg (TLOU
+  cap_walla_russ_alert_01, 36 kHz -> 44.1 kHz stereo, Vorbis, 100 KB from a 1.28 MB wav; local-only game rip). D.Cue
+  broadcasts tif_surv_cue; tif_survival clients play it 2D (surface.PlaySound) on each new wave, the onslaught start and
+  every surge. Harness director 70 (+4).
 
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90

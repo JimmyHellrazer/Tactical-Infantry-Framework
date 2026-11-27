@@ -58,6 +58,11 @@ if CLIENT then
 		return string.format("%d:%02d", math.floor(t / 60), t % 60)
 	end
 
+	net.Receive("tif_surv_cue", function()
+		local snd = net.ReadString()
+		if snd ~= "" then surface.PlaySound(snd) end
+	end)
+
 	local current, nextFind = nil, 0
 	hook.Add("HUDPaint", "tif_survival", function()
 		local now = CurTime()
