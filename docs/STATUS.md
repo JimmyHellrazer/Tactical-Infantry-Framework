@@ -1376,6 +1376,91 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   K:\jimmyproject\_addon_backups\2026-11-27_deadcode. Harness animlod / trans checks for the removed paths updated;
   all suites pass, every changed file parses.
 
+### 0.38.80: Russian voices for the Russian Ground Forces (2026-11-27, NOT yet heard in game)
+- User: "ok i got some more voice variants for the rgf" (tfa_vox_spetsnaz_soldiers_bocw_2495443964: Black Ops Cold War
+  Spetsnaz, 4 voices) + "make them ogg for file size". Converted to sound/vo/tif_rgf1..4 (one pack per voice, so a
+  soldier keeps one voice), files renamed to <category><n>.ogg, 44.1 kHz mono Vorbis: 170 lines, 14.5 MB of wav -> 2.2 MB.
+  Local-only content from another Workshop author, like the other voice packs.
+- sh_voices V.RGF_EVENTS: contact = spot, reloading = reload, grenade_out / grenade_incoming = grenadeout / grenadein,
+  man_down = casualty, kill / pain / death, moving = moving, advance = move + flank, attack / swear = taunt. Suppressing,
+  cover me, backup, retreat, clear etc. use V.FALLBACK. Voice 4 has no kill lines (stays quiet on kills).
+- Russians: voices = tif_rgf1-4 + mercenary (1 in 5 keeps the old voice).
+- Harness rgfvoice 51 (new): each pack builds from the real files, every core event has lines, all ogg. All suites pass.
+
+### 0.38.81: Marine breachers carry the full-size shotgun too (2026-11-27, NOT yet seen in game)
+- User: "let marines also use the full size shotgun". USMC breacher primary: m680_breach + m680 (the full-size Model
+  680, infantry tier, unused by any faction until now). USMC Woodland copies the USMC loadouts, so it gets it as well.
+  Loadout suites (russians, guns, marpat, test, wclass) pass.
+
+### Gun bake from the hand: tif_gunbake_held (2026-11-27, tif_gunbake dev addon + tools, NOT yet run in game)
+- User: "can you add a command where i can tif_gunbake whatever im holding and then tell you where i want it used?"
+- `tif_gunbake_held <id> [rifle|smg|lmg|shotgun|pistol|rpg|dmr] [force]` (single player / listen host): exports the MW
+  base gun in your hands as it is (attachments you set in its customize menu), mesh then sounds, to
+  data/tif_gunbake/<id>.json, <id>_smd.txt, <id>_sounds.json, the same files a roster bake writes. Kind left out:
+  guessed from the gun's hold type / category (launcher, shotgun, handgun, LMG, SMG, marksman / sniper -> dmr, else
+  rifle). Suppressed when an attachment class has silencer / suppress in it. Ids are lowercase [a-z0-9_]; a roster id
+  needs force. Also writes data/tif_gunbake/<id>_roster.txt: the add{...} line for sh_roster.lua so the bake can be
+  repeated.
+- tools/guns/gun_holds.py <id> ...: only those guns' holds (j_gun place + left-hand fingers), clip tables untouched, a
+  gun without IK tags gets the average of the stored long-gun holds. ~3 s instead of 25-35 min; checked on m680
+  (identical to its stored hold). The copy in K:\jimmyproject\tif_guns is an older version: use the repo's tools/guns.
+- After "use <id> for <faction> <role>": batch.py <id> (decimate, textures, compile), tools/guns/gun_holds.py <id>,
+  batch.py --lua <id> (weapon def with holds and sounds), add it to the faction's loadout, roster line into
+  sh_roster.lua, harness.
+- Backups: K:\jimmyproject\_addon_backups\2026-11-27_gunbake_held. Repo copy tools/gunbake_addon updated.
+
+### 0.38.82: fall damage, hard landings and stumbles (2026-11-27, NOT yet seen in game)
+- User: "do the fall damage first" (proposal: landing / stumble by height, then ladders). Planned traversal drops
+  (mwtr_drop_*, up to 210 u) were already animated; falls the soldier didn't choose did nothing.
+- New anim family fall (manifest fall_family, 23 roles, built with tif_mw_build --only "mwfl_*" into
+  models/tif_mw/mw_male_fall.mdl): mwfl_land (iw9_mp_stand_jump_land), mwfl_land_<1-9> (iw9_mp_strafe_jog_jump_land_<n>),
+  mwfl_stumble<1|2>_<2|4|6|8> (intd_com_exposed_stumble0<i>_<d>), mwfl_stumble_<jog|run|sprint><1|2>
+  (reb_com_stumble_<g>0<i>). Clip table 4332 -> 4355, every existing clip unchanged (compared in LuaJIT).
+- New tactics/sv_fall_mw.lua (TIF.Fall), fed by ENT:OnLeaveGround / OnLandOnGround: drop = height left - height landed.
+  Under 120 u nothing; 120-250 hard landing (stand / moving direction clip), no damage; 250-450 stumble, 10-40 fall
+  damage, no fire ~1 s; 450-700 heavy, 40-90 damage (the casualty system can down him), stumble if he's still up;
+  700+ dies (1000 DMG_FALL). Moving soldiers get the jog / run / sprint stumble and keep going; standing ones stumble
+  toward the way they were falling. Skipped: traversal (tifTrav), helicopter riders, vehicles, blast knockdowns,
+  downed, surrendered, prone, dying. tif_fall_damage 0/1, tif_fall_damage_mult. Falls over 250 u log a fall event.
+- Not done yet: the new clips aren't in the gun-hold tables (zz_jgun*, gun_holds.py full run, ~30 min, rewrites files
+  the game hot-reloads), so during a fall clip the gun follows the hand. Run it when out of the game.
+- Harness fall 26 (new); luasize / clipmerge clip counts 4355. All suites pass. Backups:
+  K:\jimmyproject\_addon_backups\2026-11-27_fall (clips, characters, models/tif_mw).
+
+### Gun tables per clip: gun_holds.py --clips (2026-11-27, tools)
+- User: "whys the entire gun hold thing have to rebuilt for only a couple animations?" It didn't need to: gun_holds.py
+  always re-read every source (~2,600 seanims) and rewrote zz_jgun / zz_jgun_h* / zz_gunlow from scratch.
+- `gun_holds.py --clips <role pattern>[,...]`: only those roles' sources, merged into the existing tables (their old
+  entries replaced); the start / stop gun-low table is redone when a pattern covers mwt_stop_ / mwt_start_ roles.
+- Every table write goes to <file>.tmp and is swapped in (os.replace): the game never hot-reloads a half-written or
+  empty table, so it's safe to run while playing (full runs too).
+- The hold entries depend on each weapon family's grip spot (median wrist spot over the family's steady clips), so a
+  subset measured on its own drifted (4 crouch hand-signal entries). A full run now saves the spots to
+  K:\jimmyproject\tif_guns\build\grip_spots.json and --clips uses them; without the file it asks for a full run.
+- Seeded with one full run (4133 sources, 78 undriven, 915 hold, 166 gun-low; the 23 fall clips drive the gun bone
+  normally). Check: --clips over 203 existing roles (jumps, running flinches, hand signals, stops, falls) reproduced
+  all three tables exactly, in 39 s.
+
+### 0.38.83: guerrilla style for the Insurgents (2026-11-27, NOT yet seen in game)
+- User: "propose getting the rebel clips as an unexperienced guerilla styled option for only certain factions" ->
+  "build it for insurgents ... mostly similar to how they are now, to keep fights fair, but i do like slightly more
+  frequent blind fire. just to see the animations a little bit more".
+- Faction style: insurgents style = "guerrilla", styleChance = 0.7 (the militia alias inherits it). tif_soldier rolls
+  tifGuerrilla per soldier (NW2Bool tif_guerrilla); sv_save keeps it.
+- New anim family guerrilla (manifest guerrilla_family, 44 roles, models/tif_mw/mw_male_guerrilla.mdl), all MW19
+  reb_com: mwc_<ls|rs|cr|lc|rc|st>_gblind<n> = reb_com_cover_<type>_wild_fire<n> (5-7 per cover type),
+  mwgr_aim = reb_com_exposed_aim_5 + mwgr_aim_tw1-4 (its twitches), mwgr_sprint1-3 = reb_com_sprint_loop01-03.
+  Clip table 4355 -> 4399, existing clips unchanged; gun tables by --clips (5 of them let go of the gun).
+- Cover (sv_cover_mw): MW.BlindRole gives guerrillas a random wild-fire clip for the cover type (trained / pistol /
+  missing clips keep blind1 / blind2). Guerrillas blind-fire from suppression 0.4 (trained 0.55, aggression gate kept)
+  and 1 in 5 of their pop-outs (MW.GUERRILLA_BLIND_POP 0.2) is a blind burst instead. Same blind-fire path (tifBlind),
+  so accuracy and damage are unchanged.
+- Client: sh_anim L.gaim (the aim set with mwgr_aim as idle and its twitches) and L.gsprint; cl_body uses them for
+  guerrillas (standing aim on the base aim set; relaxed sprint, one loop per soldier by idleVar).
+- Not changed (user: keep fights even): accuracy, bursts, morale, tactics, formations.
+- Harness guerrilla 22 (new); luasize / clipmerge counts 4399. All suites pass. Backups:
+  K:\jimmyproject\_addon_backups\2026-11-27_guerrilla (clips, characters, models/tif_mw).
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

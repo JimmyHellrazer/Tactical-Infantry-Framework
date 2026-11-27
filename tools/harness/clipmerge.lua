@@ -46,7 +46,7 @@ Tn.ClipSet({ "mw_male", "base_pack" })
 local tNew = load_clips(Tn)
 local newList, newClips, newSet = Tn.ClipList.mw_male, Tn.Clips.mw_male, Tn.ClipList["mw_male+base_pack"]
 
-check(oldList and newList and #oldList.names == #newList.names and #newList.names == 4332, "same clip count (" .. (newList and #newList.names or 0) .. ")")
+check(oldList and newList and #oldList.names == #newList.names and #newList.names == 4399, "same clip count (" .. (newList and #newList.names or 0) .. ")")
 local same = true
 for i, n in ipairs(oldList.names) do
 	if newList.names[i] ~= n or newList.index[n] ~= oldList.index[n] then same = false break end
@@ -71,7 +71,7 @@ local re = {}
 for n, c in pairs(p5) do if n ~= gone then re[n] = { seq = c.seq, dur = 9, frames = c.frames } end end
 Tn.RegisterClips("mw_male", re, { part = 5, parts = #parts })
 check(Tn.Clips.mw_male[gone] == nil and Tn.ClipList.mw_male.index[gone] == nil, "a refreshed part drops clips it no longer has")
-check(Tn.Clips.mw_male[kept].dur == 9 and #Tn.ClipList.mw_male.names == 4331, "and its changes show, list rebuilt")
+check(Tn.Clips.mw_male[kept].dur == 9 and #Tn.ClipList.mw_male.names == 4398, "and its changes show, list rebuilt")
 
 local Tp = fresh(NEW)
 Tp.RegisterClips("half", { a = { seq = "a", frames = 2, dur = 1 } }, { part = 1, parts = 2 })

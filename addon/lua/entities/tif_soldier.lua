@@ -204,6 +204,12 @@ function ENT:Initialize()
 
 	self.tifArchId = self.tifArchId or "rifleman"
 	self.tifArch = TIF.Archetype(self.tifArchId)
+
+	if self.tifGuerrilla == nil then
+		self.tifGuerrilla = fac.style == "guerrilla" and math.random() < (fac.styleChance or 0.7)
+	end
+
+	self:SetNW2Bool("tif_guerrilla", self.tifGuerrilla == true)
 	local hpScale = GetConVar("tif_health_scale")
 	self:SetHealth(math.max(1, math.floor((self.tifHealthOverride or self.tifArch.health) * (hpScale and hpScale:GetFloat() or 1))))
 	self:SetMaxHealth(self:Health())
@@ -532,6 +538,18 @@ function ENT:OnInjured(dmg)
 
 	if TIF.HitsMW and not self.tifNoDeathClip and self:Health() > 0 then
 		pcall(TIF.HitsMW.Pain, self, dmg)
+	end
+end
+
+function ENT:OnLeaveGround()
+	if TIF.Fall then
+		TIF.Fall.Leave(self)
+	end
+end
+
+function ENT:OnLandOnGround()
+	if TIF.Fall then
+		TIF.Fall.Land(self)
 	end
 end
 

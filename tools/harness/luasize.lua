@@ -35,7 +35,7 @@ TIFG = { RegisterClips = function(pack, c, m) local k = 0 for _ in pairs(c) do k
 dofile(CLIPS)
 local roles = 0
 for i = 1, total do roles = roles + (parts_loaded[i] or 0) end
-check(roles == 4332, "the parts hold all 4332 clips (" .. roles .. ")")
+check(roles == 4399, "the parts hold all 4399 clips (" .. roles .. ")")
 local init = io.open(ROOT .. "tif/gta/sh_init.lua"):read("*a")
 check(init:find('{ dir = "clips" }', 1, true) ~= nil, "the clips folder loads every file in it")
 print(string.format("passed %d, failed %d", pass, fail))

@@ -281,10 +281,79 @@ local function export_sounds(id, w)
 	return nil, s
 end
 
+local function guess_kind(w)
+	local hold = string.lower(w.GetHoldType and w:GetHoldType() or w.HoldType or "")
+	local cat = string.lower(tostring(w.SubCategory or w.Category or "") .. " " .. w:GetClass())
+
+	if hold == "rpg" or string.find(cat, "launcher", 1, true) then return "rpg" end
+	if hold == "shotgun" or string.find(cat, "shotgun", 1, true) then return "shotgun" end
+	if hold == "pistol" or hold == "revolver" or string.find(cat, "handgun", 1, true) or string.find(cat, "pistol", 1, true) then
+		return "pistol"
+	end
+	if string.find(cat, "machine gun", 1, true) or string.find(cat, "lmg", 1, true) then return "lmg" end
+	if hold == "smg" or string.find(cat, "smg", 1, true) or string.find(cat, "submachine", 1, true) then return "smg" end
+	if string.find(cat, "marksman", 1, true) or string.find(cat, "sniper", 1, true) then return "dmr" end
+
+	return "rifle"
+end
+
+local function held_entry(id, w, kind)
+	local atts, suppressed = {}, false
+
+	for _, att in SortedPairs(w:GetAllAttachmentsInUse()) do
+		local cls = att.ClassName or ""
+		atts[#atts + 1] = cls
+		local c = string.lower(cls)
+
+		if string.find(c, "silencer", 1, true) or string.find(c, "suppress", 1, true) then
+			suppressed = true
+		end
+	end
+
+	if kind == "auto" then
+		kind = guess_kind(w)
+	end
+
+	local e = { id = id, swep = w:GetClass(), kind = kind, tiers = { "held" }, atts = atts,
+		suppressed = suppressed or nil, note = "baked from the held gun" }
+	GB.ById[id] = e
+
+	local quoted = {}
+	for i, a in ipairs(atts) do
+		quoted[i] = '"' .. a .. '"'
+	end
+
+	local line = string.format('add{ id = "%s", swep = "%s", kind = "%s", tiers = { "held" },%s\n\tatts = { %s },\n\tnote = "baked from the held gun" }',
+		id, e.swep, kind, suppressed and " suppressed = true," or "", table.concat(quoted, ", "))
+	file.CreateDir(OUT)
+	file.Write(OUT .. "/" .. id .. "_roster.txt", line .. "\n")
+	return e
+end
+
 net.Receive("tif_gunbake", function()
 	local id = net.ReadString()
 	local w = net.ReadEntity()
 	local mode = net.ReadString()
+	local heldMode, heldKind = string.match(mode, "^held_(%a+):(%a+)$")
+
+	if heldMode then
+		if not (IsValid(w) and w.GetAllAttachmentsInUse) then
+			print("[tif_gunbake] " .. id .. ": not an MW base weapon on this client")
+			net.Start("tif_gunbake")
+			net.SendToServer()
+			return
+		end
+
+		local e = GB.ById[id]
+		if heldMode == "mesh" or not e then
+			e = held_entry(id, w, heldKind)
+			print(string.format("[tif_gunbake] %s: %s as %s, %d attachments%s (roster line in data/%s/%s_roster.txt)",
+				id, e.swep, e.kind, #e.atts, e.suppressed and ", suppressed" or "", OUT, id))
+		end
+
+		mode = heldMode == "sounds" and "sounds" or "mesh"
+	end
+
 	if mode == "sounds" then
 		local ok, err, s = pcall(export_sounds, id, w)
 		if not ok or err then

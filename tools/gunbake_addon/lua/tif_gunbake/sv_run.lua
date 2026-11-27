@@ -63,8 +63,28 @@ step = function()
 	end)
 end
 
+local held
+
 net.Receive("tif_gunbake", function(_, ply)
 	if ply ~= host then return end
+
+	if held then
+		timer.Remove(timeoutId)
+		if held.stage == "mesh" and IsValid(held.w) then
+			held.stage = "sounds"
+			net.Start("tif_gunbake")
+			net.WriteString(held.id)
+			net.WriteEntity(held.w)
+			net.WriteString("held_sounds:" .. held.kind)
+			net.Send(host)
+			return
+		end
+
+		say(held.id .. ": done. Tell Claude where to use it (faction / role), it runs the offline build")
+		held = nil
+		return
+	end
+
 	next_step()
 end)
 
@@ -94,6 +114,54 @@ end
 
 concommand.Add("tif_gunbake", function(ply, _, args) start(ply, args, "mesh") end)
 concommand.Add("tif_gunbake_sounds", function(ply, _, args) start(ply, args, "sounds") end)
+
+GB.HELD_KINDS = { rifle = true, smg = true, lmg = true, shotgun = true, pistol = true, rpg = true, dmr = true }
+
+concommand.Add("tif_gunbake_held", function(ply, _, args)
+	if not allowed(ply) then return end
+
+	host = IsValid(ply) and ply or player.GetHumans()[1]
+	if not IsValid(host) then
+		print("[tif_gunbake] needs a player in game")
+		return
+	end
+
+	local id = string.lower(args[1] or "")
+	if not string.match(id, "^[a-z][a-z0-9_]*$") then
+		say("usage: tif_gunbake_held <id> [rifle|smg|lmg|shotgun|pistol|rpg|dmr] (id: lowercase letters, digits, _)")
+		return
+	end
+
+	local kind = string.lower(args[2] or "auto")
+	if kind ~= "auto" and not GB.HELD_KINDS[kind] then
+		say("unknown kind " .. kind .. ": use rifle, smg, lmg, shotgun, pistol, rpg or dmr")
+		return
+	end
+
+	if GB.ById[id] and args[3] ~= "force" then
+		say(id .. " is a roster gun: pick another id, or add force to overwrite its export")
+		return
+	end
+
+	local w = host:GetActiveWeapon()
+	if not (IsValid(w) and weapons.IsBasedOn(w:GetClass(), "mg_base")) then
+		say("hold an MW base weapon (mg_*) set up the way you want it")
+		return
+	end
+
+	queue, current = {}, nil
+	held = { id = id, kind = kind, w = w, stage = "mesh" }
+	say(id .. ": exporting the held " .. w:GetClass() .. " (mesh, then sounds). Don't switch weapons")
+	net.Start("tif_gunbake")
+	net.WriteString(id)
+	net.WriteEntity(w)
+	net.WriteString("held_mesh:" .. kind)
+	net.Send(host)
+	timer.Create(timeoutId, 20, 1, function()
+		say(id .. ": no answer from the client")
+		held = nil
+	end)
+end)
 
 concommand.Add("tif_gunbake_list", function(ply)
 	if not allowed(ply) then return end

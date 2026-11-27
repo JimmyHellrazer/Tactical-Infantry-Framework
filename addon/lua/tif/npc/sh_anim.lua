@@ -348,6 +348,33 @@ function A.Legs(hostId)
 		end
 	end
 
+	if clips.mwgr_aim then
+		local g = {}
+		for k, v in pairs(L.aim) do
+			g[k] = v
+		end
+
+		local tw = {}
+		for i = 1, 4 do
+			if clips["mwgr_aim_tw" .. i] then
+				tw[#tw + 1] = clips["mwgr_aim_tw" .. i]
+			end
+		end
+
+		g.idle = clips.mwgr_aim
+		g.twitches = #tw > 0 and tw or nil
+		L.gaim = g
+	end
+
+	local gs = {}
+	for i = 1, 3 do
+		if clips["mwgr_sprint" .. i] then
+			gs[#gs + 1] = clips["mwgr_sprint" .. i]
+		end
+	end
+
+	L.gsprint = #gs > 0 and gs or nil
+
 	legCache[hostId or "default"] = L
 	return L
 end

@@ -1033,6 +1033,45 @@ def mw22_move_family():
     return out
 
 
+def fall_family():
+    out = []
+    add = _adder(out)
+    one = {"loop": False}
+    add("mwfl_land", "iw9_mp_stand_jump_land", one)
+    for n in _N8:
+        add(f"mwfl_land_{n}", f"iw9_mp_strafe_jog_jump_land_{n}", one)
+    for i in (1, 2):
+        for d in ("2", "4", "6", "8"):
+            add(f"mwfl_stumble{i}_{d}", f"intd_com_exposed_stumble0{i}_{d}", one)
+        for g in ("jog", "run", "sprint"):
+            add(f"mwfl_stumble_{g}{i}", f"reb_com_stumble_{g}0{i}", one)
+    return out
+
+
+GUERRILLA_COVER = {"ls": "left_stand", "rs": "right_stand", "cr": "crouch", "lc": "left_crouch", "rc": "right_crouch",
+                   "st": "stand"}
+
+
+def guerrilla_family():
+    out = []
+    for t, name in GUERRILLA_COVER.items():
+        for i in range(1, 8):
+            clip = f"reb_com_cover_{name}_wild_fire{i}"
+            if _has(clip):
+                out.append((f"mwc_{t}_gblind{i}", clip, dict(_COVER, loop=False)))
+    if _has("reb_com_exposed_aim_5"):
+        out.append(("mwgr_aim", "reb_com_exposed_aim_5", LOOP))
+    for i in range(1, 5):
+        clip = f"reb_com_exposed_aim_5_twitch0{i}"
+        if _has(clip):
+            out.append((f"mwgr_aim_tw{i}", clip, {"loop": False}))
+    for i in range(1, 4):
+        clip = f"reb_com_sprint_loop0{i}"
+        if _has(clip):
+            out.append((f"mwgr_sprint{i}", clip, LOOP))
+    return out
+
+
 # Helicopter passengers (TIF air, HELI_PLAN.md). Placed on the helicopter's own tags, so nothing is centred.
 #   mwhb_land_<l|r><1-3>_idle / _exit   Black Hawk, landed: riding, then out through the cabin door (MW19 AI)
 #   mwhb_rap_<n>_idle / _drop           Black Hawk, ~20 m hover: riding on tag_guy<n>, then down the rope
@@ -1119,6 +1158,8 @@ FAMILIES["mw22down"] = mw22_down_family()
 FAMILIES["mw22buddy"] = mw22_buddy_family()
 FAMILIES["mw22idle"] = mw22_idle_family()
 FAMILIES["mw22move"] = mw22_move_family()
+FAMILIES["fall"] = fall_family()
+FAMILIES["guerrilla"] = guerrilla_family()
 
 
 # AI movement, turns, cover entries and long deaths (2026-11-17; user: "solidly AI animations", MW19 SP as

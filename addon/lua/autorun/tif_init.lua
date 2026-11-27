@@ -1,5 +1,5 @@
 TIF = TIF or {}
-TIF.Version = "0.38.79"
+TIF.Version = "0.38.83"
 TIF.Root = "tif/"
 
 TIF.Dev = file.Exists("tif_dev/sh_init.lua", "LUA")
@@ -59,6 +59,7 @@ local MANIFEST = {
 	"tactics/sv_bipod_mw.lua",
 	"tactics/sv_passive_mw.lua",
 	"tactics/sv_hits_mw.lua",
+	"tactics/sv_fall_mw.lua",
 
 	"tactics/sv_melee_mw.lua",
 	"tactics/sv_shield_data.lua",

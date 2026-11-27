@@ -98,6 +98,8 @@ local INS2 = "models/tif_factions/ins2/"
 TIF.RegisterFaction("insurgents", {
 	name = "Insurgents",
 	side = "enemy",
+	style = "guerrilla",
+	styleChance = 0.7,
 	models = { INS2 .. "insurgent_light.mdl", INS2 .. "insurgent_standard.mdl", INS2 .. "insurgent_heavy.mdl" },
 	voices = { "mercenary", "tif_arab_rebel", "tif_arab_operative" },
 	weapons = mw({ "akm", "ak74u", "ak_ff" }),
@@ -124,7 +126,7 @@ TIF.RegisterFaction("usmc", {
 		support = { primary = mw({ "m91", "bruen" }), secondary = mw({ "x16" }) },
 		marksman = { primary = mw({ "ebr", "ebr_sup" }), secondary = mw({ "x16" }) },
 		rpg = { primary = mw({ "m4_sof_a", "m4_sof_b" }), secondary = mw({ "x16" }), launcher = mw({ "at4" }) },
-		breacher = { primary = mw({ "m680_breach" }), secondary = mw({ "x16" }) },
+		breacher = { primary = mw({ "m680_breach", "m680" }), secondary = mw({ "x16" }) },
 	},
 })
 
@@ -157,7 +159,7 @@ TIF.RegisterFaction("russians", {
 	models = bf4ru({ "soldier_a", "soldier_a_balaclava", "soldier_b", "soldier_b_balaclava", "soldier_c",
 		"soldier_c_balaclava", "soldier_baku", "soldier_baku_balaclava", "soldier_aftermath", "soldier_aftermath_balaclava",
 		"soldier_emr", "soldier_emr_balaclava", "recon_a", "recon_b", "recon_b_balaclava" }),
-	voices = { "mercenary" },
+	voices = { "tif_rgf1", "tif_rgf2", "tif_rgf3", "tif_rgf4", "mercenary" },
 	weapons = mw({ "ak_warsaw_grip", "ak_warsaw_sup", "an94" }),
 	loadouts = {
 		default = { primary = mw({ "ak_warsaw_grip", "ak_warsaw_grip", "ak_warsaw_sup", "an94", "an94" }), secondary = mw({ "sykov" }) },

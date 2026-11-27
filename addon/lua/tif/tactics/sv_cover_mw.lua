@@ -485,6 +485,27 @@ local function one_shot(npc, cov, r, phase, now, opts)
 	return true
 end
 
+MW.GUERRILLA_BLIND_SUPP = 0.4
+MW.GUERRILLA_BLIND_POP = 0.2
+
+function MW.BlindRole(npc, cov)
+	if npc.tifGuerrilla and not cov.pstl and cov.host then
+		local wild = {}
+		for i = 1, 8 do
+			local n = "gblind" .. i
+			if TIF.GTG.Clip("mwc_" .. cov.t .. "_" .. n, cov.host) then
+				wild[#wild + 1] = n
+			end
+		end
+
+		if #wild > 0 then
+			return wild[math.random(#wild)]
+		end
+	end
+
+	return math.random() < 0.5 and "blind1" or "blind2"
+end
+
 MW.SIDE_CHANCE = 0.2
 MW.SIDE_EVERY = 12
 MW.SIDE_PAST = 24
@@ -1166,12 +1187,18 @@ function MW.Update(npc, c, now)
 			if side and MW.SideOut(npc, cov, c, now) then
 				Prof.End()
 				return true
-			elseif supp > 0.55 and arch.aggression >= 0.3 and not cov.pstl then
-				if one_shot(npc, cov, math.random() < 0.5 and "blind1" or "blind2", "blind", now) then
+			elseif (supp > 0.55 or (npc.tifGuerrilla and supp > MW.GUERRILLA_BLIND_SUPP)) and arch.aggression >= 0.3 and not cov.pstl then
+				if one_shot(npc, cov, MW.BlindRole(npc, cov), "blind", now) then
 					Prof.End()
 					return true
 				end
 			elseif canPop and supp < 0.7 then
+				if npc.tifGuerrilla and not cov.pstl and math.random() < MW.GUERRILLA_BLIND_POP
+					and one_shot(npc, cov, MW.BlindRole(npc, cov), "blind", now) then
+					Prof.End()
+					return true
+				end
+
 				if one_shot(npc, cov, "lean_in", "aim_in", now, { root = true }) then
 					Prof.End()
 					return true

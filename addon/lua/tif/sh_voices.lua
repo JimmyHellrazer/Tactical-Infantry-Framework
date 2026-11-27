@@ -113,6 +113,26 @@ V.PACKS.specops = V.PACKS.specops or { folder = "vo/specops", events = V.SANDSTO
 V.PACKS.tif_arab_rebel = V.PACKS.tif_arab_rebel or { folder = "vo/tif_arab_rebel", events = V.SANDSTORM_EVENTS }
 V.PACKS.tif_arab_operative = V.PACKS.tif_arab_operative or { folder = "vo/tif_arab_operative", events = V.SANDSTORM_EVENTS }
 
+V.RGF_EVENTS = {
+	contact = { "spot" },
+	reloading = { "reload" },
+	grenade_out = { "grenadeout" },
+	grenade_incoming = { "grenadein" },
+	man_down = { "casualty" },
+	kill = { "kill" },
+	pain = { "pain" },
+	death = { "death" },
+	moving = { "moving" },
+	advance = { "move", "flank" },
+	attack = { "taunt" },
+	swear = { "taunt" },
+}
+
+for i = 1, 4 do
+	local id = "tif_rgf" .. i
+	V.PACKS[id] = V.PACKS[id] or { folder = "vo/" .. id, events = V.RGF_EVENTS }
+end
+
 function V.RegisterPack(id, def)
 	V.PACKS[id] = def
 	V.Sets[id] = nil

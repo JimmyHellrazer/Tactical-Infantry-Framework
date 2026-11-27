@@ -32,7 +32,7 @@ function S.Record(ent)
 		groups = ent:GetTIFBodygroups(), health = ent:Health(), maxHealth = ent:GetMaxHealth(),
 		primary = arm_class(arms.primary), secondary = arm_class(arms.secondary), launcher = arm_class(arms.launcher),
 		rockets = arms.launcher and arms.launcher.rockets or nil,
-		post = vec(ent.tifPost), postYaw = ent.tifPostYaw,
+		post = vec(ent.tifPost), postYaw = ent.tifPostYaw, guerrilla = ent.tifGuerrilla == true or nil,
 	}
 	local sq = ent.tifSquad
 	if sq then
@@ -88,6 +88,7 @@ function S.Create(ply, data)
 	ent.tifSecondaryOverride = rec.secondary
 	ent.tifLauncherOverride = rec.launcher
 	ent.tifNoAutoSquad = rec.squad ~= nil or nil
+	ent.tifGuerrilla = rec.guerrilla == true
 	ent:SetPos(data.Pos or vector_origin)
 	ent:SetAngles(Angle(0, data.Angle and data.Angle.y or 0, 0))
 	ent:Spawn()

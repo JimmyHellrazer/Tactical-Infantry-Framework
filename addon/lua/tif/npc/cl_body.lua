@@ -495,6 +495,10 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 	if stance == 1 or mode == 1 then
 		local set = stance == 1 and ((PS and PS.crouch) or legs.crouch) or ((PS and PS.aim) or legs.aim)
 
+		if stance ~= 1 and st.guerrilla and legs.gaim and set == legs.aim then
+			set = legs.gaim
+		end
+
 		if stance ~= 1 and st.cqbMode and legs.cqb and not st.pistol then
 			set = legs.cqb
 		end
@@ -551,7 +555,12 @@ local function leg_targets(st, legs, mode, stance, speed, relAng)
 	local walk = set.walkVariants and set.walkVariants[st.idleVar % #set.walkVariants + 1] or set.walk
 	add(T, walk, moveK * (1 - rk))
 	add(T, set.run or walk, moveK * rk * (1 - sk))
-	add(T, set.sprint, moveK * rk * sk)
+	local sprint = set.sprint
+	if st.guerrilla and legs.gsprint and sprint == legs.relaxed.sprint then
+		sprint = legs.gsprint[st.idleVar % #legs.gsprint + 1]
+	end
+
+	add(T, sprint, moveK * rk * sk)
 	hip_turn(st, relAng, moveK)
 	return T, set
 end
@@ -1041,6 +1050,7 @@ local function compose(ent, st, dt, now)
 	st.cqbMode = ent:GetNW2Bool("tif_cqb", false)
 
 	st.light = ent:GetNW2Bool("tif_light", false)
+	st.guerrilla = ent:GetNW2Bool("tif_guerrilla", false)
 	st.wade = ent:GetNW2Int("tif_wade", 0)
 	local rgs = ent:GetNW2String("tif_rungun", "")
 	st.runGun = rgs ~= "" and rgs or nil
