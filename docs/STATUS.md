@@ -1481,6 +1481,30 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   when there's no gun in hand).
 - Harness director 96 (+18), launcher 58 (+1). All suites pass. Backups: K:\jimmyproject\_addon_backups\2026-11-27_stages.
 
+### 0.38.85: trained squads advance with care (2026-11-27, NOT yet seen in game)
+- User (8v8 on open Construct): "most the marines ran into the fight, despite incoming fire. and a good amount died in
+  the initial push to engagement range ... i dont want any changes in this way to disrupt stuff like the insurgents
+  charging you in a defense scenario or when your by yourself" and "some soldiers will basically run ahead of enemy
+  lines by themselves". Causes: engage() starts an advance whenever the target is visible and past prefRange[2]
+  (1800 rifleman / 1000 assault), sprinting (no fire) when far, and only shaken morale stops it; during a squad bound
+  the covering group still ran its own advance; in a free fight nothing ties a soldier to his squad (the leash is only
+  for hold / follow); reacquire walked to 150 u from the last known position.
+- B.Careful(npc): in a squad with at least one other member, not a guerrilla, not a director / survival hunter
+  (tifHunter / tifPress), and the squad not under an advance order. Only careful soldiers change:
+  1. Covering half covers: during a bound (sq.tactic.kind == "bound") a base-role soldier skips his own advance and
+     holds / fires (shift and stop as before). The moving group still dashes (Move.CombatGait, unchanged).
+  2. No open-ground sprint under fire: hit in the last 3 s (tifHurtAt) or suppression > 0.2 -> the advance is
+     "tactical" (aimed walk, firing). Runs into cover and bound dashes keep their own pace.
+  3. Stay with the line: advance and reacquire goals at most B.LINE_LEAD (500 u) ahead of the rest of the squad's
+     centre, measured toward the threat (B.LineCap).
+  4. Reacquire stops at prefRange[1] (350 rifleman, 200 assault) from the last known position, not 150 u.
+- Unchanged: guerrilla Insurgents, survival / director squads, squads under scripted or player advance orders, lone
+  soldiers; cover, morale, accuracy, melee, CQB.
+- Harness careful 22 (new: exemptions, under fire, line cap, the four hook points). All suites pass. Backup:
+  K:\jimmyproject\_addon_backups\2026-11-27_careful\sv_brain.lua.
+- To check in game: the 8v8 on Construct (fewer approach deaths, leapfrogging with covering fire), alone vs an
+  Insurgent squad (they still charge), a survival wave (they still come).
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

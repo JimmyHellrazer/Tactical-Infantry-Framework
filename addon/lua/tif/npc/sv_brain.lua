@@ -509,6 +509,8 @@ local function engage(npc, c, now)
 		return
 	end
 
+	local careful = B.Careful(npc)
+
 	if c.visible then
 		local aim = aim_point(npc, c, now)
 		npc.tifFace = aim
@@ -533,7 +535,9 @@ local function engage(npc, c, now)
 
 		npc.tifEngageMove = em
 
-		if em and em.kind == "advance" and not TIF.Morale.Shaken(npc) then
+		local covering = careful and npc.tifRole == "base" and B.Bounding(npc)
+
+		if em and em.kind == "advance" and not TIF.Morale.Shaken(npc) and not covering then
 			npc.tifAction = "advance"
 
 			if not Move.Moving(npc) then
@@ -541,12 +545,16 @@ local function engage(npc, c, now)
 			end
 
 			local sp = gait(npc, "advance", dist, now)
+			if careful and B.UnderFire(npc, now) then
+				sp = "tactical"
+			end
+
 			if sp == "run" or sp == "sprint" then
 				f.want, npc.tifFace = false, nil
 				npc.tifAction = "advance (run)"
 			end
 
-			Move.SetGoal(npc, short_of(npc, c.pos, math.max(150, arch.prefRange[2] * 0.75)), sp, "advance")
+			Move.SetGoal(npc, B.LineCap(npc, short_of(npc, c.pos, math.max(150, arch.prefRange[2] * 0.75)), c.pos, careful), sp, "advance")
 		elseif em and em.kind == "back" then
 			npc.tifAction = "back off"
 			local away = pos - c.pos
@@ -610,7 +618,8 @@ local function engage(npc, c, now)
 			npc.tifAction = "reacquire"
 
 			if lost > 1.5 then
-				Move.SetGoal(npc, short_of(npc, c.pos, 150), gait(npc, "close", dist, now), "reacquire")
+				local keep = careful and arch.prefRange[1] or 150
+				Move.SetGoal(npc, B.LineCap(npc, short_of(npc, c.pos, keep), c.pos, careful), gait(npc, "close", dist, now), "reacquire")
 			end
 		end
 	end
@@ -877,6 +886,59 @@ end
 function B.StartSearch(npc, pos, dir, now)
 	npc.tifSearch = { start = now, pos = Vector(pos), dir = dir, points = nil, i = 0 }
 	set_aware(npc, AW.SEARCHING, now)
+end
+
+B.LINE_LEAD = 500
+B.UNDER_FIRE_HURT = 3
+B.UNDER_FIRE_SUPP = 0.2
+
+function B.Careful(npc)
+	if npc.tifGuerrilla or npc.tifHunter or npc.tifPress then return false end
+
+	local sq = npc.tifSquad
+	if not sq or not sq.members or #sq.members < 2 then return false end
+
+	local o = sq.order
+	if o and o.kind == "advance" then return false end
+
+	return true
+end
+
+function B.Bounding(npc)
+	local t = npc.tifSquad and npc.tifSquad.tactic
+	return t ~= nil and t.kind == "bound"
+end
+
+function B.UnderFire(npc, now)
+	return now - (npc.tifHurtAt or -99) < B.UNDER_FIRE_HURT or (npc.tifSupp or 0) > B.UNDER_FIRE_SUPP
+end
+
+function B.LineCap(npc, goal, threat, careful)
+	if not careful or not goal or not threat then return goal end
+
+	local sq = npc.tifSquad
+	local cx, cy, n = 0, 0, 0
+
+	for _, m in ipairs(TIF.Squad.Members(sq)) do
+		if m ~= npc and IsValid(m) and not m.tifDead then
+			local p = m:GetPos()
+			cx, cy, n = cx + p.x, cy + p.y, n + 1
+		end
+	end
+
+	if n == 0 then return goal end
+
+	cx, cy = cx / n, cy / n
+	local dx, dy = threat.x - cx, threat.y - cy
+	local len = math.sqrt(dx * dx + dy * dy)
+	if len < 1 then return goal end
+
+	dx, dy = dx / len, dy / len
+	local ahead = (goal.x - cx) * dx + (goal.y - cy) * dy
+	if ahead <= B.LINE_LEAD then return goal end
+
+	local back = ahead - B.LINE_LEAD
+	return Vector(goal.x - dx * back, goal.y - dy * back, goal.z)
 end
 
 B.CALM_STAND_AFTER = 0.3

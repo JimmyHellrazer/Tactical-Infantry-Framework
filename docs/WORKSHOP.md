@@ -6,27 +6,37 @@ Description (Steam BBCode, paste as-is):
 [h1]Tactical Infantry Framework[/h1]
 [b]Soldiers that move, fight and clear rooms like Modern Warfare's AI.[/b]
 
-TIF is a NextBot military AI built around a single, fully animated soldier body running over 4,200 Modern Warfare (2019 / 2022) animations. They take cover, push as squads, breach and clear buildings, take hostages, wrestle at close range, react to grenades and flashbangs, and die the way you'd expect. Spawn them from the spawn menu, set factions against each other, or command a squad yourself.
+TIF is a NextBot military AI built around a single, fully animated soldier body running over 4,400 Modern Warfare (2019 / 2022) animations. They take cover, push as squads, breach and clear buildings, take hostages, wrestle at close range, react to grenades and flashbangs, break and run when a fight turns against them, and die the way you'd expect. Spawn them from the spawn menu, set factions against each other, command a squad yourself, or drop a director and let it run the fight for you.
 
 [hr][/hr]
 [h2]Combat[/h2]
 [list]
-[*][b]Real cover.[/b] Corner cover (standing and crouched), low walls and chest-high walls. They run into it with directional arrivals, peek, lean out and fire with a proper aim blend, blindfire under heavy suppression, reload behind it, shuffle along walls, switch corners, and sometimes fight crouched from beside the cover before palming back in.
+[*][b]Real cover.[/b] Corner cover (standing and crouched), low walls and chest-high walls. They run into it with directional arrivals, peek, lean out and fire with a proper aim blend, blindfire under heavy suppression, reload behind it, shuffle along walls, switch corners, and step out of it straight into a run when they need to move.
 [*][b]Suppression.[/b] Incoming fire pins them, rushes them into cover or flat on the ground.
-[*][b]Morale.[/b] Losing friends, getting hit and being outnumbered wears them down: shaken soldiers shoot worse and stop pushing, broken ones run and hide, and a squad that loses heart pulls back.
+[*][b]Morale.[/b] Losing friends, getting hit and being outnumbered wears them down: shaken soldiers shoot worse and stop pushing. Broken ones retreat and hide, but still fire back in a panic (wild, inaccurate bursts over the shoulder or from a crouch), so a push on a breaking line is never free.
 [*][b]Grenades.[/b] Frags over cover at enemies they can't see, flashbangs into rooms, dodges and dives away from live grenades.
-[*][b]Weapons.[/b] 45 baked MW guns with MW sounds (fire, indoor / outdoor tails, reload foley), per-weapon reload and recoil animations, sidearm switching, LMG bipods prone and on ledges, magazines that actually leave the gun.
+[*][b]Weapons.[/b] 45 baked MW guns with MW sounds (fire, indoor / outdoor tails, reload foley), per-weapon reload and recoil animations, sidearm switching (in cover and prone too), LMG bipods prone and on ledges, magazines that actually leave the gun.
 [*][b]Launchers as a tool, not a habit.[/b] AT gunners fight with their rifles and only shoulder the launcher when it counts: vehicles, bunched-up groups, dug-in positions, now and then an exposed soldier. A couple of rockets each, with cooldowns per gunner, squad and target, and the other side shouts "RPG!" when one goes up. The Marines' AT4 is disposable: fire, drop the spent tube, back on the rifle.
 [*][b]Close quarters.[/b] Rifle-butt strikes, and paired melee fights between soldiers who end up face to face.
 [*][b]Prone, crouch and stance changes[/b], all animated, including diving to prone on the run.
+[*][b]Falls hurt.[/b] Blown off a roof or knocked off a ledge, they land hard, stumble, get wounded or die, depending on the drop.
 [/list]
 
 [h2]Squads[/h2]
 [list]
 [*]Formations, bounding overwatch, base of fire and flanking manoeuvres, regrouping on a new leader.
+[*]Squads spawn in formation, facing you, so setting up a fight takes seconds.
 [*]Radio chatter and per-faction voice packs: contact calls, suppressing, reloading, man down, grenade out.
 [*]Medics and casualties: wounded soldiers, revives, last stands and long, crawling deaths.
 [*][b]Command your own squad[/b] with the order menu ([i]tif_menu[/i]): follow, hold, advance, take cover, clear a building.
+[/list]
+
+[h2]Directors: fights that run themselves[/h2]
+Two admin entities (a field radio each) under [b]Spawn Menu > Entities > Tactical Infantry[/b]. Pick the enemy faction from the dropdown (or leave it on Auto) and tune everything in Edit Properties.
+[list]
+[*][b]Soldier Director.[/b] Paces a fight like Left 4 Dead: patrols and guard posts appear ahead of you, out of sight, and assault squads come hunting you on a timer. It watches how hard the fight is going (damage you take, enemies you kill, how close they get) and after a big fight it backs off and lets things calm down, so the next area is quiet before it builds again.
+[*][b]Soldier Survival.[/b] Waves of squads that know where you are and come to you. Waves grow, and the enemy changes as you last: early waves are guards and SMG-carrying assault troops, then riflemen and machine gunners pinning you down, then marksmen and AT gunners, then breachers, leaders in every squad and tougher men. They take cover they can shoot from and push in to find you rather than hiding, so you get proper standoffs. Wave counter, clock and break timer on screen.
+[*][b]Onslaught.[/b] Survival's endless mode: no breaks, a constant stream that speeds up, grows and gets tougher the longer you hold, with surges every minute or so.
 [/list]
 
 [h2]Room clearing (CQB)[/h2]
@@ -48,7 +58,8 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 [list]
 [*][b]Reactions:[/b] flinches and staggers by hit location, flashbang blindness, startles, pointing out contacts, looking around after losing you.
 [*][b]Deaths:[/b] situational death animations (in cover, running, against walls, over ledges, burning) that hand over smoothly to ragdolls.
-[*][b]Movement:[/b] start / stop / turn animations, strafing, mantling and vaulting, opening doors on the way, wading through water.
+[*][b]Movement:[/b] start / stop / turn animations, strafing, mantling, vaulting and dropping off ledges, opening doors on the way, wading through water.
+[*][b]Eyes:[/b] they look at what they're aiming at, and at you.
 [*][b]Downtime:[/b] patrols, smoking, phone calls, leaning on walls, sitting.
 [*][b]Foley:[/b] footsteps for every surface, gear and cloth rattle, landings, body falls.
 [/list]
@@ -68,11 +79,19 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 
 [h2]Factions and setup[/h2]
 [list]
-[*]Three starter factions out of the box: [b]Insurgents[/b] and [b]US Marines[/b] (Insurgency characters by MadIvan18, used with permission), each with light / standard / heavy outfits, randomised gear and several voice packs, and the [b]Russian Ground Forces[/b] (MadIvan18's Battlefield 4 Russians: flora, khaki, EMR, Baku, Aftermath and recon kits) carrying Russian special forces guns. All three fight each other.
+[*]Three starter factions out of the box, all fighting each other:
+[list]
+[*][b]Insurgents[/b]: most of them fight like the untrained guerrillas they are, spraying blind over cover, jittery when they aim, sprinting loose. A few veterans in each group fight like soldiers.
+[*][b]US Marines[/b] in desert or MARPAT Woodland.
+[*][b]Russian Ground Forces[/b] (MadIvan18's Battlefield 4 Russians: flora, khaki, EMR, Baku, Aftermath and recon kits) with Russian special forces guns and Russian voices.
+[/list]
+[*]Insurgents and Marines are Insurgency characters by MadIvan18 (used with permission), each with light / standard / heavy outfits, randomised gear and several voice packs. Squads mix models and gear so no two look alike.
+[*]Pick your side: play as a faction, or as plain BLUFOR, OPFOR or Independent.
 [*]Faction editor ([i]tif_factions[/i]): sides, models, voices, weapons by role.
 [*]Modular factions: soldiers assembled from body, head and headgear parts.
 [*]HL2 and other NPCs are recognised: rebels side with players, Combine and monsters don't.
-[*]Settings panel in Spawn Menu > Utilities > Tactical Infantry ([i]tif_settings[/i]).
+[*]Save and load: soldiers come back from a save (or a dupe) with the same look, guns, health, squad and orders.
+[*]Settings in [b]Spawn Menu > Options > Tactical Infantry[/b] (Server and Client pages).
 [*]A public API for game modes and other addons (spawning, squads, orders, room clears, shields).
 [/list]
 
@@ -80,16 +99,17 @@ TIF is a NextBot military AI built around a single, fully animated soldier body 
 [h2]Requirements[/h2]
 [list]
 [*][b]A navmesh.[/b] NextBots can't move without one. Most maps don't ship with one: run [i]nav_generate[/i] once in singleplayer.
-[*][b]Optional:[/b] Glide (vehicles), Decent Vehicle (road waypoints), wOS Prone (prone poses on faction models).
+[*][b]Optional:[/b] Glide (vehicles), Decent Vehicle (road waypoints).
+[*]Works in singleplayer and multiplayer; the host needs the addon like everyone else.
 [/list]
 
 [h2]Good to know[/h2]
 [list]
-[*]Soldiers' sounds and animations are played on each client: no extra network load for footsteps or foley.
+[*]Soldiers' sounds and animations are played on each client: no extra network load for footsteps or foley. Soldiers off screen animate cheaply.
 [*]Bugs? Run [i]tif_mark <what happened>[/i] in the console the moment you see it, then send [i]garrysmod/data/tif/log_sv.txt[/i]. It records what every nearby soldier was doing.
 [/list]
 
-[i]Animations and sounds are from Call of Duty: Modern Warfare (2019 / 2022). This addon is a fan project, not affiliated with Activision or Infinity Ward.[/i]
+[i]Animations and sounds are from Call of Duty: Modern Warfare (2019 / 2022). This addon is a fan project, not affiliated with Activision or Infinity Ward. Voices: Insurgency: Sandstorm and BF3 USMC (TFA-VOX), Black Ops Cold War Spetsnaz (TFA-VOX). Faction models by MadIvan18, used with permission.[/i]
 
 ---
 
@@ -166,6 +186,9 @@ end)
 [*][b]Civilians[/b]: SpawnCivilian, Civilians, ScareCivilians, SetCivilianLeaveShare. [b]Human shields[/b]: HumanShield(captor, civilian, opts), HumanShieldOf.
 [*][b]Vehicles[/b] (Glide): SpawnVehicle, Mount, MountSeated, MountPassive, DriveTo, Dismount, Convoy, VehicleRoute.
 [/list]
+
+[h2]Directors from code[/h2]
+The Soldier Director and Soldier Survival are plain entities ([i]tif_director[/i], [i]tif_survival[/i]) with their settings as network vars, so a gamemode can spawn one and set it up like any other entity. [i]TIF.Director[/i] holds the pieces they use: hidden spawn points ahead of the players (FindSpawn), hunting squads (Hunt), the intensity meter and the survival stages (STAGES).
 
 [h2]Hooks TIF fires[/h2]
 TIF_SoldierKilled (soldier, attacker), TIF_CQBRoomClear (squad, room, cq), TIF_CQBDone (squad, reason, cq), TIF_ShieldStart (scene), TIF_ShieldEnd (scene, outcome), TIF_CivilianUse / TIF_CivilianHurt / TIF_CivilianKilled / TIF_CivilianLeft, TIF_BaseLevel (base, level, why).
