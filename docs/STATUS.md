@@ -1283,6 +1283,13 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   as the old code. Backup of the old sh_core.lua: K:\jimmyproject\_addon_backups\2026-11-26_mwmale_split\sh_core.lua.
 - Harness clipmerge 12 (new). All suites pass.
 
+### 0.38.72: searching soldier lost his search after a squad order (2026-11-26, NOT yet seen in game)
+- log_sv on def_rusalka: "sv_brain.lua:222: attempt to index field 'tifSearch' (a nil value)" every think. SQ.SetOrder
+  clears every member's tifSearch, but a member already SEARCHING kept that state and read tifSearch.start next think.
+  Seen with the HL2 AI Replacer addon, which gives squad orders often (assault routes, scripted schedules).
+- sv_brain.lua: a searching soldier with no tifSearch starts a fresh search on his last contact (one condition changed).
+  Nothing else touched.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

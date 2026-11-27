@@ -215,7 +215,7 @@ local function update_awareness(npc, c, now)
 		end
 
 		if st == AW.SEARCHING then
-			if c.heardAt > (npc.tifSearch and npc.tifSearch.start or 0) then
+			if not npc.tifSearch or c.heardAt > npc.tifSearch.start then
 				npc.tifSearch = { start = now, pos = c.pos, dir = c.dir, points = nil, i = 0 }
 			end
 
