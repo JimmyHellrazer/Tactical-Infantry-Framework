@@ -1346,6 +1346,14 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   from the crouch). Still needs the enemy in sight (or seen within 1 s); panic spread x3, short pauses, slow reloads
   unchanged, so at range it's mostly suppressing fire. Harness morale 19 (+2, ranges updated). All suites pass.
 
+### 0.38.78: director radios, faction dropdown (2026-11-26, NOT yet seen in game)
+- User: "make the director models a hl2 radio instead of info player start and make the faction select a little dropdown
+  instead of whatever weird "auto" thing it is rn". tif_director / tif_survival use models/props_lab/citizenradio.mdl,
+  always drawn (the director's status text still only with the physgun / toolgun out), placed on the surface facing
+  you. Faction in Edit Properties is a Combo from TIF.FactionComboValues() (sh_factions): "Auto (hostile to you)",
+  "Random hostile", then every faction with models / variants that isn't hidden, labelled "Name (id)" like the settings
+  panel. Harness director 78 (+8). All suites pass.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

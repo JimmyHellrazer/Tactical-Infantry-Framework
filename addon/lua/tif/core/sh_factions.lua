@@ -94,6 +94,19 @@ function TIF.FactionOf(ent)
 	return nil
 end
 
+function TIF.FactionComboValues()
+	local values = { ["Auto (hostile to you)"] = "auto", ["Random hostile"] = "random" }
+
+	for id, def in pairs(TIF.Factions or {}) do
+		if istable(def) and not def.hidden and (def.models or def.variants) then
+			local label = def.name and (def.name .. " (" .. id .. ")") or id
+			values[label] = id
+		end
+	end
+
+	return values
+end
+
 function TIF.FactionCanon(id)
 	local A = TIF.FactionAlias
 	return (A and id and A[id]) or id

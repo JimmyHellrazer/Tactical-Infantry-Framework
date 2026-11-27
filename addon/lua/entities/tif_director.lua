@@ -9,9 +9,11 @@ ENT.AdminOnly = true
 ENT.Editable = true
 ENT.RenderGroup = RENDERGROUP_BOTH
 
+local RADIO_MODEL = "models/props_lab/citizenradio.mdl"
+
 function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "Active", { KeyName = "active", Edit = { type = "Boolean", order = 1 } })
-	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Generic", order = 2 } })
+	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Combo", text = "Auto (hostile to you)", values = TIF.FactionComboValues and TIF.FactionComboValues() or { ["Auto (hostile to you)"] = "auto" }, order = 2 } })
 	self:NetworkVar("Int", 0, "MaxAlive", { KeyName = "maxalive", Edit = { type = "Int", min = 1, max = 80, order = 3 } })
 	self:NetworkVar("Int", 1, "AmbientSquads", { KeyName = "ambientsquads", Edit = { type = "Int", min = 0, max = 10, order = 4 } })
 	self:NetworkVar("Int", 2, "AssaultSquads", { KeyName = "assaultsquads", Edit = { type = "Int", min = 0, max = 6, order = 5 } })
@@ -47,14 +49,16 @@ end
 
 if CLIENT then
 	function ENT:Draw()
+		self:DrawModel()
+
 		local ply = LocalPlayer()
 		local w = IsValid(ply) and ply:GetActiveWeapon()
 		if not (IsValid(w) and (w:GetClass() == "weapon_physgun" or w:GetClass() == "gmod_tool")) then return end
-		self:DrawModel()
+
 		local ang = (self:GetPos() - EyePos()):Angle()
 		ang:RotateAroundAxis(ang:Right(), 90)
 		ang:RotateAroundAxis(ang:Up(), -90)
-		cam.Start3D2D(self:GetPos() + Vector(0, 0, 40), ang, 0.25)
+		cam.Start3D2D(self:GetPos() + Vector(0, 0, 24), ang, 0.2)
 		draw.SimpleTextOutlined("TIF director: " .. (self:GetActive() and self:GetPhase() or "off"), "DermaLarge", 0, 0,
 			color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, color_black)
 		cam.End3D2D()
@@ -66,13 +70,14 @@ end
 function ENT:SpawnFunction(ply, tr, cls)
 	if not tr.Hit then return end
 	local ent = ents.Create(cls)
-	ent:SetPos(tr.HitPos + tr.HitNormal * 8)
+	ent:SetPos(tr.HitPos + tr.HitNormal * 2)
+	ent:SetAngles(Angle(0, ply:EyeAngles().y + 180, 0))
 	ent:Spawn()
 	return ent
 end
 
 function ENT:Initialize()
-	self:SetModel("models/editor/playerstart.mdl")
+	self:SetModel(RADIO_MODEL)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetSolid(SOLID_BBOX)
 	self:SetCollisionGroup(COLLISION_GROUP_WORLD)

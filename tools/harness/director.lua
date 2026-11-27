@@ -322,4 +322,21 @@ local sv = io.open(ROOT .. "entities/tif_survival.lua"):read("*a")
 check(sv:find('net.Receive("tif_surv_cue"', 1, true) and sv:find("surface.PlaySound(snd)", 1, true), "clients play the cue")
 local f = io.open(ROOT .. "../sound/tif/director/walla_alert.ogg", "rb")
 check(f and f:read(4) == "OggS", "the cue is a real ogg in the addon")
+
+local fsrc = io.open(ROOT .. "tif/core/sh_factions.lua"):read("*a")
+local fblock = fsrc:match("(function TIF%.FactionComboValues%(%).-\nend\n)")
+check(fblock ~= nil, "faction dropdown helper exists")
+local FT = { Factions = { usmc = { name = "US Marines", models = {} }, hiddenOne = { hidden = true, models = {} }, nomodels = { name = "x" }, ins = { variants = {} } } }
+assert(load(fblock, "fcv", "t", setmetatable({ TIF = FT, istable = function(v) return type(v) == "table" end }, { __index = _G })))()
+local vals = FT.FactionComboValues()
+check(vals["Auto (hostile to you)"] == "auto" and vals["Random hostile"] == "random", "dropdown offers auto and random")
+check(vals["US Marines (usmc)"] == "usmc" and vals["ins"] == "ins", "and every playable faction by name")
+local hasHidden = false
+for _, v in pairs(vals) do if v == "hiddenOne" or v == "nomodels" then hasHidden = true end end
+check(not hasHidden, "hidden factions and ones with no models are left out")
+for _, f in ipairs({ "entities/tif_director.lua", "entities/tif_survival.lua" }) do
+	local es = io.open(ROOT .. f):read("*a")
+	check(es:find('local RADIO_MODEL = "models/props_lab/citizenradio.mdl"', 1, true) and es:find("self:SetModel(RADIO_MODEL)", 1, true), f .. " is an HL2 radio")
+	check(es:find('Edit = { type = "Combo"', 1, true) and es:find("TIF.FactionComboValues()", 1, true), f .. " picks its faction from a dropdown")
+end
 print(string.format("passed %d, failed %d", pass, fail))

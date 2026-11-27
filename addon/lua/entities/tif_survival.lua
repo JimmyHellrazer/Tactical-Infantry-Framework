@@ -9,11 +9,13 @@ ENT.AdminOnly = true
 ENT.Editable = true
 ENT.RenderGroup = RENDERGROUP_BOTH
 
+local RADIO_MODEL = "models/props_lab/citizenradio.mdl"
+
 function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "Active", { KeyName = "active", Edit = { type = "Boolean", order = 1 } })
 	self:NetworkVar("Bool", 1, "ShowHUD", { KeyName = "showhud", Edit = { type = "Boolean", order = 2 } })
 	self:NetworkVar("Bool", 2, "Onslaught", { KeyName = "onslaught", Edit = { type = "Boolean", order = 3 } })
-	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Generic", order = 3 } })
+	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Combo", text = "Auto (hostile to you)", values = TIF.FactionComboValues and TIF.FactionComboValues() or { ["Auto (hostile to you)"] = "auto" }, order = 3 } })
 	self:NetworkVar("Int", 0, "StartSize", { KeyName = "startsize", Edit = { type = "Int", min = 1, max = 60, order = 4 } })
 	self:NetworkVar("Int", 1, "Growth", { KeyName = "growth", Edit = { type = "Int", min = 0, max = 100, order = 5 } })
 	self:NetworkVar("Int", 2, "MaxAlive", { KeyName = "maxalive", Edit = { type = "Int", min = 1, max = 80, order = 6 } })
@@ -45,9 +47,7 @@ end
 
 if CLIENT then
 	function ENT:Draw()
-		local ply = LocalPlayer()
-		local w = IsValid(ply) and ply:GetActiveWeapon()
-		if IsValid(w) and (w:GetClass() == "weapon_physgun" or w:GetClass() == "gmod_tool") then self:DrawModel() end
+		self:DrawModel()
 	end
 
 	surface.CreateFont("tif_surv_big", { font = "Roboto", size = 36, weight = 800 })
@@ -92,13 +92,14 @@ end
 function ENT:SpawnFunction(ply, tr, cls)
 	if not tr.Hit then return end
 	local ent = ents.Create(cls)
-	ent:SetPos(tr.HitPos + tr.HitNormal * 8)
+	ent:SetPos(tr.HitPos + tr.HitNormal * 2)
+	ent:SetAngles(Angle(0, ply:EyeAngles().y + 180, 0))
 	ent:Spawn()
 	return ent
 end
 
 function ENT:Initialize()
-	self:SetModel("models/editor/playerstart.mdl")
+	self:SetModel(RADIO_MODEL)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetSolid(SOLID_BBOX)
 	self:SetCollisionGroup(COLLISION_GROUP_WORLD)
