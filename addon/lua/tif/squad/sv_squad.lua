@@ -28,6 +28,7 @@ local function slot_offset(formation, i, spacing)
 	local k = math.ceil(i / 2)
 	return Vector(-spacing * k, (i % 2 == 1 and 1 or -1) * spacing * k, 0)
 end
+SQ.SlotOffset = slot_offset
 
 local publish
 

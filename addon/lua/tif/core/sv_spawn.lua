@@ -78,6 +78,42 @@ function TIF.SpawnPoints(center, n, radius, loose)
 	return pts
 end
 
+TIF.FORMATION_SPACING = 90
+
+function TIF.FormationPoints(center, n, yaw, spacing, formation)
+	spacing = spacing or TIF.FORMATION_SPACING
+	formation = formation or "wedge"
+	local SQ = TIF.Squad
+	local r = math.rad(yaw)
+	local c, s = math.cos(r), math.sin(r)
+	local pts = {}
+
+	for i = 1, n do
+		local p = center
+		if i > 1 then
+			local off = SQ and SQ.SlotOffset and SQ.SlotOffset(formation, i - 1, spacing) or Vector(-spacing * (i - 1), 0, 0)
+			p = center + Vector(off.x * c - off.y * s, off.x * s + off.y * c, 0)
+		end
+
+		local area = navmesh.GetNearestNavArea(p, false, 200, false, true)
+		if IsValid(area) then
+			p = area:GetClosestPointOnArea(p) or p
+		end
+
+		p = TIF.FreeSpot(p)
+		for _, q in ipairs(pts) do
+			if q:DistToSqr(p) < 40 * 40 then
+				p = TIF.FreeSpot(p + Vector(math.cos(r + math.pi / 2), math.sin(r + math.pi / 2), 0) * 48)
+				break
+			end
+		end
+
+		pts[#pts + 1] = p
+	end
+
+	return pts
+end
+
 function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 	opts = opts or {}
 
@@ -102,7 +138,17 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 
 	local out = {}
 
-	local pts = opts.points or TIF.SpawnPoints(center, count, opts.radius, opts.loose)
+	local formYaw
+	if opts.formation and not opts.points and count > 1 then
+		if IsValid(ply) then
+			formYaw = (ply:GetPos() - center):Angle().y
+		else
+			formYaw = opts.formationYaw or math.Rand(-180, 180)
+		end
+	end
+
+	local pts = opts.points or (formYaw and TIF.FormationPoints(center, count, formYaw, opts.spacing))
+		or TIF.SpawnPoints(center, count, opts.radius, opts.loose)
 	if IsValid(ply) then
 		undo.Create("TIF Soldiers")
 	end
@@ -119,7 +165,9 @@ function TIF.SpawnSoldiers(ply, faction, count, arch, center, face, opts)
 
 		if IsValid(ent) then
 			local yaw
-			if face == "random" then
+			if formYaw then
+				yaw = formYaw
+			elseif face == "random" then
 				yaw = math.Rand(-180, 180)
 			elseif isvector(face) then
 				yaw = (face - p):Angle().y

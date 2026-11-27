@@ -48,10 +48,12 @@ admin("tif_spawn_squad", function(ply, args)
 
 	local order = args[3]
 	local tr = ply:GetEyeTrace()
-	local spawned = TIF.SpawnSoldiers(ply, faction, size, nil, tr.HitPos, args[4] or "away",
-		{ archetypes = mix, radius = 200, order = order, orderPos = order and tr.HitPos or nil, orderYaw = order and ply:EyeAngles().y or nil })
+	local face = args[4] or "me"
+	local spawned = TIF.SpawnSoldiers(ply, faction, size, nil, tr.HitPos, face,
+		{ archetypes = mix, radius = 200, formation = face == "me", order = order, orderPos = order and tr.HitPos or nil,
+			orderYaw = order and (face == "me" and (ply:GetPos() - tr.HitPos):Angle().y or ply:EyeAngles().y) or nil })
 	TIF.Log("Spawned a ", faction, " squad of ", #spawned, order and (" with order " .. order) or "")
-end, "tif_spawn_squad <faction> [size] [order: hold|follow|free] [face: me|away|random]: mixed squad (leader, support, marksman, assault, riflemen)")
+end, "tif_spawn_squad <faction> [size] [order: hold|follow|free] [face: me (in formation, default)|away|random]: mixed squad (leader, support, marksman, assault, riflemen)")
 
 local function nearest_allied_squad(ply)
 	local best, bestD

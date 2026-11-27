@@ -183,4 +183,12 @@ cb(host)
 check(sets == 0, "a bone build TIF didn't ask for this frame (shadow / early): no IK")
 host.SetBoneMatrix = realSet
 st.writeFrame = 100
+do
+	local body = io.open(ROOT .. "tif/npc/cl_body.lua"):read("*a")
+	check(body:find('Bd.ALIGN_REF = "models/tif_guns/akm.mdl"', 1, true) ~= nil, "baked guns line their barrel up with the AKM's (the frame the hold is calibrated on)")
+	check(body:find("local X = ref.inv:GetInverseTR() * gi.inv", 1, true) ~= nil, "correction = reference barrel frame x this gun's frame inverse (from muzzle / tif_axis_b / tif_axis_u)")
+	check(body:find("ang = (ALIGN_M * X):GetAngles()", 1, true) ~= nil and body:find("local pos, ang = gun_pose_raw(st, src, gi)", 1, true) ~= nil,
+		"applied to the baked gun's pose (about the wrist), so the hand IK targets follow it")
+	check(body:find("Bd.GunPose = gun_pose", 1, true) ~= nil, "the IK reads the corrected pose")
+end
 print(string.format("passed %d, failed %d", pass, fail))

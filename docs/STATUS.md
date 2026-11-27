@@ -1170,6 +1170,21 @@ parts 11, slots + pose 12 ms/s; arm IK 53 us a solve (was 74-99).
   sv_weapon under tifPanic: spread x W.PANIC_SPREAD (3), bursts W.PANIC_BURST 6-12 (auto) / W.PANIC_SEMI 2-4, pauses x
   W.PANIC_PAUSE (0.45) on every gun kind, reloads x W.PANIC_RELOAD (1.5). No grenades / peeks / weapon switches (the
   brain's engage doesn't run). Harness morale 17 (+9).
+- Upturned guns (user screenshot, EBR in an idle: "the guns kinda upturned ... mainly on some guns like the fal, but not
+  the insurgent aks"): each baked gun's mesh is in its MW world model's right-hand frame, and MW's world models hold the
+  hand at different angles per gun, in steps: barrel level for the AK family, pistols, LMGs, Uzi, RPG-7; 5 deg up for
+  FAL, Oden, M4s, M13s, Kilo, SCAR; 10 deg up for EBR, AN-94, AS VAL, Bizon, Bruens, shotguns, SVD, SKS, Rytec; SVD /
+  Rytec 5, SKS 3, MP5 4, MP7 10 deg sideways too (measured on the export tags and again on the compiled attachments).
+  The baked-gun hold (gun bone x KR, calibrated on the AKM) showed each gun's offset as its tilt. cl_body: gun_pose wraps
+  gun_pose_raw and turns baked guns by X = (AKM's barrel frame) x (this gun's)^-1 (gun_info frames from muzzle /
+  tif_axis_b / tif_axis_u), about the wrist; cached per model, skipped under Bd.ALIGN_MIN (0.5 deg). Bd.GunPose is the
+  corrected pose, so the left-hand IK follows; slings already used each gun's own frame. Harness gunhold 24 (+4).
+- Group spawns (user: "do big formations spawn backwards" ... "make em a formation looking at me so fights are easy to
+  setup"): spawn-menu Fireteam / Squad (tif_spawner) and tif_spawn_squad spawned facing "away", each turned radially from
+  the player (backs to you, fanned out). Now TIF.FormationPoints (core/sv_spawn): the leader on the aimed spot, the rest
+  in the squad's wedge slots (TIF.Squad.SlotOffset, TIF.FORMATION_SPACING 90) behind him on the far side, navmesh-snapped
+  and room-checked, all facing the player with one shared yaw. tif_spawn_squad defaults to it (face "me"; "away" /
+  "random" keep the old scatter) and its hold order faces the player too. Harness spawnform 9 (new).
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

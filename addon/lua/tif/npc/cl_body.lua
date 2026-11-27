@@ -1734,7 +1734,7 @@ local GUN_OFF = Vector()
 local BONE_RM, BONE_JM, BONE_MUZ = Matrix(), Matrix(), Matrix()
 local CopyBone = TIF.CopyBone
 
-local function gun_pose(st, src, gi)
+local function gun_pose_raw(st, src, gi)
 	local rb = cached_bone(rHandOf, src, R_HAND)
 	local rm = gi and rb and CopyBone(src, rb, BONE_RM)
 	if not rm then return nil end
@@ -1788,6 +1788,38 @@ local function gun_pose(st, src, gi)
 	GUN_OFF.x, GUN_OFF.y, GUN_OFF.z = g.x, g.y, g.z
 	GUN_OFF:Rotate(ang)
 	return grip - GUN_OFF, ang
+end
+
+Bd.ALIGN_REF = "models/tif_guns/akm.mdl"
+Bd.ALIGN_MIN = 0.5
+local ALIGN_M = Matrix and Matrix()
+
+local function align_of(gi)
+	if gi.align ~= nil then return gi.align or nil end
+	gi.align = false
+	local ref = gun_info(Bd.ALIGN_REF)
+	if not ref or ref == gi then return nil end
+	local X = ref.inv:GetInverseTR() * gi.inv
+	X:SetTranslation(vector_origin)
+	local a = X:GetAngles()
+	if math.abs(a.p) + math.abs(a.y) + math.abs(a.r) > Bd.ALIGN_MIN then gi.align = X end
+	return gi.align or nil
+end
+Bd.GunAlign = align_of
+
+local function gun_pose(st, src, gi)
+	local pos, ang = gun_pose_raw(st, src, gi)
+	if not pos or not gi then return pos, ang end
+	local g = st.gun
+	if IsValid(g) and (g.tifHold or g.tifFree) then
+		local X = align_of(gi)
+		if X then
+			ALIGN_M:SetAngles(ang)
+			ALIGN_M:SetTranslation(vector_origin)
+			ang = (ALIGN_M * X):GetAngles()
+		end
+	end
+	return pos, ang
 end
 
 Bd.GunPose = gun_pose

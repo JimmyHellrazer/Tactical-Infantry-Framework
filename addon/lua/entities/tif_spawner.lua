@@ -34,7 +34,8 @@ function ENT:Initialize()
 
 		local ply = self.tifPly or self:GetCreator()
 		if TIF.SpawnSoldiers and TIF.Factions[faction] then
-			TIF.SpawnSoldiers(IsValid(ply) and ply or nil, faction, n, nil, self:GetPos(), IsValid(ply) and "away" or "random", { archetypes = mix })
+			TIF.SpawnSoldiers(IsValid(ply) and ply or nil, faction, n, nil, self:GetPos(), IsValid(ply) and "me" or "random",
+				{ archetypes = mix, formation = true })
 		end
 
 		self:Remove()
