@@ -1,5 +1,5 @@
 TIF = TIF or {}
-TIF.Version = "0.38.72"
+TIF.Version = "0.38.77"
 TIF.Root = "tif/"
 
 TIF.Dev = file.Exists("tif_dev/sh_init.lua", "LUA")
@@ -93,6 +93,7 @@ local MANIFEST = {
 	"npc/cl_gunhold.lua",
 	"npc/cl_feet.lua",
 	"npc/cl_eyes.lua",
+	"npc/cl_calmwatch.lua",
 	"npc/cl_flashlight.lua",
 	"npc/sv_rescue.lua",
 

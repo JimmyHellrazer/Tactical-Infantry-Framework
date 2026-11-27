@@ -9,7 +9,7 @@ local GetBoneMatrix, CopyBoneMatrix, SetBoneMatrix = ENTITY.GetBoneMatrix, ENTIT
 local Unpack, SetUnpacked, SetField = VMATRIX.Unpack, VMATRIX.SetUnpacked, VMATRIX.SetField
 
 local function read(ent, bone, A, o)
-	if CopyBoneMatrix then
+	if CopyBoneMatrix and TIF and TIF.FAST_BONE_COPY then
 		SetField(IN, 4, 4, 0)
 		CopyBoneMatrix(ent, bone, IN)
 		local a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, _, _, _, m16 = Unpack(IN)

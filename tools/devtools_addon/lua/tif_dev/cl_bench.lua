@@ -7,7 +7,7 @@ local col
 net.Receive("tif_bench_start", function()
 	local s = TIF.Body.Stats
 	col = { frames = 0, ft = 0, maxFt = 0, animMs = 0, solves = 0, solveUs = 0, feetUs = 0, feetN = 0, ikUs = 0, ikN = 0, composeMs = 0, bonesMs = 0, partsMs = 0, foleyMs = 0, poseMs = 0, soldiers = 0, seconds = 0, missingPeak = 0,
-		checks0 = s.checks, over0 = s.overwritten, early0 = s.early or 0, missing0 = s.missingSlots, asked0 = s.refreshAsked, skipUntil = RealTime() + 3 }
+		checks0 = s.checks, over0 = s.overwritten, early0 = s.early or 0, missing0 = s.missingSlots, asked0 = s.refreshAsked, calmF0 = s.calmFrames or 0, calmE0 = s.calmEpisodes or 0, calmWhy0 = table.Copy(s.calmWhy or {}), calmPeak = 0, skipUntil = RealTime() + 3 }
 	hook.Add("Think", "tif_bench_client", function()
 		if RealTime() < col.skipUntil then return end
 		col.composed0 = col.composed0 or TIF.Body.Stats.composed
@@ -19,6 +19,8 @@ net.Receive("tif_bench_start", function()
 		if ft > col.maxFt then col.maxFt = ft end
 		local m = TIF.Body.Stats.missingNow or 0
 		if m > col.missingPeak then col.missingPeak = m end
+		local cn = TIF.Body.Stats.calmNow or 0
+		if cn > col.calmPeak then col.calmPeak = cn end
 	end)
 	timer.Create("tif_bench_client", 1, 0, function()
 		if RealTime() < col.skipUntil then return end
@@ -75,6 +77,17 @@ net.Receive("tif_bench_query", function()
 		early = (s.early or 0) - col.early0,
 		checked = checks,
 		refreshAsked = s.refreshAsked - col.asked0,
+		calmFrames = (s.calmFrames or 0) - col.calmF0,
+		calmEpisodes = (s.calmEpisodes or 0) - col.calmE0,
+		calmPeak = col.calmPeak,
+		calmWhy = (function()
+			local out = {}
+			for k, v in pairs(s.calmWhy or {}) do
+				local d = v - (col.calmWhy0[k] or 0)
+				if d > 0 then out[k] = d end
+			end
+			return out
+		end)(),
 	}
 	col = nil
 	net.Start("tif_bench_reply")

@@ -1398,6 +1398,11 @@ local function compose(ent, st, dt, now)
 	end
 
 	local legTop = top(st.legW, #A.LEG_SLOTS, LEG_BUF)
+
+	if Bd.Calm and Bd.Calm.Watch then
+		Bd.Calm.Watch(ent, st, legs, legTop, now, dt, actClip, stance, speed, aware, mode)
+	end
+
 	local dom
 
 	for i = 1, #legTop do

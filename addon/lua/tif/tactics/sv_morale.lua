@@ -249,7 +249,7 @@ function MO.SurrenderThink(npc, now)
 	kneel_think(npc, now or CurTime())
 end
 
-MO.PANIC_HIDE, MO.PANIC_RUN = 1000, 400
+MO.PANIC_HIDE, MO.PANIC_RUN = 2500, 1200
 MO.PANIC_RUN_GAP = { 1.0, 2.0 }
 
 local function panic_target(npc, c, now, range)

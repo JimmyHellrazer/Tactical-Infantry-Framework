@@ -1290,6 +1290,62 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
 - sv_brain.lua: a searching soldier with no tifSearch starts a fresh search on his last contact (one condition changed).
   Nothing else touched.
 
+### 0.38.73: bone reads back on GetBoneMatrix (2026-11-26, NOT yet seen in game)
+- User: "transition to ragdoll is harsher now", "im also seeing jittery ingame movement", "i think the lua split might
+  have been a issue". Bench 0.38.72 (bench_50_battle_0_38_72.txt) against 0.38.65: server AI 264 -> 166 ms/s, client
+  animation 312 -> 220 ms/s, foley 88 -> 38 ms/s, but [FAIL] layer writes overwritten 46.5% (was 0.1%) and [WARN]
+  soldiers missing layer slots, peak 20, 350 refresh requests (was none).
+- The split is not it: the 46 parts merge to the same 4332 clips (checked in LuaJIT against the old file), load in the
+  same order, nothing else registers mw_male, and the slot code (TIFRefreshSlots, check_slots, write_slot) is unchanged
+  since the clean 0.38.65 bench. The 0.38.65 bench ran before the bladew0rks pull, so his 18 commits and 0.38.66-.72
+  are the suspects for the layer slots: not found yet, bisect pending.
+- bladew0rks' ccd64f2 / 377102a moved bone reads to the engine's Entity:CopyBoneMatrix (TIF.CopyBone, sh_pose read).
+  GetBoneMatrix rebuilds stale bones before it reads; CopyBoneMatrix appears to copy the cache. The death path clears
+  the cache (DyingThink InvalidateBoneCache) and then reads every bone for the corpse pose and velocities, and the
+  modular retarget reads the host's bones every frame. TIF.FAST_BONE_COPY (false) now gates CopyBoneMatrix in
+  TIF.CopyBone and sh_pose read: back on GetBoneMatrix everywhere. Backups: K:\jimmyproject\_addon_backups\2026-11-26_copybone.
+- All suites pass. Needs a look in game (ragdoll handoff, moving soldiers) and a new bench.
+
+### 0.38.74: calm-idle watch (2026-11-26, NOT yet seen in game)
+- User: "sometimes soldiers will assume the straight up calm idle, in times its not appropriate either. add some sort of
+  watch for that before i do another bench". The client's leg_targets falls through to the relaxed set's idle whenever
+  the soldier isn't in aim mode, isn't crouched and has no action clip; awareness only changes stairs / slopes (and the
+  alert set in aim mode), so an alerted or fighting soldier in relaxed mode stands in the calm idle.
+- New npc/cl_calmwatch.lua (TIF.Body.Calm), run from compose on the chosen leg clips: an episode is the dominant leg
+  clip (>= 50% of the leg weight) being a calm idle (relaxed / relaxedFlash / any weapon kind's relaxed set, variants
+  included) for 0.4 s+, standing (< 40 u/s), no action clip, not prone / dying / seated, while alerted, engaged or
+  searching, or fired in the last 4 s, or hit in the last 3 s, or broken. Each episode logs to data/tif/log_cl.txt
+  ("[calm idle] #idx faction: reasons, mode, weapon, speed, morale, cqb, slots, clip"; 10 s per soldier, 30 a minute).
+  tif_calm_watch 0 turns it off. Stats: calmFrames, calmEpisodes, calmNow, calmWhy.
+- tif_devtools bench: client collects the episode / frame deltas, the peak at once and the reasons; the report adds
+  [PASS] no calm idle while alerted, or [WARN] "Calm idle while alerted / fighting" with counts and the top reasons.
+- Harness calmwatch 19 (new). All suites pass.
+
+### 0.38.75: no calm idle while fighting (2026-11-26, NOT yet seen in game)
+- Bench 0.38.74 (bench_50_battle_0_38_74.txt): layers clean (0.0%, no missing slots), [WARN] calm idle 29 episodes, peak
+  7 at once; log_cl.txt: every one engaged, mode relaxed, standing (speed 0-14), the reb_stl_patrol_idle01-06 calm idles;
+  18 steady (most just fired or hit), 11 broken.
+- Causes: (1) sv_brain's gun-down run rule relaxes an engaged soldier with a run / sprint goal who isn't firing, without
+  checking he moves: waiting on a path, blocked or in a crowd he stood relaxed; (2) sv_morale BrokenThink sets relaxed
+  every think and stands him up while his flee goal is > 80 away, also when he isn't moving yet.
+- B.NoCalmStand (after the mode rules, before low ready): engaged or alerted, relaxed, standing stance, no action, not in a
+  vehicle / downed / surrendered, under 40 u/s for 0.3 s (B.CALM_STAND_AFTER; run starts keep their relaxed start): aim
+  mode back, or for a broken soldier a crouch (cowering). Unaware, suspicious and searching soldiers keep the calm idle.
+- Harness calmstand 18 (new). All suites pass.
+
+### 0.38.76: broken soldiers cower at any awareness (2026-11-26, NOT yet seen in game)
+- Bench 0.38.75 (bench_50_battle_0_38_75.txt): calm idle 29 -> 1 episode (peak 1, 2 soldier-frames), layers clean.
+  Per alive soldier AI 6.42 ms/s (5.76-6.01 in the last runs), client animation 6.20 (6.21); frame time 36.7 ms with
+  47.5 alive on average, more of them aiming.
+- The one left: a broken soldier whose awareness had dropped to searching, standing relaxed. B.NoCalmStand now also
+  takes any broken soldier (cowers in a crouch). Harness calmstand 19 (+1).
+
+### 0.38.77: broken soldiers shoot back from farther (2026-11-26, NOT yet seen in game)
+- User: "can we up the range of the broken shots, just so they arent like watching and still participate in the battle
+  a bit". MO.PANIC_RUN 400 -> 1200 (over-the-shoulder bursts while fleeing), MO.PANIC_HIDE 1000 -> 2500 (panic fire
+  from the crouch). Still needs the enemy in sight (or seen within 1 s); panic spread x3, short pauses, slow reloads
+  unchanged, so at range it's mostly suppressing fire. Harness morale 19 (+2, ranges updated). All suites pass.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like

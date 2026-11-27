@@ -116,6 +116,16 @@ local function finish_report(clientData)
 			r:Warn("Soldiers missing layer slots", string.format("peak %d at once, %d soldier-frames, %d refresh requests sent",
 				clientData.missingPeak or 0, clientData.missing or 0, clientData.refreshAsked or 0))
 		end
+		if (clientData.calmEpisodes or 0) == 0 then r:Pass("No soldier stood in the calm idle while alerted, fighting or broken")
+		else
+			local why = {}
+			for k, n in pairs(clientData.calmWhy or {}) do why[#why + 1] = { k = k, n = n } end
+			table.sort(why, function(a, b) return a.n > b.n end)
+			local parts = {}
+			for i = 1, math.min(6, #why) do parts[#parts + 1] = why[i].k .. " " .. why[i].n end
+			r:Warn("Calm idle while alerted / fighting", string.format("%d episodes, peak %d at once, %d soldier-frames; %s (details in data/tif/log_cl.txt)",
+				clientData.calmEpisodes or 0, clientData.calmPeak or 0, clientData.calmFrames or 0, table.concat(parts, ", ")))
+		end
 	else
 		r:Warn("No client data", "the host didn't reply")
 	end

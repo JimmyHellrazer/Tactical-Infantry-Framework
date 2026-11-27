@@ -879,6 +879,33 @@ function B.StartSearch(npc, pos, dir, now)
 	set_aware(npc, AW.SEARCHING, now)
 end
 
+B.CALM_STAND_AFTER = 0.3
+B.CALM_STAND_SPEED = 40
+
+function B.NoCalmStand(npc, now)
+	local aw = npc.tifAware
+	local standing = npc.tifMode == A.MODE_RELAXED and npc.tifStance == A.STANCE_STAND and not npc.tifAct
+		and (aw == AW.ENGAGED or aw == AW.ALERTED or npc.tifMoraleState == "broken")
+		and not npc.tifVeh and not npc.tifBoard and not npc.tifLeaving and not npc.tifDowned and not npc.tifSurrendered
+		and npc.loco and npc.loco:GetVelocity():Length2DSqr() < B.CALM_STAND_SPEED * B.CALM_STAND_SPEED
+
+	if not standing then
+		npc.tifCalmSince = nil
+		return false
+	end
+
+	npc.tifCalmSince = npc.tifCalmSince or now
+	if now - npc.tifCalmSince < B.CALM_STAND_AFTER then return false end
+
+	if npc.tifMoraleState == "broken" then
+		npc.tifStance = A.STANCE_CROUCH
+	else
+		npc.tifMode = A.MODE_AIM
+	end
+
+	return true
+end
+
 function B.Think(npc, dt)
 	local now = CurTime()
 	if not npc.tifPost then
@@ -1046,6 +1073,8 @@ function B.Think(npc, dt)
 		npc.tifMode = A.MODE_RELAXED
 		npc.tifStance = A.STANCE_STAND
 	end
+
+	B.NoCalmStand(npc, now)
 
 	low_ready(npc, now, coverFire)
 

@@ -105,10 +105,12 @@ local VMATRIX = FindMetaTable and FindMetaTable("VMatrix")
 local SetField = VMATRIX and VMATRIX.SetField
 local GetField = VMATRIX and VMATRIX.GetField
 
+TIF.FAST_BONE_COPY = false
+
 function TIF.CopyBone(ent, bone, out)
 	if not bone then return nil end
 
-	if CopyBoneMatrix then
+	if CopyBoneMatrix and TIF.FAST_BONE_COPY then
 		SetField(out, 4, 4, 0)
 		CopyBoneMatrix(ent, bone, out)
 		if GetField(out, 4, 4) == 0 then return nil end

@@ -64,15 +64,23 @@ local shots = npc.tifCoverFire.shots
 MO.BrokenThink(npc, near, 100.2)
 check(npc.tifCoverFire.shots == shots, "one panic burst at a time")
 npc.tifCoverFire, npc.tifPanicNext = nil, nil
-MO.BrokenThink(npc, { pos = Vector(700, 0, 0), visible = true, ent = enemy, seenAt = 100 }, 103)
-check(npc.tifCoverFire == nil, "enemy 700 away while running: just runs")
+MO.BrokenThink(npc, { pos = Vector(900, 0, 0), visible = true, ent = enemy, seenAt = 100 }, 103)
+check(npc.tifCoverFire ~= nil, "enemy 900 away while running: still fires back over his shoulder")
+npc.tifCoverFire, npc.tifPanicNext = nil, nil
+MO.BrokenThink(npc, { pos = Vector(1500, 0, 0), visible = true, ent = enemy, seenAt = 100 }, 106)
+check(npc.tifCoverFire == nil, "enemy 1500 away while running: just runs")
 npc.tifFlee = { goal = Vector(0, 0, 0), from = Vector(600, 0, 0) }
 npc.tifFire.want = false
 MO.BrokenThink(npc, { pos = Vector(600, 0, 0), visible = true, ent = enemy, seenAt = 103 }, 103)
 check(npc.tifAction == "broken: panic firing" and npc.tifFire.want == true and npc.tifMode == 1, "hiding, enemy in sight at 600: panic fire, gun up")
-npc.tifFlee = { goal = Vector(0, 0, 0), from = Vector(1500, 0, 0) }
-MO.BrokenThink(npc, { pos = Vector(1500, 0, 0), visible = true, ent = enemy, seenAt = 103 }, 103)
-check(npc.tifAction == "broken: hiding" and npc.tifFire.want == false and npc.tifMode == 0, "enemy 1500 away: hides, gun down")
+npc.tifFlee = { goal = Vector(0, 0, 0), from = Vector(1800, 0, 0) }
+npc.tifFire.want = false
+MO.BrokenThink(npc, { pos = Vector(1800, 0, 0), visible = true, ent = enemy, seenAt = 103 }, 103)
+check(npc.tifAction == "broken: panic firing" and npc.tifFire.want == true, "hiding, enemy in sight at 1800: still shoots")
+npc.tifFlee = { goal = Vector(0, 0, 0), from = Vector(3000, 0, 0) }
+npc.tifFire.want = false
+MO.BrokenThink(npc, { pos = Vector(3000, 0, 0), visible = true, ent = enemy, seenAt = 103 }, 103)
+check(npc.tifAction == "broken: hiding" and npc.tifFire.want == false and npc.tifMode == 0, "enemy 3000 away: hides, gun down")
 npc.tifMorale, npc.tifMoraleSince = 0.9, 0
 npc.tifMoraleState = "broken"
 MO.BrokenThink(npc, nil, 104)
@@ -80,7 +88,7 @@ npc.tifMoraleState = "steady"
 MO.BrokenThink(npc, nil, 104)
 check(npc.tifPanic == nil, "recovered: no more panic")
 local wsrc = io.open(ROOT .. "tif/npc/sv_weapon.lua"):read("*a")
-check(wsrc:gsub("%s+", " "):find("if npc.tifPanic then deg = deg * W.PANIC_SPREAD end", 1, true) and wsrc:find("W.PANIC_SPREAD, W.PANIC_PAUSE, W.PANIC_RELOAD = 3, 0.45, 1.5", 1, true),
+check(wsrc:find("if npc.tifPanic then deg = deg * W.PANIC_SPREAD end", 1, true) and wsrc:find("W.PANIC_SPREAD, W.PANIC_PAUSE, W.PANIC_RELOAD = 3, 0.45, 1.5", 1, true),
 	"panic: a third of the accuracy, short pauses, slow reloads")
 check(wsrc:find("local r = (def and def.auto) and W.PANIC_BURST or W.PANIC_SEMI", 1, true) ~= nil, "panic: long uncontrolled bursts")
 npc.tifMoraleState = "broken"
