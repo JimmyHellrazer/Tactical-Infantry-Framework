@@ -339,4 +339,77 @@ for _, f in ipairs({ "entities/tif_director.lua", "entities/tif_survival.lua" })
 	check(es:find('local RADIO_MODEL = "models/props_lab/citizenradio.mdl"', 1, true) and es:find("self:SetModel(RADIO_MODEL)", 1, true), f .. " is an HL2 radio")
 	check(es:find('Edit = { type = "Combo"', 1, true) and es:find("TIF.FactionComboValues()", 1, true), f .. " picks its faction from a dropdown")
 end
+
+check(D.Stage(1).from == 1 and D.Stage(2).from == 1 and D.Stage(3).from == 3 and D.Stage(6).from == 5 and D.Stage(12).from == 7, "stages by wave: 1-2, 3-4, 5-6, 7+")
+local function pool_of(stage, n)
+	local seen = {}
+	for _ = 1, n do for _, r in ipairs(D.StageRoles(stage, 4)) do seen[r] = true end end
+	return seen
+end
+local s1 = pool_of(D.Stage(1), 60)
+check(s1.guard and s1.assault and not s1.rifleman and not s1.support and not s1.rpg, "waves 1-2: guards and assault only")
+local s2 = pool_of(D.Stage(3), 80)
+check(s2.rifleman and s2.support and not s2.marksman and not s2.rpg, "waves 3-4 add riflemen and support")
+local s3 = pool_of(D.Stage(5), 120)
+check(s3.marksman and s3.rpg and not s3.breacher, "waves 5-6 add marksmen and AT")
+local s4r = D.StageRoles(D.Stage(7), 5)
+check(s4r[1] == "leader", "wave 7+: a leader in every squad")
+local s4 = pool_of(D.Stage(7), 120)
+check(s4.breacher, "and breachers")
+check((D.Stage(5).extra or 0) == 1 and (D.Stage(1).extra or 0) == 0, "squads grow by one from wave 5")
+
+local hp = { mh = 100, tifGuerrilla = true }
+function hp:GetMaxHealth() return self.mh end
+function hp:SetMaxHealth(v) self.mh = v end
+function hp:SetHealth(v) self.h = v end
+function hp:SetNW2Bool(k, v) self.nw = v end
+D.ApplyStage(D.Stage(1), { hp })
+check(hp.mh == 100 and hp.tifGuerrilla == true, "early stages change nothing on the soldier")
+D.ApplyStage(D.Stage(7), { hp })
+check(hp.mh == 115 and hp.h == 115, "wave 7+: +15% health")
+local kept, n = 0, 400
+for _ = 1, n do
+	local g = { tifGuerrilla = true, mh = 100 }
+	function g:GetMaxHealth() return self.mh end
+	function g:SetMaxHealth(v) self.mh = v end
+	function g:SetHealth(v) end
+	function g:SetNW2Bool() end
+	D.ApplyStage(D.Stage(7), { g })
+	if g.tifGuerrilla then kept = kept + 1 end
+end
+check(kept > n * 0.35 and kept < n * 0.65, "wave 7+: about half the guerrillas fight trained (" .. kept .. "/" .. n .. ")")
+local trained = { tifGuerrilla = false, mh = 100 }
+function trained:GetMaxHealth() return self.mh end
+function trained:SetMaxHealth(v) self.mh = v end
+function trained:SetHealth(v) end
+function trained:SetNW2Bool() end
+D.ApplyStage(D.Stage(7), { trained })
+check(trained.tifGuerrilla == false, "trained soldiers never turn guerrilla")
+
+squads = {}
+local st2 = mkdir()
+st2.nv = { Faction = "auto", Stages = true, StartSize = 6, Growth = 25, MaxAlive = 24, SquadMin = 3, SquadMax = 3, BreakTime = 20, SpawnMin = 1200, SpawnMax = 3500, Wave = 0, RunStart = 0, BreakEnd = 0, Heat = 0 }
+now = 9000
+D.SurvivalThink(st2, now)
+now = now + 11
+D.SurvivalThink(st2, now)
+D.SurvivalThink(st2, now)
+local r1 = squads[#squads].roles
+local early = true
+for _, r in ipairs(r1) do if r ~= "guard" and r ~= "assault" then early = false end end
+check(#r1 == 3 and early, "survival wave 1 squad: guards / assault")
+check(squads[#squads].members[1].tifPress == true, "survival soldiers press in")
+st2.nv.Stages = false
+squads = {}
+now = now + 2.1
+D.SurvivalThink(st2, now)
+check(squads[1] and squads[1].roles[1] == "leader" and squads[1].roles[2] == "rifleman", "stages off: the old fixed roles")
+
+local cb = io.open(ROOT .. "tif/tactics/sv_cover_behave.lua"):read("*a")
+check(cb:find("or (npc.tifPress and not pt.canShoot)", 1, true) ~= nil, "pressing soldiers only take cover they can shoot from")
+check(cb:find("if npc.tifPress and c and not c.visible and now - (c.seenAt or -99) > CB.PRESS_UNSEEN", 1, true) and cb:find("CB.PRESS_UNSEEN = 6", 1, true), "and leave cover after 6 s without seeing anyone")
+local br = io.open(ROOT .. "tif/npc/sv_brain.lua"):read("*a")
+check(br:find("local lost = npc.tifPress and (now - c.seenAt) or (now - math.max(c.seenAt, c.heardAt))", 1, true) ~= nil, "lost sight counts from the last sighting for them")
+local se = io.open(ROOT .. "entities/tif_survival.lua"):read("*a")
+check(se:find('self:NetworkVar("Bool", 3, "Stages"', 1, true) and se:find("self:SetStages(true)", 1, true), "the radio has a Stages toggle, on by default")
 print(string.format("passed %d, failed %d", pass, fail))

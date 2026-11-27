@@ -227,4 +227,6 @@ do
 	local ghp = io.open(ROOT .. "../../tools/guns/gun_holds.py")
 	if ghp then check(ghp:read("*a"):find("|_rpg_drop_to_exp_stand(_pstl)?$", 1, true) ~= nil, "and gun_holds.py keeps them that way") end
 end
+local bodySrc = io.open(ROOT .. "tif/npc/cl_body.lua"):read("*a")
+check(bodySrc:find("\telse\n\t\tent:SetupBones()\n\tend\n\n\tif TIF.GunHold then\n\t\tTIF.GunHold.Post(ent, st)\n\tend", 1, true) ~= nil, "slung launcher / rifle follow the body with no gun in hand (downed, surrendered)")
 print(string.format("passed %d, failed %d", pass, fail))

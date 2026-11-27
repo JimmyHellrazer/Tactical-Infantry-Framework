@@ -1902,17 +1902,15 @@ local function update(ent, st, dt, now)
 		if TIF.GunMag and not st.hideGun then
 			TIF.GunMag.Update(ent, st)
 		end
+	else
+		ent:SetupBones()
+	end
 
-		if TIF.GunHold then
-			TIF.GunHold.Post(ent, st)
-		end
+	if TIF.GunHold then
+		TIF.GunHold.Post(ent, st)
 	end
 
 	if TIF.Props then
-		if not (IsValid(st.gun)) then
-			ent:SetupBones()
-		end
-
 		TIF.Props.Update(ent, st, now)
 	end
 

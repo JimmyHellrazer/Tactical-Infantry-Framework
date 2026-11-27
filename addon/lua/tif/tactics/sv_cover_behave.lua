@@ -265,7 +265,7 @@ function CB.Seek(npc, threat, now, opts)
 	end
 
 	npc.tifCoverStats = stats
-	npc.tifCoverSearchFailed = pt == nil or (pt.score or -99) < -2.5
+	npc.tifCoverSearchFailed = pt == nil or (pt.score or -99) < -2.5 or (npc.tifPress and not pt.canShoot)
 	local parts = {}
 
 	for k, v in SortedPairs(stats or {}) do
@@ -307,6 +307,9 @@ local function snap_home(npc, cov)
 	npc:SetAngles(Angle(0, face_yaw(cov), 0))
 end
 
+CB.PRESS_UNSEEN = 6
+CB.PRESS_COOLDOWN = 10
+
 function CB.Update(npc, c, now)
 	local cov = npc.tifCov
 	local f = npc.tifFire
@@ -316,6 +319,17 @@ function CB.Update(npc, c, now)
 		if not CB.Seek(npc, c.pos, now) then return false end
 
 		cov = npc.tifCov
+	end
+
+	if npc.tifPress and c and not c.visible and now - (c.seenAt or -99) > CB.PRESS_UNSEEN
+		and cov.phase ~= "exit" and cov.phase ~= "move" then
+		npc.tifNextCoverSearch = now + CB.PRESS_COOLDOWN
+		npc.tifAction = "pressing"
+
+		if CB.Exit(npc, "pressing") then return true end
+
+		CB.Leave(npc, "pressing")
+		return false
 	end
 
 	if cov.mw and CB.MW then return CB.MW.Update(npc, c, now) end

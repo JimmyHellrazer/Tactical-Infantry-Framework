@@ -571,7 +571,7 @@ local function engage(npc, c, now)
 			Move.Stop(npc)
 		end
 	else
-		local lost = now - math.max(c.seenAt, c.heardAt)
+		local lost = npc.tifPress and (now - c.seenAt) or (now - math.max(c.seenAt, c.heardAt))
 
 		if GRN and GRN.OpenThrow and GRN.OpenThrow(npc, c, now, lost) then
 			return

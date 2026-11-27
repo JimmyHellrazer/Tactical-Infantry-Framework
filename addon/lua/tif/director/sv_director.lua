@@ -153,9 +153,79 @@ function D.HostileFaction(want)
 	return list[1]
 end
 
-function D.SpawnSquad(faction, pos, size, faceAt)
+D.STAGES = {
+	{ from = 1, roles = { guard = 3, assault = 4 } },
+	{ from = 3, roles = { guard = 1, assault = 3, rifleman = 3, support = 2 } },
+	{ from = 5, roles = { assault = 2, rifleman = 3, support = 2, marksman = 1, rpg = 1 }, extra = 1 },
+	{ from = 7, roles = { assault = 2, rifleman = 2, support = 2, marksman = 1, rpg = 1, breacher = 2 }, extra = 1,
+		leader = true, guerrilla = 0.35, health = 1.15 },
+}
+
+function D.Stage(level)
+	local pick = D.STAGES[1]
+	for _, s in ipairs(D.STAGES) do
+		if level >= s.from then
+			pick = s
+		end
+	end
+
+	return pick
+end
+
+local function weighted(pool)
+	local total = 0
+	for _, w in pairs(pool) do
+		total = total + w
+	end
+
+	local r = math.random() * total
+	local keys = {}
+	for k in pairs(pool) do
+		keys[#keys + 1] = k
+	end
+
+	table.sort(keys)
+	for _, k in ipairs(keys) do
+		r = r - pool[k]
+		if r <= 0 then return k end
+	end
+
+	return keys[#keys]
+end
+
+function D.StageRoles(stage, size)
 	local roles = {}
-	for i = 1, size do roles[i] = D.SQUAD_ROLES[(i - 1) % #D.SQUAD_ROLES + 1] end
+	for i = 1, size do
+		roles[i] = (i == 1 and stage.leader) and "leader" or weighted(stage.roles)
+	end
+
+	return roles
+end
+
+function D.ApplyStage(stage, list)
+	for _, e in ipairs(list) do
+		if IsValid(e) then
+			if stage.guerrilla and e.tifGuerrilla then
+				e.tifGuerrilla = math.random() < stage.guerrilla / 0.7
+				e:SetNW2Bool("tif_guerrilla", e.tifGuerrilla == true)
+			end
+
+			if stage.health and stage.health > 1 then
+				local hp = math.max(1, math.floor(e:GetMaxHealth() * stage.health + 0.5))
+				e:SetMaxHealth(hp)
+				e:SetHealth(hp)
+			end
+		end
+	end
+end
+
+function D.SpawnSquad(faction, pos, size, faceAt, roles)
+	if not roles then
+		roles = {}
+		for i = 1, size do roles[i] = D.SQUAD_ROLES[(i - 1) % #D.SQUAD_ROLES + 1] end
+	end
+
+	size = #roles
 	local yaw = faceAt and (faceAt - pos):Angle().y or math.Rand(-180, 180)
 	local pts = TIF.FormationPoints and TIF.FormationPoints(pos, size, yaw) or nil
 	local sq, out = TIF.API.SpawnSquad(faction, pos, roles, { face = faceAt or "random", points = pts })
@@ -404,10 +474,18 @@ local function surv_spawn(ent, st, faction, size, now, players, health)
 	local pos = D.FindSpawn(ent:GetSpawnMin(), ent:GetSpawnMax(), { avoid = st.sources, avoidR = 400 })
 	if not pos or size <= 0 then return 0 end
 	local ply = D.Nearest(pos, players)
-	local sq, out = D.SpawnSquad(faction, pos, size, IsValid(ply) and ply:GetPos() or nil)
+	local level = st.mode == "onslaught" and ent:GetHeat() or ent:GetWave()
+	local stage = ent:GetStages() and D.Stage(math.max(1, level)) or nil
+	local roles = stage and D.StageRoles(stage, size + (stage.extra or 0)) or nil
+	local sq, out = D.SpawnSquad(faction, pos, size, IsValid(ply) and ply:GetPos() or nil, roles)
 	if not sq then return 0 end
+	if stage then
+		D.ApplyStage(stage, out)
+	end
+
 	for _, e in ipairs(out) do
 		e.tifHunter = true
+		e.tifPress = true
 		e.tifMoraleScale = D.SURV_MORALE
 		e.tifPreferPlayers = D.SURV_PREFER_PLAYERS
 		st.owned[#st.owned + 1] = e

@@ -1461,6 +1461,26 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
 - Harness guerrilla 22 (new); luasize / clipmerge counts 4399. All suites pass. Backups:
   K:\jimmyproject\_addon_backups\2026-11-27_guerrilla (clips, characters, models/tif_mw).
 
+### 0.38.84: survival stages, survival soldiers press in, downed soldiers' RPG stays on their back (2026-11-27, NOT yet seen in game)
+- User: "does survival ramp up in progression? enemy type" -> stages (assault first: "assault soldiers usually carry
+  smgs or carbines"), "build it without boss waves for now". Before: only numbers ramped; roles came in a fixed
+  order, so survival's 3-man squads were always leader / rifleman / assault.
+- sv_director D.STAGES (level = wave, or heat level in onslaught): 1-2 guards + assault; 3-4 + riflemen, support;
+  5-6 + marksmen, AT (rpg), squads +1; 7+ + breachers, a leader in every squad, guerrillas thinned to ~35% (half of
+  them fight trained), +15% health. Roles drawn from the stage's weighted pool (D.StageRoles), so squads vary;
+  D.SpawnSquad takes a role list. tif_survival "Stages" toggle (on by default; off = the old fixed order).
+- User: "they would still kinda take cover/almost hide from me in survival, make them at least try to get within
+  engagement sight and range so its like black hawk down esque standoffs". Survival soldiers get npc.tifPress:
+  CB.Seek turns down cover they can't shoot from; in cover, unseen for CB.PRESS_UNSEEN (6 s) they exit ("pressing")
+  and don't take cover again for CB.PRESS_COOLDOWN (10 s); the brain's lost-contact time counts from the last
+  sighting (the director re-hears the player every 3 s, which kept it under 3 s). Once they see you the normal
+  preferred-range advance / back-off holds them at their range: they fight it out instead of sitting hidden.
+- User: "fix at soldiers who go down having their rpg float in their last standing position". Going down (and
+  surrendering) clears TIFWeapon; cl_body only ran TIF.GunHold.Post (slung launcher / back rifle placement) inside
+  `if IsValid(st.gun)`, so the slung RPG stayed where he stood. Post now runs every composed frame (bones set up
+  when there's no gun in hand).
+- Harness director 96 (+18), launcher 58 (+1). All suites pass. Backups: K:\jimmyproject\_addon_backups\2026-11-27_stages.
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like
