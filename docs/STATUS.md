@@ -1535,6 +1535,20 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   Insurgent entries now have icons).
 - Harness attackpoint 19 (new). All suites pass. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\sv_passive_mw.lua.
 
+### 0.38.86 (cont.): civilian off the Entities tab; MP civilian anims diagnosed (2026-11-27)
+- User: "tif civilians will play weird anims in multiplayer, unlike the proper ones in sp" (host and clients alike).
+  Cause: civilians play server-set main sequences, sent to clients as a sequence NUMBER; MP sends it in 12 bits (0-4095),
+  and the MW body now has ~4,439 sequences. The civ family sits at 2702-2772 (fine) but civ22 (calm stands, varied walks,
+  chat, startles, panic idles, cower, prone) is 4361-4470 and shield 4471-4490: they wrap to unrelated low sequences in
+  MP. SP isn't limited (Phase 0's R1 test that passed 6,502 was run in SP). Soldiers are fine: clients compose them by name.
+- Fix proposed, not done: reorder the MW body's $includemodel order so server-played families (civ, civ22, shield, the
+  soldier base set) come first, plus a build guard; or make civilians name-based on the client.
+- User: "for now just remove civilian from the entities list since we have it as a npc". tif_civilian ENT.Spawnable
+  false (Entities tab); the NPC tab entries (tif_civ_one / _stay / _crowd) spawn it through sandbox's NPC path, which
+  doesn't check Spawnable. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\tif_civilian.lua.
+- Russian spawn icons from the user's shots: materials/entities/tif_russians_{rifleman, marksman, rpg, assault,
+  breacher, fireteam, guard, squad, support, leader}.png (128x128, square crop).
+
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90
 degrees during some of them", "i feel chuggier, how much does it affect performance?", "the bipod prone is like
