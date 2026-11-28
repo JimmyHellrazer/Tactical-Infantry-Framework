@@ -1548,6 +1548,8 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   doesn't check Spawnable. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\tif_civilian.lua.
 - Russian spawn icons from the user's shots: materials/entities/tif_russians_{rifleman, marksman, rpg, assault,
   breacher, fireteam, guard, squad, support, leader}.png (128x128, square crop).
+- Spawn menu names lose the " (ally)" / " (enemy)" suffix (sh_spawnlist.lua): the side is set in the spawn menu now.
+  Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\sh_spawnlist.lua. All harness suites pass.
 
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
 User: "hl2 default tracers not coming out of the gun", "our new clips [don't] carry gun bone points, the guns go 90

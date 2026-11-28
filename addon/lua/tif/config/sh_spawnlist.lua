@@ -16,13 +16,12 @@ function TIF.RefreshSpawnList()
 	for id, def in pairs(TIF.Factions or {}) do
 		if istable(def) and not def.hidden and (def.models or def.variants) then
 			local cat = category(def, id)
-			local side = def.side == "ally" and " (ally)" or (def.side == "enemy" and " (enemy)" or "")
 
 			for _, arch in ipairs(TIF.SPAWN_ROLES) do
 				local a = TIF.Archetypes and TIF.Archetypes[arch]
 				if a then
 					local key = "tif_" .. id .. "_" .. arch
-					npcs[key] = { Name = (a.label or arch) .. side, Class = "tif_soldier", Category = cat,
+					npcs[key] = { Name = a.label or arch, Class = "tif_soldier", Category = cat,
 						KeyValues = { tif_faction = id, tif_arch = arch } }
 					now[key] = true
 				end
@@ -30,7 +29,7 @@ function TIF.RefreshSpawnList()
 
 			for _, g in ipairs(TIF.SPAWN_GROUPS) do
 				local key = "tif_" .. id .. "_" .. g.key
-				npcs[key] = { Name = g.name .. side, Class = "tif_spawner", Category = cat,
+				npcs[key] = { Name = g.name, Class = "tif_spawner", Category = cat,
 					KeyValues = { tif_faction = id, tif_count = tostring(g.count) } }
 				now[key] = true
 			end
