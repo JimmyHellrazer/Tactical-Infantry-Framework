@@ -1530,6 +1530,9 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
   its source before a public release).
 - Spawn menu icon for Attack Point: materials/entities/tif_attack_point.png (128x128, a pike-and-cavalry charge
   illustration the user picked; check its source before a public release).
+- Insurgent spawn menu icons (NPC list keys tif_insurgents_<role>): breacher, assault, rpg, rifleman, guard,
+  squad, fireteam, support in materials/entities (128x128, in-game shots the user picked). Leader and marksman added after (all 10
+  Insurgent entries now have icons).
 - Harness attackpoint 19 (new). All suites pass. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\sv_passive_mw.lua.
 
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
