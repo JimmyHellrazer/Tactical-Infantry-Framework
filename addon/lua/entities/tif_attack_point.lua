@@ -27,7 +27,7 @@ end
 function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "Active", { KeyName = "active", Edit = { type = "Boolean", order = 1 } })
 	self:NetworkVar("String", 0, "Faction", { KeyName = "faction", Edit = { type = "Combo", text = "Attacking faction", values = faction_values(), order = 2 } })
-	self:NetworkVar("Int", 0, "Radius", { KeyName = "radius", Edit = { type = "Int", min = 100, max = 3000, order = 3 } })
+	self:NetworkVar("Int", 0, "Radius", { KeyName = "radius", Edit = { type = "Int", min = 100, max = 30000, order = 3 } })
 
 	if SERVER then
 		self:SetActive(true)
@@ -90,6 +90,7 @@ ENT.TICK = 1
 ENT.REVEAL_EVERY = 3
 ENT.EXPECT_FOR = 8
 ENT.HOLD_AT = 0.6
+ENT.HOLD_MAX = 600
 
 function ENT:SpawnFunction(ply, tr, cls)
 	if not tr.Hit then return end
@@ -226,7 +227,7 @@ function ENT:Think()
 				end
 
 				local L = IsValid(sq.leader) and sq.leader or members[1]
-				if not sq.tifAttackHeld and L:GetPos():DistToSqr(pos) < (radius * self.HOLD_AT) ^ 2 then
+				if not sq.tifAttackHeld and L:GetPos():DistToSqr(pos) < math.min(radius * self.HOLD_AT, self.HOLD_MAX) ^ 2 then
 					sq.tifAttackHeld = true
 					TIF.Squad.SetOrder(sq, "hold", pos)
 				end

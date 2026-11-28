@@ -1521,6 +1521,15 @@ it: lost squads, dead references, odd states. Same path for the Duplicator tool 
 - Every 3 s: hostile live combatants (soldiers, players, NPCs) within the radius become squad knowledge and a confirmed
   contact on every assaulter (source "objective"), and the assaulters get tifExpectEnemy for 8 s. sv_passive_mw
   OnAware returns early for them: no startle, no "new enemy close", no pointing out contacts on first sight.
+- User: "make attack points have no range limit, or at least one way bigger". Radius max 3000 -> 30000 (map-wide reveal);
+  squads were already claimed from anywhere on the map. Hold now starts within min(60% of the radius, ENT.HOLD_MAX 600 u),
+  so a huge radius doesn't make them hold where they stand. Harness attackpoint 22 (+3).
+- Spawn menu icon for Soldier Survival: materials/entities/tif_survival.png (128x128, from a Black Hawk Down still the user
+  picked; a film still, so swap it before a public release).
+- Spawn menu icon for Soldier Director: materials/entities/tif_director.png (128x128, a photo the user picked; check
+  its source before a public release).
+- Spawn menu icon for Attack Point: materials/entities/tif_attack_point.png (128x128, a pike-and-cavalry charge
+  illustration the user picked; check its source before a public release).
 - Harness attackpoint 19 (new). All suites pass. Backup: K:\jimmyproject\_addon_backups\2026-11-27_careful\sv_passive_mw.lua.
 
 ### 0.38.58: tracers from the muzzle, guns in the new clips, cheaper feet, prone bipod clips (2026-11-26, NOT yet seen in game)
